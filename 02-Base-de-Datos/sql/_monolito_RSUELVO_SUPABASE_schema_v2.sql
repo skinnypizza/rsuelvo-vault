@@ -24,12 +24,9 @@
 -- Convención I3: funciones reales = fn_*; rpc_* del doc workflows son alias conceptuales.
 --
 -- Ejecutar 01..12 en orden (o este monolito completo) en Supabase SQL Editor.
-
-
 -- ============================================================
--- 1. EXTENSIONES Y ESQUEMA
+-- RSUELVO v2 :: 1. EXTENSIONES Y ESQUEMA
 -- ============================================================
-
 
 create extension if not exists pgcrypto;
 create extension if not exists pg_cron;
@@ -38,11 +35,11 @@ create schema if not exists rsuelvo;
 
 set search_path = rsuelvo, public;
 
-
 -- ============================================================
--- 2. ENUMS
+-- RSUELVO v2 :: 2. ENUMS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 do $$ begin
   create type estado_comercio as enum ('ACTIVO','SUSPENDIDO','BLOQUEADO','CANCELADO');
@@ -133,9 +130,10 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ============================================================
--- 3. TABLAS
+-- RSUELVO v2 :: 3. TABLAS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 -- ROLES
 create table if not exists tbl_roles (
@@ -556,6 +554,7 @@ create table if not exists tbl_canal_whatsapp (
   id_sucursal uuid references tbl_sucursales(id_sucursal) on delete set null,
   numero text not null unique,
   provider text not null default 'OPENWA' check (provider in ('OPENWA','META')),
+  provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
   created_at timestamptz not null default now(),
@@ -567,12 +566,28 @@ create table if not exists tbl_whatsapp_eventos (
   id_evento uuid primary key default gen_random_uuid(),
   provider text not null check (provider in ('OPENWA','META')),
   external_message_id text not null,
+  phone_number_id text,
+  customer_phone text,
   tipo text,
-  procesado boolean not null default false,
+  processing_status text not null default 'RECIBIDO'
+    check (processing_status in ('RECIBIDO','PROCESANDO','PROCESADO','ERROR')),
   payload jsonb,
   recibido timestamptz not null default now(),
   procesado_at timestamptz,
   unique(provider, external_message_id)
+);
+
+create index if not exists idx_eventos_status on tbl_whatsapp_eventos(processing_status)
+where processing_status <> 'PROCESADO';
+
+-- Catálogo de plantillas Meta (guía §37-38 / HU-124 / WF-80)
+create table if not exists tbl_plantillas_whatsapp (
+  template_code text primary key,
+  template_name text not null,
+  language text not null default 'es',
+  parametros jsonb,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
 -- PREFERENCIAS DE CONTACTO / OPT-OUT (v2/HU-142, política §16)
@@ -589,9 +604,10 @@ create table if not exists tbl_contact_preferences (
 );
 
 -- ============================================================
--- 4. CONSTRAINTS E ÍNDICES ÚNICOS PARCIALES
+-- RSUELVO v2 :: 4. CONSTRAINTS E ÍNDICES ÚNICOS PARCIALES
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 -- Cliente único por WhatsApp dentro del comercio
 create unique index if not exists uq_cliente_whatsapp_comercio
@@ -645,9 +661,10 @@ create unique index if not exists uq_canal_numero_activo
 on tbl_canal_whatsapp(numero) where activo;
 
 -- ============================================================
--- 5. ÍNDICES DE RENDIMIENTO
+-- RSUELVO v2 :: 5. ÍNDICES DE RENDIMIENTO
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 create index if not exists idx_sucursales_comercio on tbl_sucursales(id_comercio);
 create index if not exists idx_usuario_comercio_usuario on tbl_usuario_comercio(id_usuario);
@@ -678,9 +695,10 @@ create index if not exists idx_envios_repartidor on tbl_envios(id_repartidor,est
 create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(id_envio,created_at desc);
 
 -- ============================================================
--- 6. FUNCIONES
+-- RSUELVO v2 :: 6. FUNCIONES
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 -- Validación de asignación usuario/comercio (cajero = 1 sucursal)
 create or replace function fn_validar_asignacion_usuario_comercio()
@@ -1095,44 +1113,82 @@ begin
 end;
 $$;
 
--- (v2/A6/HU-143) Registrar evento entrante. Devuelve true si es NUEVO.
+-- (v2/A6/HU-143 + Guía Meta §15-16) Registrar evento entrante con estado de
+-- procesamiento y datos de correlación. Devuelve jsonb: nuevo=true => procesar.
 create or replace function fn_registrar_evento_whatsapp(
   p_provider text,
   p_external_message_id text,
   p_tipo text default null,
-  p_payload jsonb default null
+  p_payload jsonb default null,
+  p_phone_number_id text default null,
+  p_customer_phone text default null
 )
-returns boolean
+returns jsonb
 language plpgsql
 security definer
 set search_path = rsuelvo, public
 as $$
 declare
-  v_inserted boolean := false;
+  v_nuevo boolean := false;
 begin
   perform fn_assert_service_role();
 
-  insert into tbl_whatsapp_eventos(provider,external_message_id,tipo,payload)
-  values(p_provider,p_external_message_id,p_tipo,p_payload)
+  insert into tbl_whatsapp_eventos(
+    provider,external_message_id,tipo,payload,phone_number_id,customer_phone,processing_status
+  )
+  values(
+    p_provider,p_external_message_id,p_tipo,p_payload,p_phone_number_id,p_customer_phone,'PROCESANDO'
+  )
   on conflict (provider,external_message_id) do nothing;
 
-  v_inserted := found;
+  v_nuevo := found;
 
-  if not v_inserted then
+  if not v_nuevo then
+    -- Reintento legítimo si el intento anterior quedó PROCESSING/ERROR.
     update tbl_whatsapp_eventos
-    set procesado=true, procesado_at=now(), payload=coalesce(payload,payload)
+    set processing_status='PROCESANDO', payload=coalesce(p_payload,payload)
     where provider=p_provider
       and external_message_id=p_external_message_id
-      and procesado=false;
-  else
-    update tbl_whatsapp_eventos
-    set procesado=true, procesado_at=now()
-    where provider=p_provider
-      and external_message_id=p_external_message_id;
+      and processing_status in ('PROCESANDO','ERROR');
+    v_nuevo := found;
   end if;
 
-  return v_inserted;
+  return jsonb_build_object('nuevo',v_nuevo);
 end;
+$$;
+
+-- Marcar resultado del procesamiento (éxito/error).
+create or replace function fn_cerrar_evento_whatsapp(
+  p_provider text,
+  p_external_message_id text,
+  p_exito boolean default true,
+  p_error text default null
+)
+returns void
+language sql
+security definer
+set search_path = rsuelvo, public
+as $$
+  update tbl_whatsapp_eventos
+  set processing_status = case when p_exito then 'PROCESADO' else 'ERROR' end,
+      procesado_at = now(),
+      payload = coalesce(payload || jsonb_build_object('last_error',p_error), payload)
+  where provider=p_provider and external_message_id=p_external_message_id;
+$$;
+
+-- (v2/Guía Meta §18/58) Identificación por Phone Number ID de Meta.
+create or replace function fn_identificar_comercio_por_phone_number_id(p_pnid text)
+returns table(id_comercio uuid, id_sucursal uuid, provider text)
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select c.id_comercio, c.id_sucursal, c.provider::text
+  from tbl_canal_whatsapp c
+  where c.provider_phone_number_id=p_pnid
+    and c.activo
+  limit 1;
 $$;
 
 -- (v2/HU-142) Registrar opt-out del comprador
@@ -2242,10 +2298,12 @@ begin
   return v_count;
 end;
 $$;
+
 -- ============================================================
--- 7. TRIGGERS
+-- RSUELVO v2 :: 7. TRIGGERS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 -- Asignación usuario/comercio
 drop trigger if exists trg_validar_asignacion_usuario_comercio on tbl_usuario_comercio;
@@ -2309,7 +2367,8 @@ begin
   foreach t in array array[
     'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
     'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
-    'tbl_movimientos_creditos','tbl_envios'
+    'tbl_movimientos_creditos','tbl_envios',
+    'tbl_canal_whatsapp','tbl_contact_preferences'
   ] loop
     execute format('drop trigger if exists trg_audit_%s on %I',t,t);
     execute format(
@@ -2318,9 +2377,10 @@ begin
 end $$;
 
 -- ============================================================
--- 8. ROW LEVEL SECURITY Y GRANTS
+-- RSUELVO v2 :: 8. ROW LEVEL SECURITY Y GRANTS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 do $$
 declare
@@ -2348,6 +2408,7 @@ alter table tbl_paquetes_creditos enable row level security;
 alter table tbl_canal_whatsapp enable row level security;
 alter table tbl_whatsapp_eventos enable row level security;
 alter table tbl_contact_preferences enable row level security;
+alter table tbl_plantillas_whatsapp enable row level security;
 alter table tbl_whatsapp_eventos force row level security; -- sin políticas => denegado a clientes; backend vía service_role
 
 -- COMERCIOS
@@ -2451,6 +2512,10 @@ create policy canal_manage on tbl_canal_whatsapp for all using (fn_es_admin_come
 -- OPT-OUT
 create policy contact_pref_all on tbl_contact_preferences for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
 
+-- PLANTILLAS META: catálogo leíble por la app; gestión solo admin (WF-80/HU-124)
+create policy plantillas_select on tbl_plantillas_whatsapp for select using (true);
+create policy plantillas_manage on tbl_plantillas_whatsapp for all using (fn_es_superadmin()) with check (fn_es_superadmin());
+
 
 -- GRANTS
 grant usage on schema rsuelvo to anon, authenticated, service_role;
@@ -2468,9 +2533,10 @@ grant execute on all functions in schema rsuelvo to authenticated;
 -- service_role mantiene bypass de RLS en Supabase.
 
 -- ============================================================
--- 9. VISTAS OPERATIVAS
+-- RSUELVO v2 :: 9. VISTAS OPERATIVAS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 create or replace view vw_inventario_disponible as
 select
@@ -2514,9 +2580,10 @@ grant select on vw_inventario_disponible to authenticated;
 grant select on vw_lista_espera_activa to authenticated;
 
 -- ============================================================
--- 10. SEED — DATOS INICIALES
+-- RSUELVO v2 :: 10. SEED — DATOS INICIALES
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 insert into tbl_roles (codigo,nombre,nivel) values
 ('ROLE_SUPERADMIN','Superadministrador',100),
@@ -2546,10 +2613,24 @@ on conflict (nombre) do nothing;
 -- codigo_tienda se asigna al crear el comercio (HU-002/HU-104):
 -- update rsuelvo.tbl_comercios set codigo_tienda='FER' where nombre_comercial='Feria La Paz';
 
+
+-- Plantillas Meta (guía §37; nombres reales se aprueban en Meta y se registran aquí)
+insert into tbl_plantillas_whatsapp(template_code,template_name,language,parametros) values
+  ('RESERVA_EXPIRADA','rsuelvo_reserva_expirada','es','["producto","sku"]'),
+  ('TURNO_DISPONIBLE','rsuelvo_turno_disponible','es','["producto","sku","minutos"]'),
+  ('PAGO_CONFIRMADO','rsuelvo_pago_confirmado','es','["pedido","total"]'),
+  ('PEDIDO_CONFIRMADO','rsuelvo_pedido_confirmado','es','["pedido"]'),
+  ('ENVIO_CREADO','rsuelvo_envio_creado','es','["pedido","guia"]'),
+  ('ENVIO_EN_RUTA','rsuelvo_envio_en_ruta','es','["pedido"]'),
+  ('ENVIO_ENTREGADO','rsuelvo_envio_entregado','es','["pedido"]'),
+  ('ENVIO_NO_ENTREGADO','rsuelvo_envio_no_entregado','es','["pedido","motivo"]')
+on conflict (template_code) do nothing;
+
 -- ============================================================
--- 11. STORAGE — BUCKETS Y PATHS
+-- RSUELVO v2 :: 11. STORAGE — BUCKETS Y PATHS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 insert into storage.buckets(id,name,public)
 values ('comprobantes-pago','comprobantes-pago',false),
@@ -2571,9 +2652,10 @@ on conflict (id) do nothing;
 --     where u.auth_user_id=auth.uid() and uc.activo));
 
 -- ============================================================
--- 12. CRON — EXPIRACIÓN DE RESERVAS
+-- RSUELVO v2 :: 12. CRON — EXPIRACIÓN DE RESERVAS
 -- ============================================================
 
+set search_path = rsuelvo, public;
 
 select cron.schedule(
   'rsuelvo_expirar_reservas',

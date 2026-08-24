@@ -66,7 +66,8 @@ begin
   foreach t in array array[
     'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
     'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
-    'tbl_movimientos_creditos','tbl_envios'
+    'tbl_movimientos_creditos','tbl_envios',
+    'tbl_canal_whatsapp','tbl_contact_preferences'
   ] loop
     execute format('drop trigger if exists trg_audit_%s on %I',t,t);
     execute format(

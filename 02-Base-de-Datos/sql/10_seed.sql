@@ -31,3 +31,16 @@ on conflict (nombre) do nothing;
 
 -- codigo_tienda se asigna al crear el comercio (HU-002/HU-104):
 -- update rsuelvo.tbl_comercios set codigo_tienda='FER' where nombre_comercial='Feria La Paz';
+
+
+-- Plantillas Meta (guía §37; nombres reales se aprueban en Meta y se registran aquí)
+insert into tbl_plantillas_whatsapp(template_code,template_name,language,parametros) values
+  ('RESERVA_EXPIRADA','rsuelvo_reserva_expirada','es','["producto","sku"]'),
+  ('TURNO_DISPONIBLE','rsuelvo_turno_disponible','es','["producto","sku","minutos"]'),
+  ('PAGO_CONFIRMADO','rsuelvo_pago_confirmado','es','["pedido","total"]'),
+  ('PEDIDO_CONFIRMADO','rsuelvo_pedido_confirmado','es','["pedido"]'),
+  ('ENVIO_CREADO','rsuelvo_envio_creado','es','["pedido","guia"]'),
+  ('ENVIO_EN_RUTA','rsuelvo_envio_en_ruta','es','["pedido"]'),
+  ('ENVIO_ENTREGADO','rsuelvo_envio_entregado','es','["pedido"]'),
+  ('ENVIO_NO_ENTREGADO','rsuelvo_envio_no_entregado','es','["pedido","motivo"]')
+on conflict (template_code) do nothing;

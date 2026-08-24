@@ -98,7 +98,7 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/` |
 | Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `Auditoria-SQL-vs-ERD.md` (+ Resolución v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
 | Workflows | `03-n8n/workflows.md` · `Matriz-Consistencia-WF-BD-HU.md` | n8n Cloud |
-| Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) | OpenWA 0.21 |
+| Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `Auditoria-Guia-Meta-Business.md` | OpenWA 0.21 / Meta Cloud API |
 | UX/UI | `05-Diseño-UX/Wireframes App Móvil.md` · PDF 40 págs · PNGs | Stitch project `1852486780525167950` |
 | Requisitos | `06-Backlog-HU/01-Backlog…md` (148 HU) · `02-Auditoria-de-Consistencia.md` · `03-Correlacion-Wireframes-HU.md` | — |
 

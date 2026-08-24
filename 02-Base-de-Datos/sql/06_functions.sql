@@ -417,44 +417,82 @@ begin
 end;
 $$;
 
--- (v2/A6/HU-143) Registrar evento entrante. Devuelve true si es NUEVO.
+-- (v2/A6/HU-143 + Guía Meta §15-16) Registrar evento entrante con estado de
+-- procesamiento y datos de correlación. Devuelve jsonb: nuevo=true => procesar.
 create or replace function fn_registrar_evento_whatsapp(
   p_provider text,
   p_external_message_id text,
   p_tipo text default null,
-  p_payload jsonb default null
+  p_payload jsonb default null,
+  p_phone_number_id text default null,
+  p_customer_phone text default null
 )
-returns boolean
+returns jsonb
 language plpgsql
 security definer
 set search_path = rsuelvo, public
 as $$
 declare
-  v_inserted boolean := false;
+  v_nuevo boolean := false;
 begin
   perform fn_assert_service_role();
 
-  insert into tbl_whatsapp_eventos(provider,external_message_id,tipo,payload)
-  values(p_provider,p_external_message_id,p_tipo,p_payload)
+  insert into tbl_whatsapp_eventos(
+    provider,external_message_id,tipo,payload,phone_number_id,customer_phone,processing_status
+  )
+  values(
+    p_provider,p_external_message_id,p_tipo,p_payload,p_phone_number_id,p_customer_phone,'PROCESANDO'
+  )
   on conflict (provider,external_message_id) do nothing;
 
-  v_inserted := found;
+  v_nuevo := found;
 
-  if not v_inserted then
+  if not v_nuevo then
+    -- Reintento legítimo si el intento anterior quedó PROCESSING/ERROR.
     update tbl_whatsapp_eventos
-    set procesado=true, procesado_at=now(), payload=coalesce(payload,payload)
+    set processing_status='PROCESANDO', payload=coalesce(p_payload,payload)
     where provider=p_provider
       and external_message_id=p_external_message_id
-      and procesado=false;
-  else
-    update tbl_whatsapp_eventos
-    set procesado=true, procesado_at=now()
-    where provider=p_provider
-      and external_message_id=p_external_message_id;
+      and processing_status in ('PROCESANDO','ERROR');
+    v_nuevo := found;
   end if;
 
-  return v_inserted;
+  return jsonb_build_object('nuevo',v_nuevo);
 end;
+$$;
+
+-- Marcar resultado del procesamiento (éxito/error).
+create or replace function fn_cerrar_evento_whatsapp(
+  p_provider text,
+  p_external_message_id text,
+  p_exito boolean default true,
+  p_error text default null
+)
+returns void
+language sql
+security definer
+set search_path = rsuelvo, public
+as $$
+  update tbl_whatsapp_eventos
+  set processing_status = case when p_exito then 'PROCESADO' else 'ERROR' end,
+      procesado_at = now(),
+      payload = coalesce(payload || jsonb_build_object('last_error',p_error), payload)
+  where provider=p_provider and external_message_id=p_external_message_id;
+$$;
+
+-- (v2/Guía Meta §18/58) Identificación por Phone Number ID de Meta.
+create or replace function fn_identificar_comercio_por_phone_number_id(p_pnid text)
+returns table(id_comercio uuid, id_sucursal uuid, provider text)
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select c.id_comercio, c.id_sucursal, c.provider::text
+  from tbl_canal_whatsapp c
+  where c.provider_phone_number_id=p_pnid
+    and c.activo
+  limit 1;
 $$;
 
 -- (v2/HU-142) Registrar opt-out del comprador

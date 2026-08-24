@@ -423,6 +423,7 @@ create table if not exists tbl_canal_whatsapp (
   id_sucursal uuid references tbl_sucursales(id_sucursal) on delete set null,
   numero text not null unique,
   provider text not null default 'OPENWA' check (provider in ('OPENWA','META')),
+  provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
   created_at timestamptz not null default now(),
@@ -434,12 +435,28 @@ create table if not exists tbl_whatsapp_eventos (
   id_evento uuid primary key default gen_random_uuid(),
   provider text not null check (provider in ('OPENWA','META')),
   external_message_id text not null,
+  phone_number_id text,
+  customer_phone text,
   tipo text,
-  procesado boolean not null default false,
+  processing_status text not null default 'RECIBIDO'
+    check (processing_status in ('RECIBIDO','PROCESANDO','PROCESADO','ERROR')),
   payload jsonb,
   recibido timestamptz not null default now(),
   procesado_at timestamptz,
   unique(provider, external_message_id)
+);
+
+create index if not exists idx_eventos_status on tbl_whatsapp_eventos(processing_status)
+where processing_status <> 'PROCESADO';
+
+-- Catálogo de plantillas Meta (guía §37-38 / HU-124 / WF-80)
+create table if not exists tbl_plantillas_whatsapp (
+  template_code text primary key,
+  template_name text not null,
+  language text not null default 'es',
+  parametros jsonb,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
 -- PREFERENCIAS DE CONTACTO / OPT-OUT (v2/HU-142, política §16)

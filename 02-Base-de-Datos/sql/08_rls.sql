@@ -30,6 +30,7 @@ alter table tbl_paquetes_creditos enable row level security;
 alter table tbl_canal_whatsapp enable row level security;
 alter table tbl_whatsapp_eventos enable row level security;
 alter table tbl_contact_preferences enable row level security;
+alter table tbl_plantillas_whatsapp enable row level security;
 alter table tbl_whatsapp_eventos force row level security; -- sin políticas => denegado a clientes; backend vía service_role
 
 -- COMERCIOS
@@ -132,6 +133,10 @@ create policy canal_manage on tbl_canal_whatsapp for all using (fn_es_admin_come
 
 -- OPT-OUT
 create policy contact_pref_all on tbl_contact_preferences for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
+
+-- PLANTILLAS META: catálogo leíble por la app; gestión solo admin (WF-80/HU-124)
+create policy plantillas_select on tbl_plantillas_whatsapp for select using (true);
+create policy plantillas_manage on tbl_plantillas_whatsapp for all using (fn_es_superadmin()) with check (fn_es_superadmin());
 
 
 -- GRANTS
