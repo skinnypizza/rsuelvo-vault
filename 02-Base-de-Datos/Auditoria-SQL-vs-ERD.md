@@ -98,4 +98,4 @@ El schema **v2** (`RSUELVO_SUPABASE_schema_v2.sql`, 2.614 líneas; split en `sql
 
 **Nuevo hallazgo resuelto en v2:** las funciones security-definer fallaban cuando n8n llama con service_role (`auth.uid()` null ⇒ "Sin acceso"). Añadido `fn_es_service_role()` como bypass controlado en los helpers de tenancy — sin esto, E07/E09/E10 no funcionaban desde workflows.
 
-Estado final: **0 inconsistencias conocidas** entre SQL v2 ↔ ERD ↔ HU (148) ↔ workflows ↔ wireframes.
+Estado final: **0 inconsistencias conocidas** entre SQL v2 ↔ ERD ↔ HU (148) ↔ workflows ↔ wireframes. Decisiones de cierre D1-D10 registradas en [[00-PROMPT-MAESTRO-RSUELVO]] §5 (incluye D4 que cierra I4 y D7 que descarta la HU-147).

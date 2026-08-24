@@ -1,7 +1,8 @@
 # Backlog de Historias de Usuario — RSUELVO
 
-> **Versión:** 1.1 · **Fecha:** 2026-08-24 · **Origen:** sesión colaborativa (ChatGPT) sobre este vault + ampliación post-auditoría
-> **Estado:** Congelado como base del prompt maestro · **Total:** 148 HU en 22 épicas
+> **Versión:** 1.2-FINAL · **Fecha:** 2026-08-24 · **Origen:** sesión colaborativa (ChatGPT) sobre este vault + ampliación post-auditoría
+> **Estado:** Congelado como base del prompt maestro · **148 HU definidas = 147 activas + 1 descartada (D7)** · 22 épicas
+> **Decisiones:** ver Registro D1-D10 en [[00-PROMPT-MAESTRO-RSUELVO]] §5
 > **Auditoría de consistencia:** ver [[02-Auditoria-de-Consistencia]]
 
 ## Decisiones previas congeladas
@@ -223,7 +224,7 @@ Restricción estricta: SysAdmin NO consulta saldos, cuentas bancarias ni datos s
 **HU-144 Cola y rate limiting de envíos** *(sistema → E19)* Toda salida pasa por cola `pending→queued→processing→sent` con límites configurables por instancia/tienda/número. Política §9-10.
 **HU-145 Circuit breaker de envíos** *(sistema → E19)* CLOSED→OPEN→HALF_OPEN ante anomalías; pausa los envíos automáticos sin cortar la recepción. Política §14.
 **HU-146 Devolver créditos por fallo técnico** *(sistema → E11)* Si la verificación falla por error técnico (IA indisponible, timeout), registrar movimiento DEVOLUCION del costo (WF-52) sin marcar el pago como inválido.
-**HU-147 Expirar créditos** *(sistema → E11)* Si se define vigencia comercial de créditos, registrar movimiento EXPIRACION en el ledger (P2).
+**HU-147 Expirar créditos** *(sistema → E11)* ~~Si se define vigencia comercial de créditos, registrar movimiento EXPIRACION en el ledger~~ **DESCARTADA — Decisión D7 del [Prompt Maestro](../00-Index/00-PROMPT-MAESTRO-RSUELVO.md): los créditos NO expiran** (coherente con wireframes 15/29). Valor EXPIRACION queda reservado en el enum por si la política comercial cambia.
 **HU-148 Actualización en tiempo real en la app** *(usuario móvil → E22)* Suscripción Supabase Realtime para pedidos/reservas/comprobantes: lo que ocurre por WhatsApp se refleja solo en dashboard, cobros y reservas.
 
 ## Clasificación por destino de implementación

@@ -27,6 +27,7 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 
 | Recurso                          | Ruta                                                  |
 | -------------------------------- | ----------------------------------------------------- |
+| **⭐ PROMPT MAESTRO (empezar aquí)** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md`            |
 | Código Flutter                   | AUN INEXISTENTE                                       |
 | Favicons y Recursos              | `/home/nico/rsuelvo/logotipo rsuelvo`                 |
 | Variables de entorno             | `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/.env` |
