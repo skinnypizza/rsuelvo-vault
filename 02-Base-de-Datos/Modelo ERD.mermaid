@@ -1,0 +1,63 @@
+erDiagram
+
+    tbl_comercios ||--|| tbl_comercio_config : "configura"
+    tbl_comercios ||--o{ tbl_sucursales : "tiene"
+    tbl_comercios ||--o{ tbl_usuario_comercio : "asigna"
+    tbl_comercios ||--o{ tbl_categorias : "posee"
+    tbl_comercios ||--o{ tbl_productos : "posee"
+    tbl_comercios ||--o{ tbl_clientes : "registra"
+    tbl_comercios ||--o{ tbl_metodos_pago : "configura"
+    tbl_comercios ||--|| tbl_cuentas_creditos : "posee"
+    tbl_comercios ||--o{ tbl_reservas : "genera"
+    tbl_comercios ||--o{ tbl_lista_espera : "gestiona"
+    tbl_comercios ||--o{ tbl_pedidos : "recibe"
+    tbl_comercios ||--o{ tbl_comprobantes_pago : "recibe"
+    tbl_comercios ||--o{ tbl_verificaciones : "ejecuta"
+    tbl_comercios ||--o{ tbl_movimientos_creditos : "registra"
+    tbl_comercios ||--o{ tbl_compras_creditos : "realiza"
+    tbl_comercios ||--o{ tbl_envios : "gestiona"
+    tbl_comercios ||--o{ tbl_logs_auditoria : "audita"
+
+    tbl_usuarios ||--o{ tbl_usuario_comercio : "pertenece"
+    tbl_roles ||--o{ tbl_usuario_comercio : "asigna"
+    tbl_sucursales ||--o{ tbl_usuario_comercio : "limita"
+
+    tbl_categorias ||--o{ tbl_productos : "clasifica"
+    tbl_productos ||--o{ tbl_variantes : "contiene"
+
+    tbl_sucursales ||--o{ tbl_inventario : "mantiene"
+    tbl_variantes ||--o{ tbl_inventario : "stock"
+    tbl_variantes ||--o{ tbl_inventario_movimientos : "movimientos"
+
+    tbl_clientes ||--o{ tbl_reservas : "realiza"
+    tbl_clientes ||--o{ tbl_lista_espera : "espera"
+    tbl_clientes ||--o{ tbl_pedidos : "realiza"
+    tbl_clientes ||--o{ tbl_comprobantes_pago : "envia"
+
+    tbl_variantes ||--o{ tbl_reservas : "se_reserva"
+    tbl_variantes ||--o{ tbl_lista_espera : "espera_por"
+
+    tbl_reservas ||--o| tbl_pedidos : "origina"
+    tbl_reservas ||--o{ tbl_inventario_movimientos : "bloquea"
+
+    tbl_lista_espera ||--o| tbl_reservas : "puede_generar"
+
+    tbl_pedidos ||--|{ tbl_pedido_detalles : "contiene"
+    tbl_variantes ||--o{ tbl_pedido_detalles : "vendida"
+
+    tbl_pedidos ||--o{ tbl_qr_cobros : "genera"
+    tbl_metodos_pago ||--o{ tbl_qr_cobros : "usa"
+    tbl_pedidos ||--o{ tbl_comprobantes_pago : "recibe"
+    tbl_comprobantes_pago ||--o{ tbl_verificaciones : "se_verifica"
+
+    tbl_cuentas_creditos ||--o{ tbl_movimientos_creditos : "registra"
+    tbl_verificaciones ||--o{ tbl_movimientos_creditos : "consume"
+    tbl_servicios_creditos ||--o{ tbl_verificaciones : "tarifa"
+    tbl_paquetes_creditos ||--o{ tbl_compras_creditos : "comprado"
+    tbl_compras_creditos ||--o{ tbl_pagos_creditos : "pagada"
+
+    tbl_pedidos ||--o| tbl_envios : "despacha"
+    tbl_envios ||--o{ tbl_env_seguimiento_estados : "rastrea"
+    tbl_usuarios ||--o{ tbl_env_seguimiento_estados : "actualiza"
+
+    tbl_usuarios ||--o{ tbl_logs_auditoria : "ejecuta"

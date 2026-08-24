@@ -1,0 +1,110 @@
+flowchart TD
+
+    %% =========================
+    %% SOLICITUD Y VALIDACIÓN SKU
+    %% =========================
+
+    A[Envío Solicitud SKU] --> B{Validar SKU}
+
+    B -- NO --> C[Solicitar nuevo SKU]
+    C --> X1((X<br>SIN STOCK))
+
+    B -- SI --> D{Validar Inventario}
+
+
+    %% =========================
+    %% INVENTARIO
+    %% =========================
+
+    D -- SI --> H[Descontar Stock / Crear Reserva]
+
+    D -- NO --> E{Producto Reservado}
+
+    E -- NO --> X1
+
+    E -- SI --> F{¿Turnos disponibles?}
+
+    F -- NO --> X2((X<br>SIN TURNOS))
+
+    F -- SI --> G[Crear Turno]
+
+
+    %% =========================
+    %% GESTIÓN DE TURNOS
+    %% =========================
+
+    G --> G1[Asignar Número de Turno]
+
+    G1 --> G2[Informar posición en Turno]
+
+    G2 --> G3[Esperar liberación del Producto]
+
+    G3 --> G4{Reserva Actual<br>Venció / Fue Cancelada?}
+
+    G4 -- NO --> G3
+
+    G4 -- SI --> G5[Liberar Reserva]
+
+    G5 --> G6[Buscar Siguiente Turno]
+
+    G6 --> G7{¿Existe siguiente Turno?}
+
+    G7 -- NO --> X3((X<br>PRODUCTO DISPONIBLE))
+
+    G7 -- SI --> G8[Notificar Turno]
+
+    G8 --> G9{¿Acepta tomar Reserva?}
+
+    G9 -- NO --> G10[Cancelar Turno]
+
+    G10 --> G6
+
+    G9 -- SI --> G11[Crear Reserva]
+
+    G11 --> G12[Iniciar Tiempo de Reserva]
+
+    G12 --> H
+
+
+    %% =========================
+    %% RESERVA Y PAGO
+    %% =========================
+
+    H --> P[Responder QR<br>Nombre e Instrucciones]
+
+    P --> Q{Validar Comprobante}
+
+    Q -- NO --> R[Retroalimentación]
+
+    R --> Q
+
+    Q -- SI --> S[Preguntar y Guardar Envío]
+
+    S --> T[Confirmar Compra]
+
+    T --> U[Notificar]
+
+    U --> V[Guardar Pedido]
+
+    V --> X4((X<br>VENTA COMPLETADA))
+
+
+    %% =========================
+    %% EXPIRACIÓN DE RESERVA
+    %% =========================
+
+    H -.-> Z[Temporizador de Reserva]
+
+    Z --> Z1{¿Pago recibido<br>antes de vencer?}
+
+    Z1 -- SI --> Q
+
+    Z1 -- NO --> Z2[Reserva Vencida]
+
+    Z2 --> Z3[Liberar Reserva]
+
+    Z3 --> Z4{¿Existen Turnos?}
+
+    Z4 -- NO --> X3
+
+    Z4 -- SI --> G6

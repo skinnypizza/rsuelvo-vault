@@ -1,0 +1,13 @@
+# Credenciales y secretos — nunca versionar
+02-Base-de-Datos/datos-conexion.md
+
+# Configuración local de Obsidian (específica por máquina)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.swp
+*~
