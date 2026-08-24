@@ -32,5 +32,6 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 | Variables de entorno             | `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/.env` |
 | OpenWA                           | `/home/nico/OpenWA/`                                  |
 | Vault                            | `/home/nico/obsidian/Rsuelvo/`                        |
-| Diseño UX / Wireframes app móvil | `/home/nico/obsidian/Rsuelvo/05-Diseño-UX/`           |
+| Diseño UX / Wireframes app móvil    | `/home/nico/obsidian/Rsuelvo/05-Diseño-UX/`           |
+| Backlog HU + Auditoría consistencia | `/home/nico/obsidian/Rsuelvo/06-Backlog-HU/`          |
 
