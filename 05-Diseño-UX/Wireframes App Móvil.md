@@ -2,7 +2,7 @@
 
 > **Fecha:** 24 de agosto de 2026 · **Herramienta:** Google Stitch (MCP) · **Viewport:** 390×844 px (export 780×1768 @2x)
 > **Estado:** ✅ **Completo — 39 de 39 wireframes generados**
-> **Alcance:** App Flutter para **Dueño de Comercio** (`ROL_ADMIN_COMERCIO`), **Cajero** (`ROL_OPERADOR`) y **Agente Logístico** (`ROL_LOGISTICO`).
+> **Alcance:** App Flutter para **Dueño de Comercio** (`ROLE_TENANT_ADMIN`), **Cajero** (`ROLE_TENANT_CASHIER`) y **Agente Logístico** (`ROLE_LOGISTICS_AGENT`).
 > El comprador NO usa la app: su flujo completo vive en WhatsApp + n8n (ver [[arquitectura-general]]).
 
 ---

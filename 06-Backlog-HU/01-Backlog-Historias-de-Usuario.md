@@ -64,7 +64,7 @@
 **HU-022 Crear categoría.**
 **HU-023 Crear producto.**
 **HU-024 Crear variante** (SKU pertenece a la variante).
-**HU-025 Generar SKU automáticamente** — formato `[3L][1N][1L][3A]`, ej. `FER1H001`; trigger `trg_generar_validar_sku`.
+**HU-025 Generar SKU automáticamente** — formato v2: **6 caracteres = [3 código tienda][3 código producto]** base36 (ej. tienda FER → `FERA01`); generación serializada por `fn_resolver_variante_tenant_sku`; unicidad física `UNIQUE(id_comercio,sku)`; `sku_anterior` preserva los SKUs legacy de 8 caracteres durante la migración.
 **HU-026 Validar SKU único** — `UNIQUE(id_comercio, sku)`. WF: pantalla 10 (error duplicado).
 **HU-027 Editar producto.** WF: pantalla 27.
 **HU-028 Desactivar producto** (sin borrar historial).
@@ -126,7 +126,7 @@
 **HU-066 Consultar saldo** — píldora persistente en app. WF: pantalla 14.
 **HU-067 Bloquear verificación sin créditos** — estado `SIN_CREDITOS`; comprobante queda RECIBIDO; aviso al cliente. WF: pantalla 08.
 **HU-068 Consumir crédito** según `tbl_servicios_creditos.costo_creditos` (no hardcode).
-**HU-069 Consumir crédito atómicamente** — `fn_procesar_verificacion_ia_atomica()` con `FOR UPDATE` sobre `tbl_cre_saldos_comercio`.
+**HU-069 Consumir crédito atómicamente** — `fn_iniciar_verificacion()` crea la verificación y consume créditos en una sola transacción (`FOR UPDATE` sobre `tbl_cuentas_creditos`, vía `fn_consumir_creditos`). SIN_CREDITOS → BLOQUEADA.
 **HU-070 Registrar movimiento de créditos** — ledger: COMPRA/BONIFICACION/AJUSTE/CONSUMO_VERIFICACION/DEVOLUCION/EXPIRACION.
 **HU-071 Consultar movimientos.** WF: pantalla 14.
 **HU-072 Consultar paquetes** (Básico 100/Pro 500/Empresa 1000). WF: pantalla 15.
@@ -204,7 +204,7 @@ Restricción estricta: SysAdmin NO consulta saldos, cuentas bancarias ni datos s
 
 # ÉPICA E21 — Seguridad multitenant
 
-**HU-132 Aislar por `id_comercio`** · **HU-133 Aplicar RLS** patrón `auth.uid() → tbl_adm_usuarios.id_comercio` · **HU-134 Validar alcance de sucursal** · **HU-135 Impedir escalamiento de privilegios** · **HU-136 Proteger credenciales** (service_role jamás en frontend/navegador/respuestas).
+**HU-132 Aislar por `id_comercio`** · **HU-133 Aplicar RLS** patrón `auth.uid() → tbl_usuarios.auth_user_id → tbl_usuario_comercio.id_comercio` · **HU-134 Validar alcance de sucursal** · **HU-135 Impedir escalamiento de privilegios** · **HU-136 Proteger credenciales** (service_role jamás en frontend/navegador/respuestas).
 
 # ÉPICA E22 — Estados offline / UX
 

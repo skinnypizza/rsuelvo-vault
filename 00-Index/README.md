@@ -15,10 +15,10 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 
 | Capa           | Tecnología               | Estado                      |
 | -------------- | ------------------------ | --------------------------- |
-| App Móvil      | Flutter (Dart)           | DESARROLLO INICIANDO        |
-| Base de Datos  | Supabase (PostgreSQL 17) | Lista para migrar de script |
-| Automatización | n8n Cloud                | DESARROLLO INICIANDO        |
-| WhatsApp       | OpenWA 0.21.0            | 🔧 Sin sesión               |
+| App Móvil      | Flutter (Dart)           | DESARROLLO INICIANDO (39 wireframes listos) |
+| Base de Datos  | Supabase (PostgreSQL 17) | ✅ Schema v2.1 listo (sql/01…12) |
+| Automatización | n8n Cloud                | Guía + matriz de consistencia listas |
+| WhatsApp       | OpenWA 0.21 / Meta Cloud | OpenWA sin sesión · Guía Meta lista |
 | Autenticación  | Supabase Auth + JWT      | ✅ Activo                    |
 |                |                          |                             |
 |                |                          |                             |

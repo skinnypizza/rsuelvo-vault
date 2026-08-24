@@ -1,5 +1,7 @@
 # Auditoría — Guía Meta WhatsApp Business vs Vault
 
+> 📦 **DOCUMENTO HISTÓRICO DE PROCESO** — registra el estado del vault al momento de su emisión. Las resoluciones definitivas están en el [Prompt Maestro](../00-Index/00-PROMPT-MAESTRO-RSUELVO.md) §5 (Decisiones D1-D10). No usar como especificación activa.
+
 > **Fecha:** 2026-08-24 · **Objeto:** `08-Whatsapp Business Guide.md` (76 secciones) contrastado contra [[workflows]], schema SQL **v2.1**, [[01-Backlog-Historias-de-Usuario]] (148 HU), [[Política Técnica de Uso de WhatsApp y OpenWA —RSUELVO]] y [[00-PROMPT-MAESTRO-RSUELVO]].
 > **Veredicto:** la guía es **arquitectónicamente consistente** con el vault (separación canal/orquestación/BD, atomicidad, idempotencia, multi-tenant por número, IA que no decide). Se detectaron **5 divergencias** (corregidas en la propia guía o resueltas con parche **SQL v2.1**) y **3 gaps de BD** que la guía asumía implícitamente.
 

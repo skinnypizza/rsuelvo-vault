@@ -1,5 +1,7 @@
 # RSUELVO — Guía completa de workflows n8n
 
+> 🔧 **Complementos posteriores (canónicos):** convención de funciones = `fn_*` (D3, alias `rpc_*` documentados) · variables Meta actualizadas §5.3 · matriz de trazabilidad completa en [Matriz-Consistencia-WF-BD-HU](Matriz-Consistencia-WF-BD-HU.md) · adaptadores Meta según [Guía Meta WhatsApp Business](../04-OpenWA/Guia%20Meta%20WhatsApp%20Business.md).
+
 ## n8n Cloud 2.36.5 + Supabase + OpenAI GPT-4o Vision + OpenWA + Meta WhatsApp Cloud API
 
 **Versión:** 1.0  
@@ -238,12 +240,18 @@ OpenAI mantiene APIs para solicitudes multimodales y modelos capaces de analizar
 Crear variables:
 
 ```text
-META_WA_ACCESS_TOKEN
-META_WA_PHONE_NUMBER_ID
-META_WA_BUSINESS_ACCOUNT_ID
-META_VERIFY_TOKEN
+META_GRAPH_API_VERSION
+META_PHONE_NUMBER_ID
+META_WABA_ID
+META_BUSINESS_ID
+META_APP_ID
 META_APP_SECRET
+META_ACCESS_TOKEN
+META_VERIFY_TOKEN
+META_WEBHOOK_SECRET
 ```
+
+> Equivalencia con nombres anteriores: META_WA_ACCESS_TOKEN→META_ACCESS_TOKEN · META_WA_PHONE_NUMBER_ID→META_PHONE_NUMBER_ID · META_WA_BUSINESS_ACCOUNT_ID→META_BUSINESS_ID. Conjunto canónico = Guía Meta §8.
 
 No deben aparecer hardcodeadas en los workflows.
 

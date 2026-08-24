@@ -1,5 +1,7 @@
 # Auditoría — SQL del schema vs ERD conceptual
 
+> 📦 **DOCUMENTO HISTÓRICO DE PROCESO** — registra el estado del vault al momento de su emisión. Las resoluciones definitivas están en el [Prompt Maestro](../00-Index/00-PROMPT-MAESTRO-RSUELVO.md) §5 (Decisiones D1-D10). No usar como especificación activa.
+
 > **Fecha:** 2026-08-24 · **Objeto:** `RSUELVO_SUPABASE_schema.sql` (2.149 líneas) vs [[Rsuelvo_Documentacion_Base_de_Datos]] (ERD), [[workflows]] y matriz de permisos.
 > **Resultado:** schema **fiel al ERD** en estructura y reglas críticas, con **7 gaps funcionales** y **4 desajustes RLS↔matriz** a resolver antes de codificar. Ver también [[02-Auditoria-de-Consistencia]].
 

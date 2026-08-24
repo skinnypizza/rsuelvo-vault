@@ -1,6 +1,7 @@
 # ⭐ PROMPT MAESTRO RSUELVO — Fuente Única de Verdad
 
-> **Versión:** 1.0-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Versión:** 1.1-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Changelog v1.1:** guía Meta integrada (04) + SQL v2.1 (eventos/pnid/plantillas) + auditorías históricas movidas a `07-Control-de-Calidad/` + HU-147 descartada (D7)
 > **Propósito:** documento raíz para cualquier IA o humano que construya RSUELVO. Todo lo demás en el vault es detalle; esto es la ley.
 > Si encuentras un conflicto entre este documento y cualquier otro archivo: **gana este documento** y abre incidencia para corregir el archivo.
 
@@ -96,11 +97,12 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 |---|---|---|
 | **Este prompt** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md` | — |
 | Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/` |
-| Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `Auditoria-SQL-vs-ERD.md` (+ Resolución v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
+| Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `07-Control-de-Calidad/Auditoria-SQL-vs-ERD.md` (histórico, resuelto en v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
 | Workflows | `03-n8n/workflows.md` · `Matriz-Consistencia-WF-BD-HU.md` | n8n Cloud |
-| Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `Auditoria-Guia-Meta-Business.md` | OpenWA 0.21 / Meta Cloud API |
+| Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `07-Control-de-Calidad/Auditoria-Guia-Meta-Business.md` (histórico) | OpenWA 0.21 / Meta Cloud API |
 | UX/UI | `05-Diseño-UX/Wireframes App Móvil.md` · PDF 40 págs · PNGs | Stitch project `1852486780525167950` |
-| Requisitos | `06-Backlog-HU/01-Backlog…md` (148 HU) · `02-Auditoria-de-Consistencia.md` · `03-Correlacion-Wireframes-HU.md` | — |
+| Control de calidad | `07-Control-de-Calidad/` (auditorías históricas con banner) | — |
+| Requisitos | `06-Backlog-HU/01-Backlog…md` (148 HU) · `07-Control-de-Calidad/02-Auditoria-de-Consistencia.md` (histórico) · `03-Correlacion-Wireframes-HU.md` | — |
 
 ## 7. Trazabilidad global (cifras certificadas)
 
