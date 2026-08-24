@@ -1,29 +1,48 @@
-
 -- ============================================================
 -- RSUELVO - SUPABASE / POSTGRESQL BACKEND
--- schema.sql
+-- schema v2 (refinado contra 148 HU + auditorías 2026-08-24)
 -- ============================================================
--- Basado en el modelo conceptual aprobado de Rsuelvo:
--- multi-tenant + RLS + reservas atómicas + lista de espera
--- + pagos/verificaciones + créditos + logística + auditoría.
+-- CAMBIOS v1 -> v2 (trazabilidad: Auditoria-SQL-vs-ERD.md A1-A12 / Auditoría I3):
+--   SKU: 6 caracteres = 3 código tienda + 3 código producto/variante (base36).
+--        codigo_tienda en tbl_comercios; generación automática; UNIQUE físico (A1).
+--   tbl_variantes.id_comercio denormalizado (RLS y unicidad directas) (A1).
+--   NUEVAS TABLAS: tbl_canal_whatsapp (A2), tbl_whatsapp_eventos (A6/HU-143),
+--        tbl_contact_preferences opt-out (HU-142/G1).
+--   NUEVAS FN: fn_es_service_role (escape para n8n/service_role),
+--        fn_identificar_comercio_por_whatsapp (A2/WF-04),
+--        fn_registrar_evento_whatsapp (idempotencia, HU-143),
+--        fn_registrar_opt_out (HU-142), fn_movimiento_inventario (HU-032/033),
+--        fn_generar_cobro (A4/HU-056), fn_iniciar_verificacion atómica (A3/HU-141),
+--        fn_actualizar_estado_envio con máquina de estados (A5/HU-092-094),
+--        fn_rechazar_verificacion v2: pedido vuelve a ESPERANDO_PAGO (A9/HU-065),
+--        fn_tiene_rol_comercio/fn_puede_verificar/fn_puede_gestionar_envios (A10).
+--   RLS alineado a matriz: escritura catálogo/sucursales/métodos = admin;
+--        envíos crear = admin o cajero; verificar = admin o cajero (A10).
+--   Triggers de auditoría ACTIVOS en tablas críticas (A12/HU-127..131).
+--   Seed: paquetes Básico/Pro/Empresa activos (wireframe 15 / HU-072).
+--   Storage: buckets qr-pagos + comprobantes-pago creados (A7). Cron programado (A8).
+-- Convención I3: funciones reales = fn_*; rpc_* del doc workflows son alias conceptuales.
 --
--- IMPORTANTE:
--- 1. Las reglas críticas se ejecutan en PostgreSQL, no en n8n.
--- 2. n8n debe invocar las funciones RPC expuestas por Supabase.
--- 3. Ejecutar este archivo en Supabase SQL Editor.
+-- Ejecutar 01..12 en orden (o este monolito completo) en Supabase SQL Editor.
+
+
+-- ============================================================
+-- 1. EXTENSIONES Y ESQUEMA
 -- ============================================================
 
-begin;
 
 create extension if not exists pgcrypto;
+create extension if not exists pg_cron;
 
 create schema if not exists rsuelvo;
 
 set search_path = rsuelvo, public;
 
+
 -- ============================================================
--- 1. ENUMS
+-- 2. ENUMS
 -- ============================================================
+
 
 do $$ begin
   create type estado_comercio as enum ('ACTIVO','SUSPENDIDO','BLOQUEADO','CANCELADO');
@@ -114,9 +133,11 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ============================================================
--- 2. ROLES
+-- 3. TABLAS
 -- ============================================================
 
+
+-- ROLES
 create table if not exists tbl_roles (
   id_rol smallserial primary key,
   codigo rol_codigo not null unique,
@@ -125,21 +146,13 @@ create table if not exists tbl_roles (
   created_at timestamptz not null default now()
 );
 
-insert into tbl_roles (codigo,nombre,nivel) values
-('ROLE_SUPERADMIN','Superadministrador',100),
-('ROLE_SYSADMIN','Administrador de infraestructura',90),
-('ROLE_SUPPORT','Soporte',50),
-('ROLE_TENANT_ADMIN','Administrador del comercio',30),
-('ROLE_TENANT_CASHIER','Cajero',20),
-('ROLE_LOGISTICS_AGENT','Repartidor',10)
-on conflict (codigo) do nothing;
 
--- ============================================================
--- 3. COMERCIOS
--- ============================================================
-
+-- COMERCIOS (v2: codigo_tienda para SKU de 6 caracteres)
 create table if not exists tbl_comercios (
   id_comercio uuid primary key default gen_random_uuid(),
+  codigo_tienda char(3)
+    not null unique
+    check (codigo_tienda ~ '^[A-Z0-9]{3}$'),
   nombre_comercial text not null,
   razon_social text,
   nit text,
@@ -150,6 +163,8 @@ create table if not exists tbl_comercios (
   updated_at timestamptz not null default now()
 );
 
+
+-- CONFIGURACIÓN DEL COMERCIO
 create table if not exists tbl_comercio_config (
   id_comercio uuid primary key references tbl_comercios(id_comercio) on delete cascade,
   tiempo_reserva_minutos integer not null default 10 check (tiempo_reserva_minutos > 0),
@@ -160,6 +175,8 @@ create table if not exists tbl_comercio_config (
   updated_at timestamptz not null default now()
 );
 
+
+-- SUCURSALES
 create table if not exists tbl_sucursales (
   id_sucursal uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -175,10 +192,8 @@ create table if not exists tbl_sucursales (
   unique(id_comercio,id_sucursal)
 );
 
--- ============================================================
--- 4. USUARIOS / ACCESO
--- ============================================================
 
+-- USUARIOS
 create table if not exists tbl_usuarios (
   id_usuario uuid primary key default gen_random_uuid(),
   auth_user_id uuid not null unique references auth.users(id) on delete cascade,
@@ -191,6 +206,8 @@ create table if not exists tbl_usuarios (
   updated_at timestamptz not null default now()
 );
 
+
+-- ASIGNACIÓN USUARIO/COMERCIO/ROL
 create table if not exists tbl_usuario_comercio (
   id uuid primary key default gen_random_uuid(),
   id_usuario uuid not null references tbl_usuarios(id_usuario) on delete cascade,
@@ -206,48 +223,8 @@ create table if not exists tbl_usuario_comercio (
     deferrable initially immediate
 );
 
-create or replace function fn_validar_asignacion_usuario_comercio()
-returns trigger
-language plpgsql
-as $$
-declare
-  v_codigo rol_codigo;
-  v_sucursal uuid;
-begin
-  select codigo into v_codigo from tbl_roles where id_rol=new.id_rol;
 
-  if v_codigo in ('ROLE_TENANT_CASHIER','ROLE_LOGISTICS_AGENT')
-     and new.id_sucursal is null then
-    raise exception 'El rol % requiere una sucursal',v_codigo;
-  end if;
-
-  if v_codigo='ROLE_TENANT_CASHIER' then
-    if exists (
-      select 1
-      from tbl_usuario_comercio uc
-      join tbl_roles r on r.id_rol=uc.id_rol
-      where uc.id_usuario=new.id_usuario
-        and uc.activo
-        and r.codigo='ROLE_TENANT_CASHIER'
-        and uc.id<>coalesce(new.id,'00000000-0000-0000-0000-000000000000'::uuid)
-    ) then
-      raise exception 'Un cashier solo puede tener una asignación activa';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_validar_asignacion_usuario_comercio on tbl_usuario_comercio;
-create trigger trg_validar_asignacion_usuario_comercio
-before insert or update on tbl_usuario_comercio
-for each row execute function fn_validar_asignacion_usuario_comercio();
-
--- ============================================================
--- 5. CATÁLOGO
--- ============================================================
-
+-- CATEGORÍAS
 create table if not exists tbl_categorias (
   id_categoria uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -259,6 +236,8 @@ create table if not exists tbl_categorias (
   unique(id_comercio,nombre)
 );
 
+
+-- PRODUCTOS
 create table if not exists tbl_productos (
   id_producto uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -271,57 +250,24 @@ create table if not exists tbl_productos (
   updated_at timestamptz not null default now()
 );
 
+
+-- VARIANTES (v2: id_comercio denormalizado + SKU único físico por comercio)
 create table if not exists tbl_variantes (
   id_variante uuid primary key default gen_random_uuid(),
   id_producto uuid not null references tbl_productos(id_producto) on delete cascade,
-  sku text not null,
+  id_comercio uuid,
+  sku text,
   nombre text not null,
   precio numeric(14,2) not null check (precio >= 0),
+  sku_anterior text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(id_producto,sku)
 );
 
-create or replace function fn_validar_sku_variante_comercio()
-returns trigger
-language plpgsql
-as $$
-declare
-  v_comercio uuid;
-begin
-  select id_comercio into v_comercio
-  from tbl_productos
-  where id_producto=new.id_producto;
 
-  if v_comercio is null then
-    raise exception 'Producto inexistente';
-  end if;
-
-  if exists (
-    select 1
-    from tbl_variantes v
-    join tbl_productos p on p.id_producto=v.id_producto
-    where p.id_comercio=v_comercio
-      and v.sku=new.sku
-      and v.id_variante<>coalesce(new.id_variante,'00000000-0000-0000-0000-000000000000'::uuid)
-  ) then
-    raise exception 'SKU duplicado dentro del comercio: %',new.sku;
-  end if;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_validar_sku_variante_comercio on tbl_variantes;
-create trigger trg_validar_sku_variante_comercio
-before insert or update on tbl_variantes
-for each row execute function fn_validar_sku_variante_comercio();
-
--- ============================================================
--- 6. INVENTARIO
--- ============================================================
-
+-- INVENTARIO
 create table if not exists tbl_inventario (
   id_inventario uuid primary key default gen_random_uuid(),
   id_sucursal uuid not null references tbl_sucursales(id_sucursal) on delete cascade,
@@ -346,10 +292,8 @@ create table if not exists tbl_inventario_movimientos (
   created_at timestamptz not null default now()
 );
 
--- ============================================================
--- 7. CLIENTES
--- ============================================================
 
+-- CLIENTES
 create table if not exists tbl_clientes (
   id_cliente uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -361,14 +305,8 @@ create table if not exists tbl_clientes (
   updated_at timestamptz not null default now()
 );
 
-create unique index if not exists uq_cliente_whatsapp_comercio
-on tbl_clientes(id_comercio,telefono_whatsapp)
-where telefono_whatsapp is not null;
 
--- ============================================================
--- 8. VENTAS / RESERVAS / LISTA DE ESPERA
--- ============================================================
-
+-- RESERVAS
 create table if not exists tbl_reservas (
   id_reserva uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -386,10 +324,8 @@ create table if not exists tbl_reservas (
   updated_at timestamptz not null default now()
 );
 
-create unique index if not exists uq_reserva_activa_variante_sucursal
-on tbl_reservas(id_sucursal,id_variante)
-where estado in ('ACTIVA','PAGO_VALIDANDO');
 
+-- LISTA DE ESPERA
 create table if not exists tbl_lista_espera (
   id_lista_espera uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -407,14 +343,8 @@ create table if not exists tbl_lista_espera (
   updated_at timestamptz not null default now()
 );
 
-create unique index if not exists uq_lista_posicion_activa
-on tbl_lista_espera(id_sucursal,id_variante,posicion)
-where estado in ('ESPERANDO','NOTIFICADO');
 
-create unique index if not exists uq_cliente_lista_activa
-on tbl_lista_espera(id_sucursal,id_variante,id_cliente)
-where estado in ('ESPERANDO','NOTIFICADO','ACEPTADO');
-
+-- PEDIDOS
 create table if not exists tbl_pedidos (
   id_pedido uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -433,13 +363,8 @@ create table if not exists tbl_pedidos (
   check(descuento <= subtotal)
 );
 
-alter table tbl_reservas
-  drop constraint if exists tbl_reservas_id_pedido_fkey;
 
-alter table tbl_reservas
-  add constraint tbl_reservas_id_pedido_fkey
-  foreign key(id_pedido) references tbl_pedidos(id_pedido) on delete set null;
-
+-- DETALLES DE PEDIDO (snapshots)
 create table if not exists tbl_pedido_detalles (
   id_detalle uuid primary key default gen_random_uuid(),
   id_pedido uuid not null references tbl_pedidos(id_pedido) on delete cascade,
@@ -451,10 +376,8 @@ create table if not exists tbl_pedido_detalles (
   subtotal numeric(14,2) generated always as (precio_unitario * cantidad) stored
 );
 
--- ============================================================
--- 9. PAGOS
--- ============================================================
 
+-- MÉTODOS DE PAGO
 create table if not exists tbl_metodos_pago (
   id_metodo_pago uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
@@ -466,6 +389,8 @@ create table if not exists tbl_metodos_pago (
   unique(id_comercio,nombre)
 );
 
+
+-- COBROS QR
 create table if not exists tbl_qr_cobros (
   id_qr_cobro uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -479,6 +404,8 @@ create table if not exists tbl_qr_cobros (
   unique(id_comercio,referencia)
 );
 
+
+-- COMPROBANTES DE PAGO
 create table if not exists tbl_comprobantes_pago (
   id_comprobante uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -494,10 +421,8 @@ create table if not exists tbl_comprobantes_pago (
   created_at timestamptz not null default now()
 );
 
-create unique index if not exists uq_comprobante_operacion_comercio
-on tbl_comprobantes_pago(id_comercio,numero_operacion)
-where numero_operacion is not null;
 
+-- VERIFICACIONES IA
 create table if not exists tbl_verificaciones (
   id_verificacion uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -513,10 +438,8 @@ create table if not exists tbl_verificaciones (
   created_at timestamptz not null default now()
 );
 
--- ============================================================
--- 10. CRÉDITOS
--- ============================================================
 
+-- CRÉDITOS (cuenta + ledger + servicios + paquetes + compras + pagos)
 create table if not exists tbl_cuentas_creditos (
   id_cuenta_creditos uuid primary key default gen_random_uuid(),
   id_comercio uuid not null unique references tbl_comercios(id_comercio) on delete cascade,
@@ -581,10 +504,8 @@ create table if not exists tbl_pagos_creditos (
   fecha_pago timestamptz
 );
 
--- ============================================================
--- 11. LOGÍSTICA
--- ============================================================
 
+-- LOGÍSTICA
 create table if not exists tbl_envios (
   id_envio uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete restrict,
@@ -611,10 +532,8 @@ create table if not exists tbl_env_seguimiento_estados (
   usuario_id uuid references tbl_usuarios(id_usuario) on delete set null
 );
 
--- ============================================================
--- 12. AUDITORÍA
--- ============================================================
 
+-- AUDITORÍA
 create table if not exists tbl_logs_auditoria (
   id_log uuid primary key default gen_random_uuid(),
   id_comercio uuid references tbl_comercios(id_comercio) on delete set null,
@@ -630,10 +549,269 @@ create table if not exists tbl_logs_auditoria (
 );
 
 
+-- CANALES WHATSAPP (v2/A2: 1 WhatsApp = 1 tienda; soporta OpenWA y Meta)
+create table if not exists tbl_canal_whatsapp (
+  id_canal uuid primary key default gen_random_uuid(),
+  id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
+  id_sucursal uuid references tbl_sucursales(id_sucursal) on delete set null,
+  numero text not null unique,
+  provider text not null default 'OPENWA' check (provider in ('OPENWA','META')),
+  instance_id text,
+  status text not null default 'DESCONECTADO',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- EVENTOS WHATSAPP (v2/A6/HU-143: idempotencia de webhooks)
+create table if not exists tbl_whatsapp_eventos (
+  id_evento uuid primary key default gen_random_uuid(),
+  provider text not null check (provider in ('OPENWA','META')),
+  external_message_id text not null,
+  tipo text,
+  procesado boolean not null default false,
+  payload jsonb,
+  recibido timestamptz not null default now(),
+  procesado_at timestamptz,
+  unique(provider, external_message_id)
+);
+
+-- PREFERENCIAS DE CONTACTO / OPT-OUT (v2/HU-142, política §16)
+create table if not exists tbl_contact_preferences (
+  id_contact_pref uuid primary key default gen_random_uuid(),
+  id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
+  telefono_whatsapp text not null,
+  opted_out boolean not null default false,
+  opted_out_at timestamptz,
+  motivo text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(id_comercio, telefono_whatsapp)
+);
+
 -- ============================================================
--- 12.5 CONSISTENCIA MULTI-TENANT
+-- 4. CONSTRAINTS E ÍNDICES ÚNICOS PARCIALES
 -- ============================================================
 
+
+-- Cliente único por WhatsApp dentro del comercio
+create unique index if not exists uq_cliente_whatsapp_comercio
+on tbl_clientes(id_comercio,telefono_whatsapp)
+where telefono_whatsapp is not null;
+
+
+-- Una sola reserva activa por variante+sucursal
+create unique index if not exists uq_reserva_activa_variante_sucursal
+on tbl_reservas(id_sucursal,id_variante)
+where estado in ('ACTIVA','PAGO_VALIDANDO');
+
+
+-- Posición única activa en lista de espera
+create unique index if not exists uq_lista_posicion_activa
+on tbl_lista_espera(id_sucursal,id_variante,posicion)
+where estado in ('ESPERANDO','NOTIFICADO');
+
+create unique index if not exists uq_cliente_lista_activa
+on tbl_lista_espera(id_sucursal,id_variante,id_cliente)
+where estado in ('ESPERANDO','NOTIFICADO','ACEPTADO');
+
+
+-- FK diferida reserva↔pedido
+alter table tbl_reservas
+  drop constraint if exists tbl_reservas_id_pedido_fkey;
+
+alter table tbl_reservas
+  add constraint tbl_reservas_id_pedido_fkey
+  foreign key(id_pedido) references tbl_pedidos(id_pedido) on delete set null;
+
+
+-- Comprobante único por operación dentro del comercio
+create unique index if not exists uq_comprobante_operacion_comercio
+on tbl_comprobantes_pago(id_comercio,numero_operacion)
+where numero_operacion is not null;
+
+
+-- SKU único FÍSICO por comercio (v2/A1: cierra la carrera del trigger)
+alter table tbl_variantes
+  add constraint uq_variante_sku_comercio
+  unique (id_comercio, sku);
+
+-- Formato SKU v2: 6 caracteres [3 tienda][3 producto] base36 mayúsculas
+alter table tbl_variantes
+  add constraint ck_variante_sku_formato
+  check (sku ~ '^[A-Z0-9]{6}$');
+
+-- Un número de WhatsApp no puede repetirse como canal activo
+create unique index if not exists uq_canal_numero_activo
+on tbl_canal_whatsapp(numero) where activo;
+
+-- ============================================================
+-- 5. ÍNDICES DE RENDIMIENTO
+-- ============================================================
+
+
+create index if not exists idx_sucursales_comercio on tbl_sucursales(id_comercio);
+create index if not exists idx_usuario_comercio_usuario on tbl_usuario_comercio(id_usuario);
+create index if not exists idx_usuario_comercio_comercio on tbl_usuario_comercio(id_comercio);
+create index if not exists idx_productos_comercio on tbl_productos(id_comercio);
+create index if not exists idx_variantes_producto on tbl_variantes(id_producto);
+create index if not exists idx_inventario_sucursal on tbl_inventario(id_sucursal);
+create index if not exists idx_inventario_variante on tbl_inventario(id_variante);
+create index if not exists idx_reservas_cliente on tbl_reservas(id_cliente);
+create index if not exists idx_reservas_variante on tbl_reservas(id_variante);
+create index if not exists idx_reservas_expiracion on tbl_reservas(fecha_expiracion)
+where estado='ACTIVA';
+create index if not exists idx_lista_variante on tbl_lista_espera(id_variante,posicion);
+create index if not exists idx_pedidos_cliente on tbl_pedidos(id_cliente);
+create index if not exists idx_pedidos_estado on tbl_pedidos(id_comercio,estado);
+create index if not exists idx_comprobantes_pedido on tbl_comprobantes_pago(id_pedido);
+create index if not exists idx_verificaciones_pedido on tbl_verificaciones(id_pedido);
+create index if not exists idx_mov_creditos_comercio on tbl_movimientos_creditos(id_comercio,created_at);
+create index if not exists idx_envios_estado on tbl_envios(id_comercio,estado);
+create index if not exists idx_auditoria_comercio_fecha on tbl_logs_auditoria(id_comercio,created_at desc);
+
+create index if not exists idx_variantes_comercio on tbl_variantes(id_comercio);
+create index if not exists idx_reservas_expiracion_v2 on tbl_reservas(fecha_expiracion)
+where estado in ('ACTIVA','PAGO_VALIDANDO');
+create index if not exists idx_eventos_pendientes on tbl_whatsapp_eventos(recibido)
+where procesado = false;
+create index if not exists idx_envios_repartidor on tbl_envios(id_repartidor,estado);
+create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(id_envio,created_at desc);
+
+-- ============================================================
+-- 6. FUNCIONES
+-- ============================================================
+
+
+-- Validación de asignación usuario/comercio (cajero = 1 sucursal)
+create or replace function fn_validar_asignacion_usuario_comercio()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_codigo rol_codigo;
+  v_sucursal uuid;
+begin
+  select codigo into v_codigo from tbl_roles where id_rol=new.id_rol;
+
+  if v_codigo in ('ROLE_TENANT_CASHIER','ROLE_LOGISTICS_AGENT')
+     and new.id_sucursal is null then
+    raise exception 'El rol % requiere una sucursal',v_codigo;
+  end if;
+
+  if v_codigo='ROLE_TENANT_CASHIER' then
+    if exists (
+      select 1
+      from tbl_usuario_comercio uc
+      join tbl_roles r on r.id_rol=uc.id_rol
+      where uc.id_usuario=new.id_usuario
+        and uc.activo
+        and r.codigo='ROLE_TENANT_CASHIER'
+        and uc.id<>coalesce(new.id,'00000000-0000-0000-0000-000000000000'::uuid)
+    ) then
+      raise exception 'Un cashier solo puede tener una asignación activa';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+-- (v2/A1) Resuelve tenant de la variante, genera SKU de 6 caracteres
+-- [3 tienda][3 producto] en base36 si viene nulo, valida formato y duplicados.
+create or replace function fn_resolver_variante_tenant_sku()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_comercio uuid;
+  v_codigo char(3);
+  v_max int;
+  v_sufijo text;
+  v_sku text;
+begin
+  -- 1) Resolver id_comercio desde el producto (siempre).
+  if new.id_producto is not null then
+    select p.id_comercio into v_comercio
+    from tbl_productos p
+    where p.id_producto=new.id_producto;
+  end if;
+
+  if v_comercio is null then
+    raise exception 'Producto inexistente';
+  end if;
+
+  new.id_comercio := v_comercio;
+
+  select codigo_tienda into v_codigo
+  from tbl_comercios
+  where id_comercio=v_comercio;
+
+  if v_codigo is null then
+    raise exception 'El comercio % no tiene codigo_tienda asignado',v_comercio;
+  end if;
+
+  -- 2) Generar SKU si no viene (o venir vacío).
+  if coalesce(new.sku,'')='' then
+    -- serializar por comercio: bloquea la fila del comercio.
+    select 1 into v_max from tbl_comercios
+    where id_comercio=v_comercio for update;
+
+    select coalesce(max(
+      ('x'||substr(v.sku,4,3))::bit(12)::int
+    ),0) into v_max
+    from tbl_variantes v
+    where v.id_comercio=v_comercio
+      and v.sku ~ '^[A-Z0-9]{6}$'
+      and substr(v.sku,1,3)=v_codigo::text;
+
+    v_max := v_max+1;
+    if v_max > 46655 then
+      raise exception 'Se agotaron los SKUs disponibles para la tienda %',v_codigo;
+    end if;
+
+    declare
+      n int := v_max;
+      chars text := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      out text := '';
+    begin
+      while n>0 loop
+        out := substr(chars,(n%36)+1,1)||out;
+        n := n/36;
+      end loop;
+      v_sufijo := lpad(coalesce(nullif(out,''),'0'),3,'0');
+    end;
+
+    new.sku := upper(v_codigo::text||v_sufijo);
+  else
+    new.sku := upper(new.sku);
+  end if;
+
+  -- 3) Validar formato 6 caracteres tienda+producto.
+  if new.sku !~ '^[A-Z0-9]{6}$' then
+    raise exception 'SKU inválido %. Formato requerido: 6 caracteres [3 tienda][3 producto], ej. FERA01',new.sku;
+  end if;
+
+  if substr(new.sku,1,3) <> v_codigo::text then
+    raise exception 'El prefijo del SKU (%) debe ser el código de la tienda (%)',substr(new.sku,1,3),v_codigo;
+  end if;
+
+  -- 4) Duplicado amigable (el UNIQUE físico es la garantía real).
+  if exists (
+    select 1 from tbl_variantes v
+    where v.id_comercio=v_comercio
+      and v.sku=new.sku
+      and v.id_variante<>coalesce(new.id_variante,'00000000-0000-0000-0000-000000000000'::uuid)
+  ) then
+    raise exception 'SKU duplicado dentro del comercio: %',new.sku;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+-- Consistencia multi-tenant
 create or replace function fn_validar_consistencia_tenant()
 returns trigger
 language plpgsql
@@ -667,54 +845,8 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_reservas_tenant on tbl_reservas;
-create trigger trg_reservas_tenant before insert or update on tbl_reservas
-for each row execute function fn_validar_consistencia_tenant();
 
-drop trigger if exists trg_lista_tenant on tbl_lista_espera;
-create trigger trg_lista_tenant before insert or update on tbl_lista_espera
-for each row execute function fn_validar_consistencia_tenant();
-
-drop trigger if exists trg_pedidos_tenant on tbl_pedidos;
-create trigger trg_pedidos_tenant before insert or update on tbl_pedidos
-for each row execute function fn_validar_consistencia_tenant();
-
-drop trigger if exists trg_envios_tenant on tbl_envios;
-create trigger trg_envios_tenant before insert or update on tbl_envios
-for each row execute function fn_validar_consistencia_tenant();
-
-drop trigger if exists trg_comprobantes_tenant on tbl_comprobantes_pago;
-create trigger trg_comprobantes_tenant before insert or update on tbl_comprobantes_pago
-for each row execute function fn_validar_consistencia_tenant();
-
--- ============================================================
--- 13. ÍNDICES
--- ============================================================
-
-create index if not exists idx_sucursales_comercio on tbl_sucursales(id_comercio);
-create index if not exists idx_usuario_comercio_usuario on tbl_usuario_comercio(id_usuario);
-create index if not exists idx_usuario_comercio_comercio on tbl_usuario_comercio(id_comercio);
-create index if not exists idx_productos_comercio on tbl_productos(id_comercio);
-create index if not exists idx_variantes_producto on tbl_variantes(id_producto);
-create index if not exists idx_inventario_sucursal on tbl_inventario(id_sucursal);
-create index if not exists idx_inventario_variante on tbl_inventario(id_variante);
-create index if not exists idx_reservas_cliente on tbl_reservas(id_cliente);
-create index if not exists idx_reservas_variante on tbl_reservas(id_variante);
-create index if not exists idx_reservas_expiracion on tbl_reservas(fecha_expiracion)
-where estado='ACTIVA';
-create index if not exists idx_lista_variante on tbl_lista_espera(id_variante,posicion);
-create index if not exists idx_pedidos_cliente on tbl_pedidos(id_cliente);
-create index if not exists idx_pedidos_estado on tbl_pedidos(id_comercio,estado);
-create index if not exists idx_comprobantes_pedido on tbl_comprobantes_pago(id_pedido);
-create index if not exists idx_verificaciones_pedido on tbl_verificaciones(id_pedido);
-create index if not exists idx_mov_creditos_comercio on tbl_movimientos_creditos(id_comercio,created_at);
-create index if not exists idx_envios_estado on tbl_envios(id_comercio,estado);
-create index if not exists idx_auditoria_comercio_fecha on tbl_logs_auditoria(id_comercio,created_at desc);
-
--- ============================================================
--- 14. UPDATED_AT
--- ============================================================
-
+-- updated_at automático
 create or replace function fn_set_updated_at()
 returns trigger
 language plpgsql
@@ -725,42 +857,19 @@ begin
 end;
 $$;
 
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'tbl_comercios','tbl_comercio_config','tbl_sucursales','tbl_usuarios',
-    'tbl_usuario_comercio','tbl_categorias','tbl_productos','tbl_variantes',
-    'tbl_inventario','tbl_clientes','tbl_reservas','tbl_lista_espera',
-    'tbl_pedidos','tbl_metodos_pago','tbl_verificaciones','tbl_cuentas_creditos',
-    'tbl_servicios_creditos','tbl_envios'
-  ] loop
-    execute format('drop trigger if exists trg_%s_updated_at on %I',t,t);
-    execute format(
-      'create trigger trg_%s_updated_at before update on %I for each row execute function fn_set_updated_at()',
-      t,t
-    );
-  end loop;
-end $$;
 
--- ============================================================
--- 15. FUNCIONES DE SEGURIDAD / TENANCY
--- ============================================================
-
-create or replace function fn_current_usuario_id()
-returns uuid
+-- (v2) ¿La llamada proviene de service_role (n8n/backend)?
+create or replace function fn_es_service_role()
+returns boolean
 language sql
 stable
-security definer
-set search_path = rsuelvo, public
 as $$
-  select id_usuario
-  from tbl_usuarios
-  where auth_user_id = auth.uid()
-    and activo = true
-  limit 1;
+  select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),'service_role')
+     = 'service_role';
 $$;
+
+
+-- Helpers de tenancy (v2: con escape para service_role en accesos)
 
 create or replace function fn_tiene_rol(p_rol rol_codigo)
 returns boolean
@@ -781,6 +890,7 @@ as $$
   );
 $$;
 
+
 create or replace function fn_es_superadmin()
 returns boolean
 language sql
@@ -791,6 +901,7 @@ as $$
   select fn_tiene_rol('ROLE_SUPERADMIN');
 $$;
 
+
 create or replace function fn_tiene_acceso_comercio(p_id_comercio uuid)
 returns boolean
 language sql
@@ -798,7 +909,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -817,7 +929,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -846,7 +959,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -859,10 +973,51 @@ as $$
       );
 $$;
 
--- ============================================================
--- 16. CREACIÓN/ACTUALIZACIÓN DE CLIENTE
--- ============================================================
+-- (v2/A10) Rol específico dentro de un comercio
+create or replace function fn_tiene_rol_comercio(p_id_comercio uuid,p_rol rol_codigo)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_service_role() or exists (
+    select 1
+    from tbl_usuario_comercio uc
+    join tbl_usuarios u on u.id_usuario=uc.id_usuario
+    join tbl_roles r on r.id_rol=uc.id_rol
+    where u.auth_user_id=auth.uid()
+      and u.activo and uc.activo
+      and uc.id_comercio=p_id_comercio
+      and r.codigo=p_rol
+  );
+$$;
 
+-- (v2/A10) Puede verificar comprobantes: admin o cajero del comercio (HU-141)
+create or replace function fn_puede_verificar(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_admin_comercio(p_id_comercio)
+      or fn_tiene_rol_comercio(p_id_comercio,'ROLE_TENANT_CASHIER');
+$$;
+
+-- (v2/A10) Puede crear/asignar envíos: admin o cajero del comercio (matriz)
+create or replace function fn_puede_gestionar_envios(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_puede_verificar(p_id_comercio);
+$$;
+
+
+-- Upsert de cliente
 create or replace function fn_upsert_cliente(
   p_id_comercio uuid,
   p_nombre text,
@@ -911,10 +1066,108 @@ begin
 end;
 $$;
 
--- ============================================================
--- 17. RESERVA ATÓMICA
--- ============================================================
 
+-- (v2/A2/HU-123) Identificar comercio+sucursal por número de WhatsApp destino.
+-- Solo service_role (n8n): nunca expone el mapa completo al cliente.
+create or replace function fn_identificar_comercio_por_whatsapp(p_numero text)
+returns table(id_comercio uuid, id_sucursal uuid, provider text)
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select c.id_comercio, c.id_sucursal, c.provider::text
+  from tbl_canal_whatsapp c
+  where c.numero=p_numero
+    and c.activo
+  limit 1;
+$$;
+
+-- Guard: rechazar si NO es service_role
+create or replace function fn_assert_service_role()
+returns void
+language plpgsql
+as $$
+begin
+  if not fn_es_service_role() then
+    raise exception 'Operación reservada al backend (service_role)';
+  end if;
+end;
+$$;
+
+-- (v2/A6/HU-143) Registrar evento entrante. Devuelve true si es NUEVO.
+create or replace function fn_registrar_evento_whatsapp(
+  p_provider text,
+  p_external_message_id text,
+  p_tipo text default null,
+  p_payload jsonb default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_inserted boolean := false;
+begin
+  perform fn_assert_service_role();
+
+  insert into tbl_whatsapp_eventos(provider,external_message_id,tipo,payload)
+  values(p_provider,p_external_message_id,p_tipo,p_payload)
+  on conflict (provider,external_message_id) do nothing;
+
+  v_inserted := found;
+
+  if not v_inserted then
+    update tbl_whatsapp_eventos
+    set procesado=true, procesado_at=now(), payload=coalesce(payload,payload)
+    where provider=p_provider
+      and external_message_id=p_external_message_id
+      and procesado=false;
+  else
+    update tbl_whatsapp_eventos
+    set procesado=true, procesado_at=now()
+    where provider=p_provider
+      and external_message_id=p_external_message_id;
+  end if;
+
+  return v_inserted;
+end;
+$$;
+
+-- (v2/HU-142) Registrar opt-out del comprador
+create or replace function fn_registrar_opt_out(
+  p_id_comercio uuid,
+  p_telefono_whatsapp text,
+  p_motivo text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+begin
+  insert into tbl_contact_preferences(id_comercio,telefono_whatsapp,opted_out,opted_out_at,motivo)
+  values(p_id_comercio,p_telefono_whatsapp,true,now(),coalesce(p_motivo,'STOP'))
+  on conflict (id_comercio,telefono_whatsapp)
+  do update set opted_out=true, opted_out_at=now(), motivo=coalesce(excluded.motivo,tbl_contact_preferences.motivo);
+end;
+$$;
+
+-- (v2/HU-142) ¿Puede recibirse comunicación transaccional?
+create or replace function fn_cliente_optado(p_id_comercio uuid,p_telefono_whatsapp text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select coalesce((select opted_out from tbl_contact_preferences
+    where id_comercio=p_id_comercio and telefono_whatsapp=p_telefono_whatsapp),false);
+$$;
+
+
+-- Reserva atómica
 create or replace function fn_solicitar_reserva(
   p_id_comercio uuid,
   p_id_sucursal uuid,
@@ -1017,10 +1270,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 18. AGREGAR A LISTA DE ESPERA
--- ============================================================
 
+-- Agregar a lista de espera
 create or replace function fn_agregar_lista_espera(
   p_id_comercio uuid,
   p_id_sucursal uuid,
@@ -1086,10 +1337,8 @@ exception
 end;
 $$;
 
--- ============================================================
--- 19. EXPIRAR RESERVA Y LIBERAR INVENTARIO
--- ============================================================
 
+-- Expirar reserva
 create or replace function fn_expirar_reserva(p_id_reserva uuid)
 returns jsonb
 language plpgsql
@@ -1149,10 +1398,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 20. TOMAR SIGUIENTE DE LISTA DE ESPERA
--- ============================================================
 
+-- Notificar siguiente de la lista
 create or replace function fn_notificar_siguiente_lista_espera(
   p_id_sucursal uuid,
   p_id_variante uuid
@@ -1204,10 +1451,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 21. ACEPTAR OPORTUNIDAD DE LISTA DE ESPERA
--- ============================================================
 
+-- Aceptar oportunidad
 create or replace function fn_aceptar_lista_espera(p_id_lista_espera uuid)
 returns jsonb
 language plpgsql
@@ -1267,10 +1512,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 22. CREAR PEDIDO DESDE RESERVA
--- ============================================================
 
+-- Crear pedido desde reserva
 create or replace function fn_crear_pedido_desde_reserva(p_id_reserva uuid)
 returns uuid
 language plpgsql
@@ -1333,10 +1576,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 23. CONSUMO ATÓMICO DE CRÉDITOS
--- ============================================================
 
+-- Consumo atómico de créditos
 create or replace function fn_consumir_creditos(
   p_id_comercio uuid,
   p_id_servicio uuid,
@@ -1406,10 +1647,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 24. ACREDITAR CRÉDITOS
--- ============================================================
 
+-- Acreditar créditos
 create or replace function fn_acreditar_creditos(
   p_id_comercio uuid,
   p_cantidad bigint,
@@ -1461,10 +1700,8 @@ begin
 end;
 $$;
 
--- ============================================================
--- 25. CONFIRMAR VERIFICACIÓN Y PAGO
--- ============================================================
 
+-- Confirmar pago
 create or replace function fn_confirmar_pago(
   p_id_verificacion uuid,
   p_resultado jsonb default '{}'::jsonb
@@ -1544,10 +1781,9 @@ begin
 end;
 $$;
 
--- ============================================================
--- 26. RECHAZAR VERIFICACIÓN
--- ============================================================
 
+-- (v2/A9/HU-065) Rechazo: comprobante INVALIDO pero el pedido vuelve a
+-- ESPERANDO_PAGO para permitir reenvío. CANCELADO solo por decisión admin.
 create or replace function fn_rechazar_verificacion(
   p_id_verificacion uuid,
   p_resultado jsonb default '{}'::jsonb
@@ -1580,21 +1816,21 @@ begin
   where id_comprobante=v_ver.id_comprobante;
 
   update tbl_pedidos
-  set estado='CANCELADO'
+  set estado='ESPERANDO_PAGO'
   where id_pedido=v_ver.id_pedido
     and estado in ('ESPERANDO_PAGO','PAGO_RECIBIDO','PAGO_VALIDANDO');
 
   return jsonb_build_object(
     'resultado','PAGO_RECHAZADO',
-    'id_pedido',v_ver.id_pedido
+    'id_pedido',v_ver.id_pedido,
+    'pedido','ESPERANDO_PAGO',
+    'puede_reenviar',true
   );
 end;
 $$;
 
--- ============================================================
--- 27. REGISTRAR ENVÍO
--- ============================================================
 
+-- Crear envío
 create or replace function fn_crear_envio(
   p_id_pedido uuid,
   p_direccion text,
@@ -1647,10 +1883,277 @@ begin
 end;
 $$;
 
--- ============================================================
--- 28. AUDITORÍA GENÉRICA
--- ============================================================
 
+-- (v2/A4/HU-056) Generar cobro QR del pedido (referencia única por comercio).
+create or replace function fn_generar_cobro(
+  p_id_pedido uuid,
+  p_qr_url text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_pedido tbl_pedidos%rowtype;
+  v_metodo uuid;
+  v_id uuid;
+begin
+  select * into v_pedido from tbl_pedidos
+  where id_pedido=p_id_pedido for update;
+
+  if not found then
+    raise exception 'Pedido inexistente';
+  end if;
+
+  if v_pedido.estado not in ('CREADO','ESPERANDO_PAGO') then
+    raise exception 'El pedido % no admite cobro en estado %',p_id_pedido,v_pedido.estado;
+  end if;
+
+  select id_metodo_pago into v_metodo
+  from tbl_metodos_pago
+  where id_comercio=v_pedido.id_comercio and activo
+  order by created_at
+  limit 1;
+
+  if v_metodo is null then
+    raise exception 'El comercio no tiene métodos de pago configurados';
+  end if;
+
+  update tbl_pedidos set estado='ESPERANDO_PAGO' where id_pedido=p_id_pedido;
+
+  insert into tbl_qr_cobros(
+    id_comercio,id_pedido,id_metodo_pago,monto,referencia,qr_url,estado
+  )
+  values(
+    v_pedido.id_comercio,p_id_pedido,v_metodo,v_pedido.total,
+    'RS-'||lpad(v_pedido.numero_pedido::text,8,'0'),
+    p_qr_url,'GENERADO'
+  )
+  returning id_qr_cobro into v_id;
+
+  return v_id;
+end;
+$$;
+
+-- (v2/A3/HU-141) Iniciar verificación ATÓMICA: crea verificación + consume créditos.
+create or replace function fn_iniciar_verificacion(
+  p_id_comprobante uuid,
+  p_codigo_servicio text default 'VERIFICACION_COMPROBANTE',
+  p_forzar boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_comp tbl_comprobantes_pago%rowtype;
+  v_serv tbl_servicios_creditos%rowtype;
+  v_ver uuid;
+  v_costo bigint;
+begin
+  select * into v_comp from tbl_comprobantes_pago
+  where id_comprobante=p_id_comprobante for update;
+
+  if not found then
+    raise exception 'Comprobante inexistente';
+  end if;
+
+  if v_comp.estado not in ('RECIBIDO') then
+    return jsonb_build_object('resultado','ESTADO_NO_VERIFICABLE','estado',v_comp.estado);
+  end if;
+
+  select * into v_serv from tbl_servicios_creditos
+  where codigo=p_codigo_servicio and activo for share;
+
+  if not found then
+    raise exception 'Servicio de créditos inexistente: %',p_codigo_servicio;
+  end if;
+  v_costo := v_serv.costo_creditos;
+
+  insert into tbl_verificaciones(
+    id_comercio,id_comprobante,id_pedido,tipo_verificacion,estado,fecha_inicio
+  )
+  values(
+    v_comp.id_comercio,p_id_comprobante,v_comp.id_pedido,
+    p_codigo_servicio,'PROCESANDO',now()
+  )
+  returning id_verificacion into v_ver;
+
+  begin
+    perform 1 from tbl_cuentas_creditos
+    where id_comercio=v_comp.id_comercio for update;
+
+    if (select coalesce(saldo_actual,0) from tbl_cuentas_creditos
+        where id_comercio=v_comp.id_comercio) < v_costo then
+      raise exception 'SALDO_INSUFICIENTE';
+    end if;
+
+    perform fn_consumir_creditos(v_comp.id_comercio,v_serv.id_servicio,v_ver);
+
+  exception
+    when others then
+      if sqlerrm='SALDO_INSUFICIENTE' and not p_forzar then
+        update tbl_verificaciones
+        set estado='BLOQUEADA',
+            resultado=jsonb_build_object('motivo','SIN_CREDITOS'),
+            fecha_fin=now()
+        where id_verificacion=v_ver;
+
+        return jsonb_build_object(
+          'resultado','SIN_CREDITOS',
+          'id_verificacion',v_ver,
+          'mensaje','Recibimos tu comprobante. El comercio no puede completar la verificación en este momento.'
+        );
+      else
+        update tbl_verificaciones
+        set estado='ERROR',
+            resultado=jsonb_build_object('error',sqlerrm),
+            fecha_fin=now()
+        where id_verificacion=v_ver;
+        raise;
+      end if;
+  end;
+
+  update tbl_comprobantes_pago
+  set estado='PROCESANDO'
+  where id_comprobante=p_id_comprobante;
+
+  return jsonb_build_object('resultado','VERIFICACION_INICIADA','id_verificacion',v_ver);
+end;
+$$;
+
+-- (v2/A5/HU-092-094) Transición de estado logístico validada.
+create or replace function fn_actualizar_estado_envio(
+  p_id_envio uuid,
+  p_nuevo_estado estado_envio,
+  p_observacion text default null,
+  p_latitud numeric(9,6) default null,
+  p_longitud numeric(9,6) default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_env tbl_envios%rowtype;
+begin
+  select * into v_env from tbl_envios
+  where id_envio=p_id_envio for update;
+
+  if not found then
+    raise exception 'Envío inexistente';
+  end if;
+
+  if not (
+    (v_env.estado='PENDIENTE'   and p_nuevo_estado in ('PREPARANDO','CANCELADO'))
+ or (v_env.estado='PREPARANDO' and p_nuevo_estado in ('ASIGNADO','CANCELADO'))
+ or (v_env.estado='ASIGNADO'   and p_nuevo_estado in ('EN_RUTA','CANCELADO'))
+ or (v_env.estado='EN_RUTA'    and p_nuevo_estado in ('ENTREGADO','NO_ENTREGADO'))
+ or (v_env.estado='NO_ENTREGADO' and p_nuevo_estado in ('EN_RUTA'))
+  ) then
+    raise exception 'Transición inválida: % -> %',v_env.estado,p_nuevo_estado;
+  end if;
+
+  if p_nuevo_estado='NO_ENTREGADO' and coalesce(p_observacion,'')='' then
+    raise exception 'NO_ENTREGADO requiere observación';
+  end if;
+
+  update tbl_envios
+  set estado=p_nuevo_estado,
+      updated_at=now(),
+      id_repartidor=case
+        when p_nuevo_estado='EN_RUTA' and v_env.id_repartidor is null
+        then fn_current_usuario_id()
+        else v_env.id_repartidor end
+  where id_envio=p_id_envio;
+
+  insert into tbl_env_seguimiento_estados(
+    id_envio,estado,observacion,latitud,longitud,usuario_id
+  )
+  values(
+    p_id_envio,p_nuevo_estado,p_observacion,p_latitud,p_longitud,
+    fn_current_usuario_id()
+  );
+
+  return jsonb_build_object(
+    'resultado','ESTADO_ACTUALIZADO',
+    'id_envio',p_id_envio,
+    'estado',p_nuevo_estado
+  );
+end;
+$$;
+
+-- (v2/HU-032/033/034) Movimientos manuales de inventario (entradas/salidas/ajustes).
+create or replace function fn_movimiento_inventario(
+  p_id_sucursal uuid,
+  p_id_variante uuid,
+  p_tipo tipo_movimiento_inventario,
+  p_cantidad integer,
+  p_referencia_tipo text default 'MANUAL',
+  p_referencia_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_inv tbl_inventario%rowtype;
+  v_delta int;
+begin
+  if p_tipo not in ('ENTRADA','SALIDA','AJUSTE','DEVOLUCION') then
+    raise exception 'Tipo manual inválido: use ENTRADA/SALIDA/AJUSTE/DEVOLUCION';
+  end if;
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser positiva';
+  end if;
+  if not fn_tiene_acceso_sucursal(
+    (select s.id_comercio from tbl_sucursales s where s.id_sucursal=p_id_sucursal),
+    p_id_sucursal) then
+    raise exception 'Sin acceso a la sucursal';
+  end if;
+
+  select * into v_inv from tbl_inventario
+  where id_sucursal=p_id_sucursal and id_variante=p_id_variante
+  for update;
+
+  if not found then
+    if p_tipo<>'ENTRADA' then
+      raise exception 'No existe inventario para esa variante en la sucursal';
+    end if;
+    insert into tbl_inventario(id_sucursal,id_variante,stock_actual,stock_reservado)
+    values(p_id_sucursal,p_id_variante,0,0)
+    returning * into v_inv;
+  end if;
+
+  v_delta := case p_tipo when 'SALIDA' then -p_cantidad else p_cantidad end;
+
+  update tbl_inventario
+  set stock_actual=stock_actual+v_delta
+  where id_inventario=v_inv.id_inventario;
+
+  if (select stock_actual from tbl_inventario where id_inventario=v_inv.id_inventario)<0 then
+    raise exception 'Stock insuficiente para SALIDA de %',p_cantidad;
+  end if;
+
+  insert into tbl_inventario_movimientos(
+    id_comercio,id_sucursal,id_variante,tipo,cantidad,referencia_tipo,referencia_id,usuario_id
+  )
+  values(
+    (select id_comercio from tbl_sucursales where id_sucursal=p_id_sucursal),
+    p_id_sucursal,p_id_variante,p_tipo,p_cantidad,
+    p_referencia_tipo,p_referencia_id,fn_current_usuario_id()
+  );
+
+  return jsonb_build_object('resultado','MOVIMIENTO_OK','delta',v_delta);
+end;
+$$;
+
+
+-- Auditoría genérica
 create or replace function fn_auditar_cambio()
 returns trigger
 language plpgsql
@@ -1691,366 +2194,24 @@ begin
 end;
 $$;
 
--- ============================================================
--- 29. RLS
--- ============================================================
 
+-- (v2/A12) Auditoría ACTIVA en tablas críticas (HU-127..131).
 do $$
-declare
-  t text;
+declare t text;
 begin
   foreach t in array array[
-    'tbl_comercios','tbl_comercio_config','tbl_sucursales',
-    'tbl_usuarios','tbl_usuario_comercio','tbl_categorias',
-    'tbl_productos','tbl_variantes','tbl_inventario',
-    'tbl_inventario_movimientos','tbl_clientes','tbl_reservas',
-    'tbl_lista_espera','tbl_pedidos','tbl_pedido_detalles',
-    'tbl_metodos_pago','tbl_qr_cobros','tbl_comprobantes_pago',
-    'tbl_verificaciones','tbl_cuentas_creditos','tbl_movimientos_creditos',
-    'tbl_compras_creditos','tbl_pagos_creditos','tbl_envios',
-    'tbl_env_seguimiento_estados','tbl_logs_auditoria'
+    'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
+    'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
+    'tbl_movimientos_creditos','tbl_envios'
   ] loop
-    execute format('alter table %I enable row level security',t);
+    execute format('drop trigger if exists trg_audit_%s on %I',t,t);
+    execute format(
+      'create trigger trg_audit_%s after insert or update or delete on %I for each row execute function fn_auditar_cambio()',t,t);
   end loop;
 end $$;
 
--- Roles y servicios globales
-alter table tbl_roles enable row level security;
-alter table tbl_servicios_creditos enable row level security;
-alter table tbl_paquetes_creditos enable row level security;
 
--- ============================================================
--- RLS: COMERCIOS
--- ============================================================
-
-create policy commerce_select on tbl_comercios
-for select using (fn_tiene_acceso_comercio(id_comercio));
-
-create policy commerce_insert on tbl_comercios
-for insert with check (fn_es_superadmin());
-
-create policy commerce_update on tbl_comercios
-for update using (fn_es_admin_comercio(id_comercio))
-with check (fn_es_admin_comercio(id_comercio));
-
-create policy commerce_delete on tbl_comercios
-for delete using (fn_es_superadmin());
-
-create policy commerce_config_all on tbl_comercio_config
-for all using (fn_es_admin_comercio(id_comercio))
-with check (fn_es_admin_comercio(id_comercio));
-
-create policy branches_all on tbl_sucursales
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
--- ============================================================
--- RLS: USUARIOS
--- ============================================================
-
-create policy users_select on tbl_usuarios
-for select using (
-  auth_user_id=auth.uid()
-  or exists (
-    select 1 from tbl_usuario_comercio uc
-    where uc.id_usuario=tbl_usuarios.id_usuario
-      and uc.activo
-      and fn_tiene_acceso_comercio(uc.id_comercio)
-  )
-);
-
-create policy users_update_self on tbl_usuarios
-for update using (auth_user_id=auth.uid())
-with check (auth_user_id=auth.uid());
-
-create policy user_commerce_select on tbl_usuario_comercio
-for select using (
-  fn_tiene_acceso_comercio(id_comercio)
-);
-
-create policy user_commerce_manage on tbl_usuario_comercio
-for all using (
-  fn_es_admin_comercio(id_comercio)
-)
-with check (
-  fn_es_admin_comercio(id_comercio)
-);
-
-create policy roles_select on tbl_roles
-for select using (true);
-
--- ============================================================
--- RLS: CATÁLOGO
--- ============================================================
-
-create policy categories_all on tbl_categorias
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
-create policy products_all on tbl_productos
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
-create policy variants_select on tbl_variantes
-for select using (
-  exists (
-    select 1 from tbl_productos p
-    where p.id_producto=tbl_variantes.id_producto
-      and fn_tiene_acceso_comercio(p.id_comercio)
-  )
-);
-
-create policy variants_manage on tbl_variantes
-for all using (
-  exists (
-    select 1 from tbl_productos p
-    where p.id_producto=tbl_variantes.id_producto
-      and fn_es_admin_comercio(p.id_comercio)
-  )
-)
-with check (
-  exists (
-    select 1 from tbl_productos p
-    where p.id_producto=tbl_variantes.id_producto
-      and fn_es_admin_comercio(p.id_comercio)
-  )
-);
-
--- ============================================================
--- RLS: INVENTARIO
--- ============================================================
-
-create policy inventory_all on tbl_inventario
-for all using (
-  exists (
-    select 1 from tbl_sucursales s
-    where s.id_sucursal=tbl_inventario.id_sucursal
-      and fn_tiene_acceso_sucursal(s.id_comercio,s.id_sucursal)
-  )
-)
-with check (
-  exists (
-    select 1 from tbl_sucursales s
-    where s.id_sucursal=tbl_inventario.id_sucursal
-      and fn_tiene_acceso_sucursal(s.id_comercio,s.id_sucursal)
-  )
-);
-
-create policy inventory_movements_select on tbl_inventario_movimientos
-for select using (fn_tiene_acceso_comercio(id_comercio));
-
--- Los movimientos se generan por funciones backend.
-create policy inventory_movements_insert on tbl_inventario_movimientos
-for insert with check (fn_tiene_acceso_comercio(id_comercio));
-
--- ============================================================
--- RLS: CLIENTES
--- ============================================================
-
-create policy clients_all on tbl_clientes
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
--- ============================================================
--- RLS: VENTAS
--- ============================================================
-
-create policy reservations_all on tbl_reservas
-for all using (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-)
-with check (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-);
-
-create policy waitlist_all on tbl_lista_espera
-for all using (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-)
-with check (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-);
-
-create policy orders_all on tbl_pedidos
-for all using (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-)
-with check (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-);
-
-create policy order_details_all on tbl_pedido_detalles
-for all using (
-  exists (
-    select 1 from tbl_pedidos p
-    where p.id_pedido=tbl_pedido_detalles.id_pedido
-      and fn_tiene_acceso_sucursal(p.id_comercio,p.id_sucursal)
-  )
-)
-with check (
-  exists (
-    select 1 from tbl_pedidos p
-    where p.id_pedido=tbl_pedido_detalles.id_pedido
-      and fn_tiene_acceso_sucursal(p.id_comercio,p.id_sucursal)
-  )
-);
-
--- ============================================================
--- RLS: PAGOS
--- ============================================================
-
-create policy payment_methods_all on tbl_metodos_pago
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
-create policy qr_all on tbl_qr_cobros
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
-create policy receipts_all on tbl_comprobantes_pago
-for all using (fn_tiene_acceso_comercio(id_comercio))
-with check (fn_tiene_acceso_comercio(id_comercio));
-
-create policy verification_select on tbl_verificaciones
-for select using (fn_tiene_acceso_comercio(id_comercio));
-
-create policy verification_manage on tbl_verificaciones
-for all using (fn_es_admin_comercio(id_comercio))
-with check (fn_es_admin_comercio(id_comercio));
-
--- ============================================================
--- RLS: CRÉDITOS
--- ============================================================
-
-create policy credit_accounts_select on tbl_cuentas_creditos
-for select using (fn_es_admin_comercio(id_comercio));
-
-create policy credit_movements_select on tbl_movimientos_creditos
-for select using (fn_es_admin_comercio(id_comercio));
-
-create policy credit_purchases_select on tbl_compras_creditos
-for select using (fn_es_admin_comercio(id_comercio));
-
-create policy credit_payments_select on tbl_pagos_creditos
-for select using (
-  exists (
-    select 1 from tbl_compras_creditos c
-    where c.id_compra=tbl_pagos_creditos.id_compra
-      and fn_es_admin_comercio(c.id_comercio)
-  )
-);
-
-create policy credit_services_select on tbl_servicios_creditos
-for select using (true);
-
-create policy credit_packages_select on tbl_paquetes_creditos
-for select using (true);
-
--- ============================================================
--- RLS: LOGÍSTICA
--- ============================================================
-
-create policy shipments_select on tbl_envios
-for select using (
-  fn_tiene_acceso_sucursal(id_comercio,id_sucursal)
-);
-
-create policy shipments_manage on tbl_envios
-for all using (
-  fn_es_admin_comercio(id_comercio)
-)
-with check (
-  fn_es_admin_comercio(id_comercio)
-);
-
-create policy shipment_tracking_select on tbl_env_seguimiento_estados
-for select using (
-  exists (
-    select 1 from tbl_envios e
-    where e.id_envio=tbl_env_seguimiento_estados.id_envio
-      and fn_tiene_acceso_sucursal(e.id_comercio,e.id_sucursal)
-  )
-);
-
-create policy shipment_tracking_insert on tbl_env_seguimiento_estados
-for insert with check (
-  exists (
-    select 1 from tbl_envios e
-    where e.id_envio=tbl_env_seguimiento_estados.id_envio
-      and fn_tiene_acceso_sucursal(e.id_comercio,e.id_sucursal)
-  )
-);
-
--- ============================================================
--- RLS: AUDITORÍA
--- ============================================================
-
-create policy audit_select on tbl_logs_auditoria
-for select using (
-  fn_es_superadmin()
-  or fn_es_admin_comercio(id_comercio)
-);
-
--- No se permite borrar auditoría desde el cliente.
-create policy audit_insert on tbl_logs_auditoria
-for insert with check (
-  fn_es_superadmin()
-  or fn_tiene_acceso_comercio(id_comercio)
-);
-
--- ============================================================
--- 30. GRANTS
--- ============================================================
-
-grant usage on schema rsuelvo to anon, authenticated, service_role;
-grant select on tbl_roles to authenticated;
-grant select on tbl_servicios_creditos to authenticated;
-grant select on tbl_paquetes_creditos to authenticated;
-
--- No se otorga acceso directo al resto de tablas aquí:
--- Supabase/PostgREST + RLS se encargará del acceso autenticado.
-grant select, insert, update, delete on all tables in schema rsuelvo to authenticated;
-
--- Las funciones RPC son el camino recomendado para operaciones críticas.
-grant execute on all functions in schema rsuelvo to authenticated;
-
--- service_role mantiene bypass de RLS en Supabase.
-
--- ============================================================
--- 31. DATOS INICIALES
--- ============================================================
-
-insert into tbl_servicios_creditos(codigo,nombre,descripcion,costo_creditos)
-values
-('VERIFICACION_COMPROBANTE','Verificación de comprobante','Verificación completa de un comprobante de pago',1),
-('OCR_COMPROBANTE','OCR de comprobante','Extracción de información del comprobante',1),
-('VALIDACION_AVANZADA','Validación avanzada','Validaciones adicionales del comprobante',3)
-on conflict (codigo) do nothing;
-
--- ============================================================
--- 32. STORAGE: POLÍTICAS PARA COMPROBANTES
--- ============================================================
--- Crear bucket desde Supabase Dashboard o ejecutar:
---
--- insert into storage.buckets(id,name,public)
--- values ('comprobantes-pago','comprobantes-pago',false)
--- on conflict (id) do nothing;
---
--- El path recomendado:
--- comprobantes-pago/{id_comercio}/{id_pedido}/{uuid}.{extension}
---
--- Las políticas de Storage deben validar el tenant.
--- Se dejan separadas para no asumir que el bucket ya existe.
-
--- ============================================================
--- 33. NOTA SOBRE CRON / EXPIRACIONES
--- ============================================================
--- La expiración NO debe depender de que n8n recuerde liberar stock.
--- Recomendación:
--- Supabase pg_cron -> llamar una función de mantenimiento.
---
--- Función auxiliar para expirar reservas vencidas:
-
+-- Procesar reservas vencidas (cron / WF-30)
 create or replace function fn_procesar_reservas_vencidas(p_limite integer default 100)
 returns integer
 language plpgsql
@@ -2081,10 +2242,235 @@ begin
   return v_count;
 end;
 $$;
+-- ============================================================
+-- 7. TRIGGERS
+-- ============================================================
+
+
+-- Asignación usuario/comercio
+drop trigger if exists trg_validar_asignacion_usuario_comercio on tbl_usuario_comercio;
+create trigger trg_validar_asignacion_usuario_comercio
+before insert or update on tbl_usuario_comercio
+for each row execute function fn_validar_asignacion_usuario_comercio();
+
+-- Resolver tenant+SKU de variantes
+drop trigger if exists trg_resolver_variante_tenant_sku on tbl_variantes;
+create trigger trg_resolver_variante_tenant_sku
+before insert or update on tbl_variantes
+for each row execute function fn_resolver_variante_tenant_sku();
+
+
+-- Consistencia multi-tenant
+drop trigger if exists trg_reservas_tenant on tbl_reservas;
+create trigger trg_reservas_tenant before insert or update on tbl_reservas
+for each row execute function fn_validar_consistencia_tenant();
+
+drop trigger if exists trg_lista_tenant on tbl_lista_espera;
+create trigger trg_lista_tenant before insert or update on tbl_lista_espera
+for each row execute function fn_validar_consistencia_tenant();
+
+drop trigger if exists trg_pedidos_tenant on tbl_pedidos;
+create trigger trg_pedidos_tenant before insert or update on tbl_pedidos
+for each row execute function fn_validar_consistencia_tenant();
+
+drop trigger if exists trg_envios_tenant on tbl_envios;
+create trigger trg_envios_tenant before insert or update on tbl_envios
+for each row execute function fn_validar_consistencia_tenant();
+
+drop trigger if exists trg_comprobantes_tenant on tbl_comprobantes_pago;
+create trigger trg_comprobantes_tenant before insert or update on tbl_comprobantes_pago
+for each row execute function fn_validar_consistencia_tenant();
+
+
+-- updated_at
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'tbl_comercios','tbl_comercio_config','tbl_sucursales','tbl_usuarios',
+    'tbl_usuario_comercio','tbl_categorias','tbl_productos','tbl_variantes',
+    'tbl_inventario','tbl_clientes','tbl_reservas','tbl_lista_espera',
+    'tbl_pedidos','tbl_metodos_pago','tbl_verificaciones','tbl_cuentas_creditos',
+    'tbl_servicios_creditos','tbl_envios'
+  ] loop
+    execute format('drop trigger if exists trg_%s_updated_at on %I',t,t);
+    execute format(
+      'create trigger trg_%s_updated_at before update on %I for each row execute function fn_set_updated_at()',
+      t,t
+    );
+  end loop;
+end $$;
+
+-- Auditoría ACTIVA en tablas críticas (A12/HU-127..131)
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
+    'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
+    'tbl_movimientos_creditos','tbl_envios'
+  ] loop
+    execute format('drop trigger if exists trg_audit_%s on %I',t,t);
+    execute format(
+      'create trigger trg_audit_%s after insert or update or delete on %I for each row execute function fn_auditar_cambio()',t,t);
+  end loop;
+end $$;
 
 -- ============================================================
--- 34. VISTAS OPERATIVAS
+-- 8. ROW LEVEL SECURITY Y GRANTS
 -- ============================================================
+
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'tbl_comercios','tbl_comercio_config','tbl_sucursales',
+    'tbl_usuarios','tbl_usuario_comercio','tbl_categorias',
+    'tbl_productos','tbl_variantes','tbl_inventario',
+    'tbl_inventario_movimientos','tbl_clientes','tbl_reservas',
+    'tbl_lista_espera','tbl_pedidos','tbl_pedido_detalles',
+    'tbl_metodos_pago','tbl_qr_cobros','tbl_comprobantes_pago',
+    'tbl_verificaciones','tbl_cuentas_creditos','tbl_movimientos_creditos',
+    'tbl_compras_creditos','tbl_pagos_creditos','tbl_envios',
+    'tbl_env_seguimiento_estados','tbl_logs_auditoria'
+  ] loop
+    execute format('alter table %I enable row level security',t);
+  end loop;
+end $$;
+
+-- Roles y servicios globales
+alter table tbl_roles enable row level security;
+alter table tbl_servicios_creditos enable row level security;
+alter table tbl_paquetes_creditos enable row level security;
+alter table tbl_canal_whatsapp enable row level security;
+alter table tbl_whatsapp_eventos enable row level security;
+alter table tbl_contact_preferences enable row level security;
+alter table tbl_whatsapp_eventos force row level security; -- sin políticas => denegado a clientes; backend vía service_role
+
+-- COMERCIOS
+create policy commerce_select on tbl_comercios for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy commerce_insert on tbl_comercios for insert with check (fn_es_superadmin());
+create policy commerce_update on tbl_comercios for update using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+create policy commerce_delete on tbl_comercios for delete using (fn_es_superadmin());
+create policy commerce_config_all on tbl_comercio_config for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+
+-- SUCURSALES: lectura miembros / escritura admin (A10)
+create policy branches_select on tbl_sucursales for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy branches_manage on tbl_sucursales for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+
+-- USUARIOS
+create policy users_select on tbl_usuarios for select using (
+  auth_user_id=auth.uid()
+  or exists (select 1 from tbl_usuario_comercio uc
+             where uc.id_usuario=tbl_usuarios.id_usuario and uc.activo
+               and fn_tiene_acceso_comercio(uc.id_comercio))
+);
+create policy users_update_self on tbl_usuarios for update using (auth_user_id=auth.uid()) with check (auth_user_id=auth.uid());
+create policy user_commerce_select on tbl_usuario_comercio for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy user_commerce_manage on tbl_usuario_comercio for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+create policy roles_select on tbl_roles for select using (true);
+
+-- CATÁLOGO: lectura miembros / escritura admin (A10)
+create policy categories_select on tbl_categorias for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy categories_manage on tbl_categorias for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+create policy products_select on tbl_productos for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy products_manage on tbl_productos for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+create policy variants_select on tbl_variantes for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy variants_manage on tbl_variantes for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+
+-- INVENTARIO: movimientos manuales solo admin (matriz); funciones backend usan service_role
+create policy inventory_all on tbl_inventario for all using (
+  exists (select 1 from tbl_sucursales s where s.id_sucursal=tbl_inventario.id_sucursal
+          and fn_tiene_acceso_sucursal(s.id_comercio,s.id_sucursal))
+) with check (
+  exists (select 1 from tbl_sucursales s where s.id_sucursal=tbl_inventario.id_sucursal
+          and fn_tiene_acceso_sucursal(s.id_comercio,s.id_sucursal))
+);
+create policy inventory_movements_select on tbl_inventario_movimientos for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy inventory_movements_insert on tbl_inventario_movimientos for insert with check (fn_es_admin_comercio(id_comercio));
+
+-- CLIENTES
+create policy clients_all on tbl_clientes for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
+
+-- VENTAS
+create policy reservations_all on tbl_reservas for all using (fn_tiene_acceso_sucursal(id_comercio,id_sucursal)) with check (fn_tiene_acceso_sucursal(id_comercio,id_sucursal));
+create policy waitlist_all on tbl_lista_espera for all using (fn_tiene_acceso_sucursal(id_comercio,id_sucursal)) with check (fn_tiene_acceso_sucursal(id_comercio,id_sucursal));
+create policy orders_all on tbl_pedidos for all using (fn_tiene_acceso_sucursal(id_comercio,id_sucursal)) with check (fn_tiene_acceso_sucursal(id_comercio,id_sucursal));
+create policy order_details_all on tbl_pedido_detalles for all using (
+  exists (select 1 from tbl_pedidos p where p.id_pedido=tbl_pedido_detalles.id_pedido
+          and fn_tiene_acceso_sucursal(p.id_comercio,p.id_sucursal))
+) with check (
+  exists (select 1 from tbl_pedidos p where p.id_pedido=tbl_pedido_detalles.id_pedido
+          and fn_tiene_acceso_sucursal(p.id_comercio,p.id_sucursal))
+);
+
+-- PAGOS
+create policy payment_methods_select on tbl_metodos_pago for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy payment_methods_manage on tbl_metodos_pago for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+create policy qr_all on tbl_qr_cobros for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
+create policy receipts_all on tbl_comprobantes_pago for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
+
+-- VERIFICACIONES: gestión admin o cajero (A10/HU-141)
+create policy verification_select on tbl_verificaciones for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy verification_manage on tbl_verificaciones for all using (fn_puede_verificar(id_comercio)) with check (fn_puede_verificar(id_comercio));
+
+-- CRÉDITOS (consulta admin; ledger de dinero IA)
+create policy credit_accounts_select on tbl_cuentas_creditos for select using (fn_es_admin_comercio(id_comercio));
+create policy credit_movements_select on tbl_movimientos_creditos for select using (fn_es_admin_comercio(id_comercio));
+create policy credit_purchases_select on tbl_compras_creditos for select using (fn_es_admin_comercio(id_comercio));
+create policy credit_payments_select on tbl_pagos_creditos for select using (
+  exists (select 1 from tbl_compras_creditos c where c.id_compra=tbl_pagos_creditos.id_compra
+          and fn_es_admin_comercio(c.id_comercio))
+);
+create policy credit_services_select on tbl_servicios_creditos for select using (true);
+create policy credit_packages_select on tbl_paquetes_creditos for select using (true);
+
+-- LOGÍSTICA: crear/asignar admin o cajero (A10/matriz)
+create policy shipments_select on tbl_envios for select using (fn_tiene_acceso_sucursal(id_comercio,id_sucursal));
+create policy shipments_manage on tbl_envios for all using (fn_puede_gestionar_envios(id_comercio)) with check (fn_puede_gestionar_envios(id_comercio));
+create policy shipment_tracking_select on tbl_env_seguimiento_estados for select using (
+  exists (select 1 from tbl_envios e where e.id_envio=tbl_env_seguimiento_estados.id_envio
+          and fn_tiene_acceso_sucursal(e.id_comercio,e.id_sucursal))
+);
+create policy shipment_tracking_insert on tbl_env_seguimiento_estados for insert with check (
+  exists (select 1 from tbl_envios e where e.id_envio=tbl_env_seguimiento_estados.id_envio
+          and fn_tiene_acceso_sucursal(e.id_comercio,e.id_sucursal))
+);
+
+-- AUDITORÍA
+create policy audit_select on tbl_logs_auditoria for select using (fn_es_superadmin() or fn_es_admin_comercio(id_comercio));
+create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin() or fn_tiene_acceso_comercio(id_comercio));
+
+-- CANALES WHATSAPP
+create policy canal_select on tbl_canal_whatsapp for select using (fn_tiene_acceso_comercio(id_comercio));
+create policy canal_manage on tbl_canal_whatsapp for all using (fn_es_admin_comercio(id_comercio)) with check (fn_es_admin_comercio(id_comercio));
+
+-- OPT-OUT
+create policy contact_pref_all on tbl_contact_preferences for all using (fn_tiene_acceso_comercio(id_comercio)) with check (fn_tiene_acceso_comercio(id_comercio));
+
+
+-- GRANTS
+grant usage on schema rsuelvo to anon, authenticated, service_role;
+grant select on tbl_roles to authenticated;
+grant select on tbl_servicios_creditos to authenticated;
+grant select on tbl_paquetes_creditos to authenticated;
+
+-- No se otorga acceso directo al resto de tablas aquí:
+-- Supabase/PostgREST + RLS se encargará del acceso autenticado.
+grant select, insert, update, delete on all tables in schema rsuelvo to authenticated;
+
+-- Las funciones RPC son el camino recomendado para operaciones críticas.
+grant execute on all functions in schema rsuelvo to authenticated;
+
+-- service_role mantiene bypass de RLS en Supabase.
+
+-- ============================================================
+-- 9. VISTAS OPERATIVAS
+-- ============================================================
+
 
 create or replace view vw_inventario_disponible as
 select
@@ -2128,8 +2514,76 @@ grant select on vw_inventario_disponible to authenticated;
 grant select on vw_lista_espera_activa to authenticated;
 
 -- ============================================================
--- 35. COMENTARIOS DE ARQUITECTURA
+-- 10. SEED — DATOS INICIALES
 -- ============================================================
+
+
+insert into tbl_roles (codigo,nombre,nivel) values
+('ROLE_SUPERADMIN','Superadministrador',100),
+('ROLE_SYSADMIN','Administrador de infraestructura',90),
+('ROLE_SUPPORT','Soporte',50),
+('ROLE_TENANT_ADMIN','Administrador del comercio',30),
+('ROLE_TENANT_CASHIER','Cajero',20),
+('ROLE_LOGISTICS_AGENT','Repartidor',10)
+on conflict (codigo) do nothing;
+
+
+insert into tbl_servicios_creditos(codigo,nombre,descripcion,costo_creditos)
+values
+('VERIFICACION_COMPROBANTE','Verificación de comprobante','Verificación completa de un comprobante de pago',1),
+('OCR_COMPROBANTE','OCR de comprobante','Extracción de información del comprobante',1),
+('VALIDACION_AVANZADA','Validación avanzada','Validaciones adicionales del comprobante',3)
+on conflict (codigo) do nothing;
+
+
+-- Paquetes de créditos activos (wireframe 15 / HU-072/073)
+insert into tbl_paquetes_creditos(nombre,creditos,precio,moneda) values
+  ('Basico',100,100,'BOB'),
+  ('Pro',500,450,'BOB'),
+  ('Empresa',1000,800,'BOB')
+on conflict (nombre) do nothing;
+
+-- codigo_tienda se asigna al crear el comercio (HU-002/HU-104):
+-- update rsuelvo.tbl_comercios set codigo_tienda='FER' where nombre_comercial='Feria La Paz';
+
+-- ============================================================
+-- 11. STORAGE — BUCKETS Y PATHS
+-- ============================================================
+
+
+insert into storage.buckets(id,name,public)
+values ('comprobantes-pago','comprobantes-pago',false),
+       ('qr-pagos','qr-pagos',false)
+on conflict (id) do nothing;
+
+-- Paths:
+--   comprobantes-pago/{id_comercio}/{id_pedido}/{uuid}.{ext}
+--   qr-pagos/{id_comercio}/tienda.{ext}
+-- Plantilla de política por tenancy (adaptar por bucket):
+--
+-- create policy "comprobantes_tenant_read" on storage.objects
+-- for select to authenticated
+-- using (bucket_id='comprobantes-pago'
+--   and (storage.foldername(name))[1] in (
+--     select uc.id_comercio::text
+--     from rsuelvo.tbl_usuario_comercio uc
+--     join rsuelvo.tbl_usuarios u on u.id_usuario=uc.id_usuario
+--     where u.auth_user_id=auth.uid() and uc.activo));
+
+-- ============================================================
+-- 12. CRON — EXPIRACIÓN DE RESERVAS
+-- ============================================================
+
+
+select cron.schedule(
+  'rsuelvo_expirar_reservas',
+  '* * * * *',
+  $$select rsuelvo.fn_procesar_reservas_vencidas(200);$$
+);
+
+-- Alternativa n8n: WF-30 (Schedule) -> RPC fn_procesar_reservas_vencidas()
+--                  WF-31 -> fn_notificar_siguiente_lista_espera() por variante liberada.
+-- Nunca implementar expiración/liberación dentro de n8n.
 
 comment on function fn_solicitar_reserva is
 'Reserva atómica de inventario. Bloquea la fila de inventario con FOR UPDATE. Debe ser llamada desde n8n/Backend mediante RPC y no replicarse en lógica de workflow.';
@@ -2145,5 +2599,14 @@ comment on function fn_consumir_creditos is
 
 comment on function fn_confirmar_pago is
 'Confirma pago, actualiza pedido/reserva e inventario en una única transacción.';
+
+
+comment on function fn_identificar_comercio_por_whatsapp is 'Resuelve comercio/sucursal desde el número WhatsApp destino (WF-04). Solo service_role.';
+comment on function fn_iniciar_verificacion is 'Crea la verificación y consume créditos en una sola transacción (SIN_CREDITOS -> BLOQUEADA).';
+comment on function fn_actualizar_estado_envio is 'Máquina de estados logística validada + registro de seguimiento.';
+comment on function fn_generar_cobro is 'Crea el cobro QR con referencia única RS-XXXXXXXX.';
+comment on table tbl_variantes is 'SKU v2: 6 caracteres [3 tienda][3 producto] base36. id_comercio denormalizado por trigger.';
+comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y Meta (política §17).';
+comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
 
 commit;

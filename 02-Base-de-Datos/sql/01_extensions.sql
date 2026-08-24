@@ -1,7 +1,5 @@
 -- ============================================================
--- RSUELVO :: EXTENSIONES Y ESQUEMA
--- Archivo 01/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 1. EXTENSIONES Y ESQUEMA
 -- ============================================================
 
 create extension if not exists pgcrypto;
@@ -9,4 +7,4 @@ create extension if not exists pg_cron;
 
 create schema if not exists rsuelvo;
 
--- NOTA: ejecutar 01..12 en orden. Cada archivo es autónomo e idempotente.
+set search_path = rsuelvo, public;

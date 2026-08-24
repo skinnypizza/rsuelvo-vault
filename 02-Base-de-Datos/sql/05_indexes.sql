@@ -1,7 +1,5 @@
 -- ============================================================
--- RSUELVO :: ÍNDICES DE RENDIMIENTO
--- Archivo 05/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 5. ÍNDICES DE RENDIMIENTO
 -- ============================================================
 
 set search_path = rsuelvo, public;
@@ -25,3 +23,11 @@ create index if not exists idx_verificaciones_pedido on tbl_verificaciones(id_pe
 create index if not exists idx_mov_creditos_comercio on tbl_movimientos_creditos(id_comercio,created_at);
 create index if not exists idx_envios_estado on tbl_envios(id_comercio,estado);
 create index if not exists idx_auditoria_comercio_fecha on tbl_logs_auditoria(id_comercio,created_at desc);
+
+create index if not exists idx_variantes_comercio on tbl_variantes(id_comercio);
+create index if not exists idx_reservas_expiracion_v2 on tbl_reservas(fecha_expiracion)
+where estado in ('ACTIVA','PAGO_VALIDANDO');
+create index if not exists idx_eventos_pendientes on tbl_whatsapp_eventos(recibido)
+where procesado = false;
+create index if not exists idx_envios_repartidor on tbl_envios(id_repartidor,estado);
+create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(id_envio,created_at desc);

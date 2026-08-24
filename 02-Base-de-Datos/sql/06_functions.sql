@@ -1,12 +1,10 @@
 -- ============================================================
--- RSUELVO :: FUNCIONES
--- Archivo 06/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 6. FUNCIONES
 -- ============================================================
 
 set search_path = rsuelvo, public;
 
--- Validación de asignación usuario/comercio (cajero 1 sucursal)
+-- Validación de asignación usuario/comercio (cajero = 1 sucursal)
 create or replace function fn_validar_asignacion_usuario_comercio()
 returns trigger
 language plpgsql
@@ -40,27 +38,90 @@ begin
 end;
 $$;
 
--- Validación SKU único por comercio
-create or replace function fn_validar_sku_variante_comercio()
+
+-- (v2/A1) Resuelve tenant de la variante, genera SKU de 6 caracteres
+-- [3 tienda][3 producto] en base36 si viene nulo, valida formato y duplicados.
+create or replace function fn_resolver_variante_tenant_sku()
 returns trigger
 language plpgsql
 as $$
 declare
   v_comercio uuid;
+  v_codigo char(3);
+  v_max int;
+  v_sufijo text;
+  v_sku text;
 begin
-  select id_comercio into v_comercio
-  from tbl_productos
-  where id_producto=new.id_producto;
+  -- 1) Resolver id_comercio desde el producto (siempre).
+  if new.id_producto is not null then
+    select p.id_comercio into v_comercio
+    from tbl_productos p
+    where p.id_producto=new.id_producto;
+  end if;
 
   if v_comercio is null then
     raise exception 'Producto inexistente';
   end if;
 
-  if exists (
-    select 1
+  new.id_comercio := v_comercio;
+
+  select codigo_tienda into v_codigo
+  from tbl_comercios
+  where id_comercio=v_comercio;
+
+  if v_codigo is null then
+    raise exception 'El comercio % no tiene codigo_tienda asignado',v_comercio;
+  end if;
+
+  -- 2) Generar SKU si no viene (o venir vacío).
+  if coalesce(new.sku,'')='' then
+    -- serializar por comercio: bloquea la fila del comercio.
+    select 1 into v_max from tbl_comercios
+    where id_comercio=v_comercio for update;
+
+    select coalesce(max(
+      ('x'||substr(v.sku,4,3))::bit(12)::int
+    ),0) into v_max
     from tbl_variantes v
-    join tbl_productos p on p.id_producto=v.id_producto
-    where p.id_comercio=v_comercio
+    where v.id_comercio=v_comercio
+      and v.sku ~ '^[A-Z0-9]{6}$'
+      and substr(v.sku,1,3)=v_codigo::text;
+
+    v_max := v_max+1;
+    if v_max > 46655 then
+      raise exception 'Se agotaron los SKUs disponibles para la tienda %',v_codigo;
+    end if;
+
+    declare
+      n int := v_max;
+      chars text := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      out text := '';
+    begin
+      while n>0 loop
+        out := substr(chars,(n%36)+1,1)||out;
+        n := n/36;
+      end loop;
+      v_sufijo := lpad(coalesce(nullif(out,''),'0'),3,'0');
+    end;
+
+    new.sku := upper(v_codigo::text||v_sufijo);
+  else
+    new.sku := upper(new.sku);
+  end if;
+
+  -- 3) Validar formato 6 caracteres tienda+producto.
+  if new.sku !~ '^[A-Z0-9]{6}$' then
+    raise exception 'SKU inválido %. Formato requerido: 6 caracteres [3 tienda][3 producto], ej. FERA01',new.sku;
+  end if;
+
+  if substr(new.sku,1,3) <> v_codigo::text then
+    raise exception 'El prefijo del SKU (%) debe ser el código de la tienda (%)',substr(new.sku,1,3),v_codigo;
+  end if;
+
+  -- 4) Duplicado amigable (el UNIQUE físico es la garantía real).
+  if exists (
+    select 1 from tbl_variantes v
+    where v.id_comercio=v_comercio
       and v.sku=new.sku
       and v.id_variante<>coalesce(new.id_variante,'00000000-0000-0000-0000-000000000000'::uuid)
   ) then
@@ -70,6 +131,7 @@ begin
   return new;
 end;
 $$;
+
 
 -- Consistencia multi-tenant
 create or replace function fn_validar_consistencia_tenant()
@@ -105,6 +167,7 @@ begin
 end;
 $$;
 
+
 -- updated_at automático
 create or replace function fn_set_updated_at()
 returns trigger
@@ -116,20 +179,19 @@ begin
 end;
 $$;
 
--- Seguridad / tenancy helpers
-create or replace function fn_current_usuario_id()
-returns uuid
+
+-- (v2) ¿La llamada proviene de service_role (n8n/backend)?
+create or replace function fn_es_service_role()
+returns boolean
 language sql
 stable
-security definer
-set search_path = rsuelvo, public
 as $$
-  select id_usuario
-  from tbl_usuarios
-  where auth_user_id = auth.uid()
-    and activo = true
-  limit 1;
+  select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),'service_role')
+     = 'service_role';
 $$;
+
+
+-- Helpers de tenancy (v2: con escape para service_role en accesos)
 
 create or replace function fn_tiene_rol(p_rol rol_codigo)
 returns boolean
@@ -150,6 +212,7 @@ as $$
   );
 $$;
 
+
 create or replace function fn_es_superadmin()
 returns boolean
 language sql
@@ -160,6 +223,7 @@ as $$
   select fn_tiene_rol('ROLE_SUPERADMIN');
 $$;
 
+
 create or replace function fn_tiene_acceso_comercio(p_id_comercio uuid)
 returns boolean
 language sql
@@ -167,7 +231,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -186,7 +251,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -215,7 +281,8 @@ stable
 security definer
 set search_path = rsuelvo, public
 as $$
-  select fn_es_superadmin()
+  select fn_es_service_role()
+      or fn_es_superadmin()
       or exists (
         select 1
         from tbl_usuario_comercio uc
@@ -227,6 +294,50 @@ as $$
           and r.codigo in ('ROLE_TENANT_ADMIN','ROLE_SUPPORT')
       );
 $$;
+
+-- (v2/A10) Rol específico dentro de un comercio
+create or replace function fn_tiene_rol_comercio(p_id_comercio uuid,p_rol rol_codigo)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_service_role() or exists (
+    select 1
+    from tbl_usuario_comercio uc
+    join tbl_usuarios u on u.id_usuario=uc.id_usuario
+    join tbl_roles r on r.id_rol=uc.id_rol
+    where u.auth_user_id=auth.uid()
+      and u.activo and uc.activo
+      and uc.id_comercio=p_id_comercio
+      and r.codigo=p_rol
+  );
+$$;
+
+-- (v2/A10) Puede verificar comprobantes: admin o cajero del comercio (HU-141)
+create or replace function fn_puede_verificar(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_admin_comercio(p_id_comercio)
+      or fn_tiene_rol_comercio(p_id_comercio,'ROLE_TENANT_CASHIER');
+$$;
+
+-- (v2/A10) Puede crear/asignar envíos: admin o cajero del comercio (matriz)
+create or replace function fn_puede_gestionar_envios(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_puede_verificar(p_id_comercio);
+$$;
+
 
 -- Upsert de cliente
 create or replace function fn_upsert_cliente(
@@ -276,6 +387,107 @@ begin
   return v_id;
 end;
 $$;
+
+
+-- (v2/A2/HU-123) Identificar comercio+sucursal por número de WhatsApp destino.
+-- Solo service_role (n8n): nunca expone el mapa completo al cliente.
+create or replace function fn_identificar_comercio_por_whatsapp(p_numero text)
+returns table(id_comercio uuid, id_sucursal uuid, provider text)
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select c.id_comercio, c.id_sucursal, c.provider::text
+  from tbl_canal_whatsapp c
+  where c.numero=p_numero
+    and c.activo
+  limit 1;
+$$;
+
+-- Guard: rechazar si NO es service_role
+create or replace function fn_assert_service_role()
+returns void
+language plpgsql
+as $$
+begin
+  if not fn_es_service_role() then
+    raise exception 'Operación reservada al backend (service_role)';
+  end if;
+end;
+$$;
+
+-- (v2/A6/HU-143) Registrar evento entrante. Devuelve true si es NUEVO.
+create or replace function fn_registrar_evento_whatsapp(
+  p_provider text,
+  p_external_message_id text,
+  p_tipo text default null,
+  p_payload jsonb default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_inserted boolean := false;
+begin
+  perform fn_assert_service_role();
+
+  insert into tbl_whatsapp_eventos(provider,external_message_id,tipo,payload)
+  values(p_provider,p_external_message_id,p_tipo,p_payload)
+  on conflict (provider,external_message_id) do nothing;
+
+  v_inserted := found;
+
+  if not v_inserted then
+    update tbl_whatsapp_eventos
+    set procesado=true, procesado_at=now(), payload=coalesce(payload,payload)
+    where provider=p_provider
+      and external_message_id=p_external_message_id
+      and procesado=false;
+  else
+    update tbl_whatsapp_eventos
+    set procesado=true, procesado_at=now()
+    where provider=p_provider
+      and external_message_id=p_external_message_id;
+  end if;
+
+  return v_inserted;
+end;
+$$;
+
+-- (v2/HU-142) Registrar opt-out del comprador
+create or replace function fn_registrar_opt_out(
+  p_id_comercio uuid,
+  p_telefono_whatsapp text,
+  p_motivo text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+begin
+  insert into tbl_contact_preferences(id_comercio,telefono_whatsapp,opted_out,opted_out_at,motivo)
+  values(p_id_comercio,p_telefono_whatsapp,true,now(),coalesce(p_motivo,'STOP'))
+  on conflict (id_comercio,telefono_whatsapp)
+  do update set opted_out=true, opted_out_at=now(), motivo=coalesce(excluded.motivo,tbl_contact_preferences.motivo);
+end;
+$$;
+
+-- (v2/HU-142) ¿Puede recibirse comunicación transaccional?
+create or replace function fn_cliente_optado(p_id_comercio uuid,p_telefono_whatsapp text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select coalesce((select opted_out from tbl_contact_preferences
+    where id_comercio=p_id_comercio and telefono_whatsapp=p_telefono_whatsapp),false);
+$$;
+
 
 -- Reserva atómica
 create or replace function fn_solicitar_reserva(
@@ -380,7 +592,8 @@ begin
 end;
 $$;
 
--- Lista de espera
+
+-- Agregar a lista de espera
 create or replace function fn_agregar_lista_espera(
   p_id_comercio uuid,
   p_id_sucursal uuid,
@@ -446,6 +659,7 @@ exception
 end;
 $$;
 
+
 -- Expirar reserva
 create or replace function fn_expirar_reserva(p_id_reserva uuid)
 returns jsonb
@@ -506,7 +720,8 @@ begin
 end;
 $$;
 
--- Notificar siguiente
+
+-- Notificar siguiente de la lista
 create or replace function fn_notificar_siguiente_lista_espera(
   p_id_sucursal uuid,
   p_id_variante uuid
@@ -557,6 +772,7 @@ begin
   );
 end;
 $$;
+
 
 -- Aceptar oportunidad
 create or replace function fn_aceptar_lista_espera(p_id_lista_espera uuid)
@@ -618,7 +834,8 @@ begin
 end;
 $$;
 
--- Pedido desde reserva
+
+-- Crear pedido desde reserva
 create or replace function fn_crear_pedido_desde_reserva(p_id_reserva uuid)
 returns uuid
 language plpgsql
@@ -680,6 +897,7 @@ begin
   return v_pedido;
 end;
 $$;
+
 
 -- Consumo atómico de créditos
 create or replace function fn_consumir_creditos(
@@ -751,6 +969,7 @@ begin
 end;
 $$;
 
+
 -- Acreditar créditos
 create or replace function fn_acreditar_creditos(
   p_id_comercio uuid,
@@ -802,6 +1021,7 @@ begin
   return v_nuevo;
 end;
 $$;
+
 
 -- Confirmar pago
 create or replace function fn_confirmar_pago(
@@ -883,7 +1103,9 @@ begin
 end;
 $$;
 
--- Rechazar verificación
+
+-- (v2/A9/HU-065) Rechazo: comprobante INVALIDO pero el pedido vuelve a
+-- ESPERANDO_PAGO para permitir reenvío. CANCELADO solo por decisión admin.
 create or replace function fn_rechazar_verificacion(
   p_id_verificacion uuid,
   p_resultado jsonb default '{}'::jsonb
@@ -916,16 +1138,19 @@ begin
   where id_comprobante=v_ver.id_comprobante;
 
   update tbl_pedidos
-  set estado='CANCELADO'
+  set estado='ESPERANDO_PAGO'
   where id_pedido=v_ver.id_pedido
     and estado in ('ESPERANDO_PAGO','PAGO_RECIBIDO','PAGO_VALIDANDO');
 
   return jsonb_build_object(
     'resultado','PAGO_RECHAZADO',
-    'id_pedido',v_ver.id_pedido
+    'id_pedido',v_ver.id_pedido,
+    'pedido','ESPERANDO_PAGO',
+    'puede_reenviar',true
   );
 end;
 $$;
+
 
 -- Crear envío
 create or replace function fn_crear_envio(
@@ -980,6 +1205,276 @@ begin
 end;
 $$;
 
+
+-- (v2/A4/HU-056) Generar cobro QR del pedido (referencia única por comercio).
+create or replace function fn_generar_cobro(
+  p_id_pedido uuid,
+  p_qr_url text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_pedido tbl_pedidos%rowtype;
+  v_metodo uuid;
+  v_id uuid;
+begin
+  select * into v_pedido from tbl_pedidos
+  where id_pedido=p_id_pedido for update;
+
+  if not found then
+    raise exception 'Pedido inexistente';
+  end if;
+
+  if v_pedido.estado not in ('CREADO','ESPERANDO_PAGO') then
+    raise exception 'El pedido % no admite cobro en estado %',p_id_pedido,v_pedido.estado;
+  end if;
+
+  select id_metodo_pago into v_metodo
+  from tbl_metodos_pago
+  where id_comercio=v_pedido.id_comercio and activo
+  order by created_at
+  limit 1;
+
+  if v_metodo is null then
+    raise exception 'El comercio no tiene métodos de pago configurados';
+  end if;
+
+  update tbl_pedidos set estado='ESPERANDO_PAGO' where id_pedido=p_id_pedido;
+
+  insert into tbl_qr_cobros(
+    id_comercio,id_pedido,id_metodo_pago,monto,referencia,qr_url,estado
+  )
+  values(
+    v_pedido.id_comercio,p_id_pedido,v_metodo,v_pedido.total,
+    'RS-'||lpad(v_pedido.numero_pedido::text,8,'0'),
+    p_qr_url,'GENERADO'
+  )
+  returning id_qr_cobro into v_id;
+
+  return v_id;
+end;
+$$;
+
+-- (v2/A3/HU-141) Iniciar verificación ATÓMICA: crea verificación + consume créditos.
+create or replace function fn_iniciar_verificacion(
+  p_id_comprobante uuid,
+  p_codigo_servicio text default 'VERIFICACION_COMPROBANTE',
+  p_forzar boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_comp tbl_comprobantes_pago%rowtype;
+  v_serv tbl_servicios_creditos%rowtype;
+  v_ver uuid;
+  v_costo bigint;
+begin
+  select * into v_comp from tbl_comprobantes_pago
+  where id_comprobante=p_id_comprobante for update;
+
+  if not found then
+    raise exception 'Comprobante inexistente';
+  end if;
+
+  if v_comp.estado not in ('RECIBIDO') then
+    return jsonb_build_object('resultado','ESTADO_NO_VERIFICABLE','estado',v_comp.estado);
+  end if;
+
+  select * into v_serv from tbl_servicios_creditos
+  where codigo=p_codigo_servicio and activo for share;
+
+  if not found then
+    raise exception 'Servicio de créditos inexistente: %',p_codigo_servicio;
+  end if;
+  v_costo := v_serv.costo_creditos;
+
+  insert into tbl_verificaciones(
+    id_comercio,id_comprobante,id_pedido,tipo_verificacion,estado,fecha_inicio
+  )
+  values(
+    v_comp.id_comercio,p_id_comprobante,v_comp.id_pedido,
+    p_codigo_servicio,'PROCESANDO',now()
+  )
+  returning id_verificacion into v_ver;
+
+  begin
+    perform 1 from tbl_cuentas_creditos
+    where id_comercio=v_comp.id_comercio for update;
+
+    if (select coalesce(saldo_actual,0) from tbl_cuentas_creditos
+        where id_comercio=v_comp.id_comercio) < v_costo then
+      raise exception 'SALDO_INSUFICIENTE';
+    end if;
+
+    perform fn_consumir_creditos(v_comp.id_comercio,v_serv.id_servicio,v_ver);
+
+  exception
+    when others then
+      if sqlerrm='SALDO_INSUFICIENTE' and not p_forzar then
+        update tbl_verificaciones
+        set estado='BLOQUEADA',
+            resultado=jsonb_build_object('motivo','SIN_CREDITOS'),
+            fecha_fin=now()
+        where id_verificacion=v_ver;
+
+        return jsonb_build_object(
+          'resultado','SIN_CREDITOS',
+          'id_verificacion',v_ver,
+          'mensaje','Recibimos tu comprobante. El comercio no puede completar la verificación en este momento.'
+        );
+      else
+        update tbl_verificaciones
+        set estado='ERROR',
+            resultado=jsonb_build_object('error',sqlerrm),
+            fecha_fin=now()
+        where id_verificacion=v_ver;
+        raise;
+      end if;
+  end;
+
+  update tbl_comprobantes_pago
+  set estado='PROCESANDO'
+  where id_comprobante=p_id_comprobante;
+
+  return jsonb_build_object('resultado','VERIFICACION_INICIADA','id_verificacion',v_ver);
+end;
+$$;
+
+-- (v2/A5/HU-092-094) Transición de estado logístico validada.
+create or replace function fn_actualizar_estado_envio(
+  p_id_envio uuid,
+  p_nuevo_estado estado_envio,
+  p_observacion text default null,
+  p_latitud numeric(9,6) default null,
+  p_longitud numeric(9,6) default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_env tbl_envios%rowtype;
+begin
+  select * into v_env from tbl_envios
+  where id_envio=p_id_envio for update;
+
+  if not found then
+    raise exception 'Envío inexistente';
+  end if;
+
+  if not (
+    (v_env.estado='PENDIENTE'   and p_nuevo_estado in ('PREPARANDO','CANCELADO'))
+ or (v_env.estado='PREPARANDO' and p_nuevo_estado in ('ASIGNADO','CANCELADO'))
+ or (v_env.estado='ASIGNADO'   and p_nuevo_estado in ('EN_RUTA','CANCELADO'))
+ or (v_env.estado='EN_RUTA'    and p_nuevo_estado in ('ENTREGADO','NO_ENTREGADO'))
+ or (v_env.estado='NO_ENTREGADO' and p_nuevo_estado in ('EN_RUTA'))
+  ) then
+    raise exception 'Transición inválida: % -> %',v_env.estado,p_nuevo_estado;
+  end if;
+
+  if p_nuevo_estado='NO_ENTREGADO' and coalesce(p_observacion,'')='' then
+    raise exception 'NO_ENTREGADO requiere observación';
+  end if;
+
+  update tbl_envios
+  set estado=p_nuevo_estado,
+      updated_at=now(),
+      id_repartidor=case
+        when p_nuevo_estado='EN_RUTA' and v_env.id_repartidor is null
+        then fn_current_usuario_id()
+        else v_env.id_repartidor end
+  where id_envio=p_id_envio;
+
+  insert into tbl_env_seguimiento_estados(
+    id_envio,estado,observacion,latitud,longitud,usuario_id
+  )
+  values(
+    p_id_envio,p_nuevo_estado,p_observacion,p_latitud,p_longitud,
+    fn_current_usuario_id()
+  );
+
+  return jsonb_build_object(
+    'resultado','ESTADO_ACTUALIZADO',
+    'id_envio',p_id_envio,
+    'estado',p_nuevo_estado
+  );
+end;
+$$;
+
+-- (v2/HU-032/033/034) Movimientos manuales de inventario (entradas/salidas/ajustes).
+create or replace function fn_movimiento_inventario(
+  p_id_sucursal uuid,
+  p_id_variante uuid,
+  p_tipo tipo_movimiento_inventario,
+  p_cantidad integer,
+  p_referencia_tipo text default 'MANUAL',
+  p_referencia_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_inv tbl_inventario%rowtype;
+  v_delta int;
+begin
+  if p_tipo not in ('ENTRADA','SALIDA','AJUSTE','DEVOLUCION') then
+    raise exception 'Tipo manual inválido: use ENTRADA/SALIDA/AJUSTE/DEVOLUCION';
+  end if;
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser positiva';
+  end if;
+  if not fn_tiene_acceso_sucursal(
+    (select s.id_comercio from tbl_sucursales s where s.id_sucursal=p_id_sucursal),
+    p_id_sucursal) then
+    raise exception 'Sin acceso a la sucursal';
+  end if;
+
+  select * into v_inv from tbl_inventario
+  where id_sucursal=p_id_sucursal and id_variante=p_id_variante
+  for update;
+
+  if not found then
+    if p_tipo<>'ENTRADA' then
+      raise exception 'No existe inventario para esa variante en la sucursal';
+    end if;
+    insert into tbl_inventario(id_sucursal,id_variante,stock_actual,stock_reservado)
+    values(p_id_sucursal,p_id_variante,0,0)
+    returning * into v_inv;
+  end if;
+
+  v_delta := case p_tipo when 'SALIDA' then -p_cantidad else p_cantidad end;
+
+  update tbl_inventario
+  set stock_actual=stock_actual+v_delta
+  where id_inventario=v_inv.id_inventario;
+
+  if (select stock_actual from tbl_inventario where id_inventario=v_inv.id_inventario)<0 then
+    raise exception 'Stock insuficiente para SALIDA de %',p_cantidad;
+  end if;
+
+  insert into tbl_inventario_movimientos(
+    id_comercio,id_sucursal,id_variante,tipo,cantidad,referencia_tipo,referencia_id,usuario_id
+  )
+  values(
+    (select id_comercio from tbl_sucursales where id_sucursal=p_id_sucursal),
+    p_id_sucursal,p_id_variante,p_tipo,p_cantidad,
+    p_referencia_tipo,p_referencia_id,fn_current_usuario_id()
+  );
+
+  return jsonb_build_object('resultado','MOVIMIENTO_OK','delta',v_delta);
+end;
+$$;
+
+
 -- Auditoría genérica
 create or replace function fn_auditar_cambio()
 returns trigger
@@ -1021,7 +1516,24 @@ begin
 end;
 $$;
 
--- Procesar reservas vencidas (para cron/WF-30)
+
+-- (v2/A12) Auditoría ACTIVA en tablas críticas (HU-127..131).
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
+    'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
+    'tbl_movimientos_creditos','tbl_envios'
+  ] loop
+    execute format('drop trigger if exists trg_audit_%s on %I',t,t);
+    execute format(
+      'create trigger trg_audit_%s after insert or update or delete on %I for each row execute function fn_auditar_cambio()',t,t);
+  end loop;
+end $$;
+
+
+-- Procesar reservas vencidas (cron / WF-30)
 create or replace function fn_procesar_reservas_vencidas(p_limite integer default 100)
 returns integer
 language plpgsql

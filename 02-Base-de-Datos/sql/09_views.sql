@@ -1,7 +1,5 @@
 -- ============================================================
--- RSUELVO :: VISTAS OPERATIVAS
--- Archivo 09/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 9. VISTAS OPERATIVAS
 -- ============================================================
 
 set search_path = rsuelvo, public;

@@ -1,7 +1,5 @@
 -- ============================================================
--- RSUELVO :: ENUMS
--- Archivo 02/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 2. ENUMS
 -- ============================================================
 
 set search_path = rsuelvo, public;

@@ -1,7 +1,5 @@
 -- ============================================================
--- RSUELVO :: TRIGGERS
--- Archivo 07/12 del schema separado
--- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- RSUELVO v2 :: 7. TRIGGERS
 -- ============================================================
 
 set search_path = rsuelvo, public;
@@ -12,11 +10,12 @@ create trigger trg_validar_asignacion_usuario_comercio
 before insert or update on tbl_usuario_comercio
 for each row execute function fn_validar_asignacion_usuario_comercio();
 
--- SKU único por comercio
-drop trigger if exists trg_validar_sku_variante_comercio on tbl_variantes;
-create trigger trg_validar_sku_variante_comercio
+-- Resolver tenant+SKU de variantes
+drop trigger if exists trg_resolver_variante_tenant_sku on tbl_variantes;
+create trigger trg_resolver_variante_tenant_sku
 before insert or update on tbl_variantes
-for each row execute function fn_validar_sku_variante_comercio();
+for each row execute function fn_resolver_variante_tenant_sku();
+
 
 -- Consistencia multi-tenant
 drop trigger if exists trg_reservas_tenant on tbl_reservas;
@@ -39,6 +38,7 @@ drop trigger if exists trg_comprobantes_tenant on tbl_comprobantes_pago;
 create trigger trg_comprobantes_tenant before insert or update on tbl_comprobantes_pago
 for each row execute function fn_validar_consistencia_tenant();
 
+
 -- updated_at
 do $$
 declare
@@ -59,10 +59,17 @@ begin
   end loop;
 end $$;
 
--- Auditoría genérica (fn_auditar_cambio existe pero SIN triggers adjuntos en el monolito).
--- Se recomienda activarla en tablas críticas una vez validado el volumen:
---
--- create trigger trg_audit_inventario after insert or update or delete
---   on tbl_inventario for each row execute function fn_auditar_cambio();
--- (repetir para: tbl_variantes, tbl_reservas, tbl_pedidos, tbl_verificaciones,
---  tbl_movimientos_creditos, tbl_envios)
+-- Auditoría ACTIVA en tablas críticas (A12/HU-127..131)
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'tbl_usuario_comercio','tbl_comercio_config','tbl_variantes','tbl_inventario',
+    'tbl_reservas','tbl_pedidos','tbl_comprobantes_pago','tbl_verificaciones',
+    'tbl_movimientos_creditos','tbl_envios'
+  ] loop
+    execute format('drop trigger if exists trg_audit_%s on %I',t,t);
+    execute format(
+      'create trigger trg_audit_%s after insert or update or delete on %I for each row execute function fn_auditar_cambio()',t,t);
+  end loop;
+end $$;

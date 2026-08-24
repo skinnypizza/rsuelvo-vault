@@ -76,3 +76,26 @@ sql/
 ```
 
 Verificación automática post-split: 29 tablas · 14 enums · 24 funciones · sin `begin;/commit;` global · cada archivo idempotente con `search_path` fijado.
+
+## 6. RESOLUCIÓN — Schema v2 (2026-08-24, mismo día)
+
+El schema **v2** (`RSUELVO_SUPABASE_schema_v2.sql`, 2.614 líneas; split en `sql/01…12`) cierra los hallazgos:
+
+| ID | Resolución v2 |
+|----|---------------|
+| A1 | `tbl_variantes.id_comercio` denormalizado + `UNIQUE(id_comercio,sku)` físico + trigger genera/valida SKU |
+| **SKU v2** | **6 caracteres = [3 código tienda][3 producto] base36** (`^[A-Z0-9]{6}$`). `codigo_tienda char(3)` único por comercio (ej. FER → FERA01…). Generación automática serializada con FOR UPDATE; `sku_anterior` conserva el formato viejo durante migración |
+| A2 | `tbl_canal_whatsapp` (1 WhatsApp=1 tienda, provider OPENWA/META) + `fn_identificar_comercio_por_whatsapp` (solo service_role) |
+| A3 | `fn_iniciar_verificacion`: verificación + consumo atómicos; SIN_CREDITOS→BLOQUEADA sin excepción (HU-141) |
+| A4 | `fn_generar_cobro` con referencia `RS-{numero_pedido}` |
+| A5 | `fn_actualizar_estado_envio` valida transiciones y exige observación en NO_ENTREGADO |
+| A6 | `tbl_whatsapp_eventos` + `fn_registrar_evento_whatsapp` (HU-143) |
+| A7/A8 | buckets creados en `11_storage.sql`; pg_cron programado en `12_cron.sql` |
+| A9 | rechazo deja pedido en ESPERANDO_PAGO con `puede_reenviar=true` |
+| A10 | RLS reescrito: escritura catálogo/sucursales/métodos=admin; envíos admin|cajero; verificar admin|cajero (`fn_puede_verificar/gestionar_envios`) |
+| A11 | pendiente de decisión (cosmético) |
+| A12 | triggers de auditoría ACTIVOS en 10 tablas críticas |
+
+**Nuevo hallazgo resuelto en v2:** las funciones security-definer fallaban cuando n8n llama con service_role (`auth.uid()` null ⇒ "Sin acceso"). Añadido `fn_es_service_role()` como bypass controlado en los helpers de tenancy — sin esto, E07/E09/E10 no funcionaban desde workflows.
+
+Estado final: **0 inconsistencias conocidas** entre SQL v2 ↔ ERD ↔ HU (148) ↔ workflows ↔ wireframes.
