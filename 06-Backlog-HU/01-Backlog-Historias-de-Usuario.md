@@ -1,7 +1,7 @@
 # Backlog de Historias de Usuario — RSUELVO
 
-> **Versión:** 1.0 · **Fecha:** 2026-08-24 · **Origen:** sesión colaborativa (ChatGPT) sobre este vault
-> **Estado:** Congelado como base del prompt maestro · **Total:** 140 HU en 22 épicas
+> **Versión:** 1.1 · **Fecha:** 2026-08-24 · **Origen:** sesión colaborativa (ChatGPT) sobre este vault + ampliación post-auditoría
+> **Estado:** Congelado como base del prompt maestro · **Total:** 148 HU en 22 épicas
 > **Auditoría de consistencia:** ver [[02-Auditoria-de-Consistencia]]
 
 ## Decisiones previas congeladas
@@ -21,10 +21,10 @@
 | E05 Catálogo | 022–029 | E16 Super Admin | 103–109 |
 | E06 Inventario | 030–036 | E17 SysAdmin | 110–114 |
 | E07 Compra WhatsApp | 037–042 | E18 Soporte | 115–119 |
-| E08 Lista de espera | 043–049 | E19 WhatsApp/n8n | 120–126 |
+| E08 Lista de espera | 043–049 | E19 WhatsApp/n8n | 120–126, **142–145** |
 | E09 Reservas | 050–055 | E20 Auditoría | 127–131 |
-| E10 Pagos/Comprobantes | 056–065 | E21 Seguridad multitenant | 132–136 |
-| E11 Créditos IA | 066–075 | E22 UX/Offline | 137–140 |
+| E10 Pagos/Comprobantes | 056–065, **141** | E21 Seguridad multitenant | 132–136 |
+| E11 Créditos IA | 066–075, **146–147** | E22 UX/Offline | 137–140, **148** |
 
 ---
 
@@ -210,6 +210,21 @@ Restricción estricta: SysAdmin NO consulta saldos, cuentas bancarias ni datos s
 **HU-137 Detectar pérdida de conexión** · **HU-138 Mostrar estado offline** · **HU-139 Reintentar sincronización** — WF: pantalla 35 · **HU-140 Mostrar estados vacíos** — WF: pantallas 22/26.
 
 ---
+
+---
+
+# AMPLIACIÓN POST-AUDITORÍA — HU-141 a HU-148
+
+> Nacidas de [[02-Auditoria-de-Consistencia]] (I5 + G1-G6). Se integran a sus épicas de destino.
+
+**HU-141 Reintentar verificación manual** *(admin/cajero → E10)* Lanzar o relanzar la verificación de un comprobante en RECIBIDO/BLOQUEADO cuando `verificacion_automatica=false` o tras recargar créditos. Consume crédito por la misma cadena atómica. WF: pantallas 24 ("Verificar ahora") y 08.
+**HU-142 Registrar opt-out del comprador** *(sistema → E19)* Detectar STOP / NO QUIERO / NO ME CONTACTEN; persistir `contact_preferences.opted_out`; suprimir comunicaciones no esenciales. Política §16.
+**HU-143 Idempotencia global de eventos** *(sistema → E19)* Tabla `tbl_whatsapp_eventos`: si `message_id` ya fue procesado → ignorar. Obligatorio antes de procesar cualquier webhook (workflows §13).
+**HU-144 Cola y rate limiting de envíos** *(sistema → E19)* Toda salida pasa por cola `pending→queued→processing→sent` con límites configurables por instancia/tienda/número. Política §9-10.
+**HU-145 Circuit breaker de envíos** *(sistema → E19)* CLOSED→OPEN→HALF_OPEN ante anomalías; pausa los envíos automáticos sin cortar la recepción. Política §14.
+**HU-146 Devolver créditos por fallo técnico** *(sistema → E11)* Si la verificación falla por error técnico (IA indisponible, timeout), registrar movimiento DEVOLUCION del costo (WF-52) sin marcar el pago como inválido.
+**HU-147 Expirar créditos** *(sistema → E11)* Si se define vigencia comercial de créditos, registrar movimiento EXPIRACION en el ledger (P2).
+**HU-148 Actualización en tiempo real en la app** *(usuario móvil → E22)* Suscripción Supabase Realtime para pedidos/reservas/comprobantes: lo que ocurre por WhatsApp se refleja solo en dashboard, cobros y reservas.
 
 ## Clasificación por destino de implementación
 

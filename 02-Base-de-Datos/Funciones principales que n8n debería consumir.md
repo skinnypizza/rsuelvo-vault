@@ -1,4 +1,4 @@
-### Funciones principales que n8n debería consumir
+ ### Funciones principales que n8n debería consumir
 
 La arquitectura queda aproximadamente:
 `n8n`
@@ -63,5 +63,5 @@ Debe hacer simplemente:
 12_cron.sql
 ```
 
-Ubicacion de SQL BASE:  /home/nico/RSUELVO
+Ubicacion de SQL BASE:  /home/nico/rsuelvo/RSUELVO_SUPABASE_schema.sql (separado en `sql/01…12`; copia versionada en este vault: `02-Base-de-Datos/sql/`)
 

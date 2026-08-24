@@ -1,0 +1,1054 @@
+-- ============================================================
+-- RSUELVO :: FUNCIONES
+-- Archivo 06/12 del schema separado
+-- Ejecutar en orden. Idempotente. Esquema: rsuelvo
+-- ============================================================
+
+set search_path = rsuelvo, public;
+
+-- Validación de asignación usuario/comercio (cajero 1 sucursal)
+create or replace function fn_validar_asignacion_usuario_comercio()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_codigo rol_codigo;
+  v_sucursal uuid;
+begin
+  select codigo into v_codigo from tbl_roles where id_rol=new.id_rol;
+
+  if v_codigo in ('ROLE_TENANT_CASHIER','ROLE_LOGISTICS_AGENT')
+     and new.id_sucursal is null then
+    raise exception 'El rol % requiere una sucursal',v_codigo;
+  end if;
+
+  if v_codigo='ROLE_TENANT_CASHIER' then
+    if exists (
+      select 1
+      from tbl_usuario_comercio uc
+      join tbl_roles r on r.id_rol=uc.id_rol
+      where uc.id_usuario=new.id_usuario
+        and uc.activo
+        and r.codigo='ROLE_TENANT_CASHIER'
+        and uc.id<>coalesce(new.id,'00000000-0000-0000-0000-000000000000'::uuid)
+    ) then
+      raise exception 'Un cashier solo puede tener una asignación activa';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Validación SKU único por comercio
+create or replace function fn_validar_sku_variante_comercio()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_comercio uuid;
+begin
+  select id_comercio into v_comercio
+  from tbl_productos
+  where id_producto=new.id_producto;
+
+  if v_comercio is null then
+    raise exception 'Producto inexistente';
+  end if;
+
+  if exists (
+    select 1
+    from tbl_variantes v
+    join tbl_productos p on p.id_producto=v.id_producto
+    where p.id_comercio=v_comercio
+      and v.sku=new.sku
+      and v.id_variante<>coalesce(new.id_variante,'00000000-0000-0000-0000-000000000000'::uuid)
+  ) then
+    raise exception 'SKU duplicado dentro del comercio: %',new.sku;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Consistencia multi-tenant
+create or replace function fn_validar_consistencia_tenant()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_comercio uuid;
+begin
+  -- Sucursal pertenece al comercio.
+  if tg_table_name in ('tbl_reservas','tbl_lista_espera','tbl_pedidos','tbl_envios') then
+    select id_comercio into v_comercio
+    from tbl_sucursales
+    where id_sucursal=new.id_sucursal;
+
+    if v_comercio is distinct from new.id_comercio then
+      raise exception 'La sucursal no pertenece al comercio';
+    end if;
+  end if;
+
+  -- Cliente pertenece al comercio.
+  if tg_table_name in ('tbl_reservas','tbl_pedidos','tbl_comprobantes_pago') then
+    select id_comercio into v_comercio
+    from tbl_clientes
+    where id_cliente=new.id_cliente;
+
+    if v_comercio is distinct from new.id_comercio then
+      raise exception 'El cliente no pertenece al comercio';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- updated_at automático
+create or replace function fn_set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- Seguridad / tenancy helpers
+create or replace function fn_current_usuario_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select id_usuario
+  from tbl_usuarios
+  where auth_user_id = auth.uid()
+    and activo = true
+  limit 1;
+$$;
+
+create or replace function fn_tiene_rol(p_rol rol_codigo)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select exists (
+    select 1
+    from tbl_usuario_comercio uc
+    join tbl_roles r on r.id_rol=uc.id_rol
+    join tbl_usuarios u on u.id_usuario=uc.id_usuario
+    where u.auth_user_id=auth.uid()
+      and u.activo
+      and uc.activo
+      and r.codigo=p_rol
+  );
+$$;
+
+create or replace function fn_es_superadmin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_tiene_rol('ROLE_SUPERADMIN');
+$$;
+
+create or replace function fn_tiene_acceso_comercio(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_superadmin()
+      or exists (
+        select 1
+        from tbl_usuario_comercio uc
+        join tbl_usuarios u on u.id_usuario=uc.id_usuario
+        where u.auth_user_id=auth.uid()
+          and u.activo
+          and uc.activo
+          and uc.id_comercio=p_id_comercio
+      );
+$$;
+
+create or replace function fn_tiene_acceso_sucursal(p_id_comercio uuid,p_id_sucursal uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_superadmin()
+      or exists (
+        select 1
+        from tbl_usuario_comercio uc
+        join tbl_usuarios u on u.id_usuario=uc.id_usuario
+        where u.auth_user_id=auth.uid()
+          and u.activo
+          and uc.activo
+          and uc.id_comercio=p_id_comercio
+          and (
+            uc.id_sucursal is null
+            or uc.id_sucursal=p_id_sucursal
+            or exists (
+              select 1
+              from tbl_roles r
+              where r.id_rol=uc.id_rol
+                and r.codigo in ('ROLE_TENANT_ADMIN','ROLE_SUPPORT','ROLE_SUPERADMIN')
+            )
+          )
+      );
+$$;
+
+create or replace function fn_es_admin_comercio(p_id_comercio uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select fn_es_superadmin()
+      or exists (
+        select 1
+        from tbl_usuario_comercio uc
+        join tbl_usuarios u on u.id_usuario=uc.id_usuario
+        join tbl_roles r on r.id_rol=uc.id_rol
+        where u.auth_user_id=auth.uid()
+          and u.activo and uc.activo
+          and uc.id_comercio=p_id_comercio
+          and r.codigo in ('ROLE_TENANT_ADMIN','ROLE_SUPPORT')
+      );
+$$;
+
+-- Upsert de cliente
+create or replace function fn_upsert_cliente(
+  p_id_comercio uuid,
+  p_nombre text,
+  p_telefono text default null,
+  p_telefono_whatsapp text default null,
+  p_email text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_id uuid;
+begin
+  if not fn_tiene_acceso_comercio(p_id_comercio) then
+    raise exception 'Sin acceso al comercio';
+  end if;
+
+  if p_telefono_whatsapp is not null then
+    select id_cliente into v_id
+    from tbl_clientes
+    where id_comercio=p_id_comercio
+      and telefono_whatsapp=p_telefono_whatsapp
+    for update;
+
+    if v_id is not null then
+      update tbl_clientes
+      set nombre=coalesce(nullif(p_nombre,''),nombre),
+          telefono=coalesce(p_telefono,telefono),
+          email=coalesce(p_email,email)
+      where id_cliente=v_id;
+      return v_id;
+    end if;
+  end if;
+
+  insert into tbl_clientes(
+    id_comercio,nombre,telefono,telefono_whatsapp,email
+  )
+  values(
+    p_id_comercio,p_nombre,p_telefono,p_telefono_whatsapp,p_email
+  )
+  returning id_cliente into v_id;
+
+  return v_id;
+end;
+$$;
+
+-- Reserva atómica
+create or replace function fn_solicitar_reserva(
+  p_id_comercio uuid,
+  p_id_sucursal uuid,
+  p_id_variante uuid,
+  p_id_cliente uuid,
+  p_cantidad integer default 1
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_inv tbl_inventario%rowtype;
+  v_cfg tbl_comercio_config%rowtype;
+  v_reserva uuid;
+  v_pedido uuid;
+  v_precio numeric(14,2);
+begin
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser mayor a 0';
+  end if;
+
+  if not fn_tiene_acceso_sucursal(p_id_comercio,p_id_sucursal) then
+    raise exception 'Sin acceso al comercio/sucursal';
+  end if;
+
+  select * into v_cfg
+  from tbl_comercio_config
+  where id_comercio=p_id_comercio;
+
+  if not found then
+    raise exception 'El comercio no tiene configuración';
+  end if;
+
+  select v.precio into v_precio
+  from tbl_variantes v
+  join tbl_productos p on p.id_producto=v.id_producto
+  where v.id_variante=p_id_variante
+    and p.id_comercio=p_id_comercio
+    and v.activo
+    and p.activo;
+
+  if v_precio is null then
+    raise exception 'SKU/variante inválida para el comercio';
+  end if;
+
+  -- Bloqueo pesimista: solo una transacción modifica esta fila.
+  select * into v_inv
+  from tbl_inventario
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+  for update;
+
+  if not found then
+    return jsonb_build_object(
+      'resultado','SIN_STOCK',
+      'motivo','NO_EXISTE_INVENTARIO'
+    );
+  end if;
+
+  if (v_inv.stock_actual-v_inv.stock_reservado) >= p_cantidad then
+
+    update tbl_inventario
+    set stock_reservado=stock_reservado+p_cantidad
+    where id_inventario=v_inv.id_inventario;
+
+    insert into tbl_reservas(
+      id_comercio,id_sucursal,id_variante,id_cliente,
+      origen,estado,cantidad,fecha_inicio,fecha_expiracion
+    )
+    values(
+      p_id_comercio,p_id_sucursal,p_id_variante,p_id_cliente,
+      'DIRECTA','ACTIVA',p_cantidad,now(),
+      now() + make_interval(mins=>v_cfg.tiempo_reserva_minutos)
+    )
+    returning id_reserva into v_reserva;
+
+    insert into tbl_inventario_movimientos(
+      id_comercio,id_sucursal,id_variante,tipo,cantidad,referencia_tipo,referencia_id,usuario_id
+    )
+    values(
+      p_id_comercio,p_id_sucursal,p_id_variante,'RESERVA',
+      p_cantidad,'RESERVA',v_reserva,fn_current_usuario_id()
+    );
+
+    return jsonb_build_object(
+      'resultado','RESERVA_CREADA',
+      'id_reserva',v_reserva,
+      'fecha_expiracion',(
+        select fecha_expiracion from tbl_reservas where id_reserva=v_reserva
+      )
+    );
+  end if;
+
+  return jsonb_build_object(
+    'resultado','SIN_STOCK',
+    'motivo','PRODUCTO_RESERVADO_O_AGOTADO'
+  );
+end;
+$$;
+
+-- Lista de espera
+create or replace function fn_agregar_lista_espera(
+  p_id_comercio uuid,
+  p_id_sucursal uuid,
+  p_id_variante uuid,
+  p_id_cliente uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_max integer;
+  v_pos integer;
+  v_id uuid;
+begin
+  if not fn_tiene_acceso_sucursal(p_id_comercio,p_id_sucursal) then
+    raise exception 'Sin acceso al comercio/sucursal';
+  end if;
+
+  select max_lista_espera_por_producto into v_max
+  from tbl_comercio_config
+  where id_comercio=p_id_comercio;
+
+  if v_max is null then
+    raise exception 'Configuración de comercio inexistente';
+  end if;
+
+  perform 1
+  from tbl_inventario
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+  for update;
+
+  select count(*) into v_pos
+  from tbl_lista_espera
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+    and estado in ('ESPERANDO','NOTIFICADO','ACEPTADO');
+
+  if v_pos >= v_max then
+    raise exception 'LISTA_DE_ESPERA_LLENA';
+  end if;
+
+  select coalesce(max(posicion),0)+1 into v_pos
+  from tbl_lista_espera
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+    and estado in ('ESPERANDO','NOTIFICADO');
+
+  insert into tbl_lista_espera(
+    id_comercio,id_sucursal,id_variante,id_cliente,posicion,estado
+  )
+  values(
+    p_id_comercio,p_id_sucursal,p_id_variante,p_id_cliente,v_pos,'ESPERANDO'
+  )
+  returning id_lista_espera into v_id;
+
+  return v_id;
+exception
+  when unique_violation then
+    raise exception 'El cliente ya está en la lista de espera activa';
+end;
+$$;
+
+-- Expirar reserva
+create or replace function fn_expirar_reserva(p_id_reserva uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_res tbl_reservas%rowtype;
+begin
+  select * into v_res
+  from tbl_reservas
+  where id_reserva=p_id_reserva
+  for update;
+
+  if not found then
+    raise exception 'Reserva inexistente';
+  end if;
+
+  if v_res.estado <> 'ACTIVA' then
+    return jsonb_build_object('resultado','SIN_CAMBIO','estado',v_res.estado);
+  end if;
+
+  if v_res.fecha_expiracion > now() then
+    return jsonb_build_object(
+      'resultado','AUN_ACTIVA',
+      'fecha_expiracion',v_res.fecha_expiracion
+    );
+  end if;
+
+  update tbl_reservas
+  set estado='VENCIDA',
+      fecha_finalizacion=now()
+  where id_reserva=p_id_reserva;
+
+  update tbl_inventario
+  set stock_reservado=stock_reservado-v_res.cantidad
+  where id_sucursal=v_res.id_sucursal
+    and id_variante=v_res.id_variante
+    and stock_reservado >= v_res.cantidad;
+
+  if not found then
+    raise exception 'Inconsistencia de inventario al liberar reserva %',p_id_reserva;
+  end if;
+
+  insert into tbl_inventario_movimientos(
+    id_comercio,id_sucursal,id_variante,tipo,cantidad,referencia_tipo,referencia_id
+  )
+  values(
+    v_res.id_comercio,v_res.id_sucursal,v_res.id_variante,
+    'LIBERACION_RESERVA',v_res.cantidad,'RESERVA',v_res.id_reserva
+  );
+
+  return jsonb_build_object(
+    'resultado','RESERVA_LIBERADA',
+    'id_reserva',p_id_reserva
+  );
+end;
+$$;
+
+-- Notificar siguiente
+create or replace function fn_notificar_siguiente_lista_espera(
+  p_id_sucursal uuid,
+  p_id_variante uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_item tbl_lista_espera%rowtype;
+  v_cfg tbl_comercio_config%rowtype;
+begin
+  select * into v_item
+  from tbl_lista_espera
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+    and estado='ESPERANDO'
+  order by posicion
+  limit 1
+  for update skip locked;
+
+  if not found then
+    return jsonb_build_object('resultado','LISTA_VACIA');
+  end if;
+
+  select * into v_cfg
+  from tbl_comercio_config
+  where id_comercio=v_item.id_comercio;
+
+  update tbl_lista_espera
+  set estado='NOTIFICADO',
+      fecha_notificacion=now(),
+      fecha_expiracion=now()+make_interval(
+        mins=>v_cfg.tiempo_aceptacion_lista_espera_minutos
+      )
+  where id_lista_espera=v_item.id_lista_espera;
+
+  return jsonb_build_object(
+    'resultado','CLIENTE_NOTIFICADO',
+    'id_lista_espera',v_item.id_lista_espera,
+    'id_cliente',v_item.id_cliente,
+    'fecha_expiracion',(
+      select fecha_expiracion
+      from tbl_lista_espera
+      where id_lista_espera=v_item.id_lista_espera
+    )
+  );
+end;
+$$;
+
+-- Aceptar oportunidad
+create or replace function fn_aceptar_lista_espera(p_id_lista_espera uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_item tbl_lista_espera%rowtype;
+  v_result jsonb;
+begin
+  select * into v_item
+  from tbl_lista_espera
+  where id_lista_espera=p_id_lista_espera
+  for update;
+
+  if not found then
+    raise exception 'Entrada de lista inexistente';
+  end if;
+
+  if v_item.estado <> 'NOTIFICADO' then
+    raise exception 'La oportunidad ya no está disponible';
+  end if;
+
+  if v_item.fecha_expiracion < now() then
+    update tbl_lista_espera
+    set estado='VENCIDO'
+    where id_lista_espera=p_id_lista_espera;
+
+    return jsonb_build_object('resultado','OPORTUNIDAD_VENCIDA');
+  end if;
+
+  update tbl_lista_espera
+  set estado='ACEPTADO',
+      fecha_aceptacion=now()
+  where id_lista_espera=p_id_lista_espera;
+
+  v_result := fn_solicitar_reserva(
+    v_item.id_comercio,
+    v_item.id_sucursal,
+    v_item.id_variante,
+    v_item.id_cliente,
+    1
+  );
+
+  if v_result->>'resultado' = 'RESERVA_CREADA' then
+    update tbl_lista_espera
+    set estado='CONVERTIDO_RESERVA',
+        id_reserva_generada=(v_result->>'id_reserva')::uuid
+    where id_lista_espera=p_id_lista_espera;
+  else
+    update tbl_lista_espera
+    set estado='VENCIDO'
+    where id_lista_espera=p_id_lista_espera;
+  end if;
+
+  return v_result;
+end;
+$$;
+
+-- Pedido desde reserva
+create or replace function fn_crear_pedido_desde_reserva(p_id_reserva uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_res tbl_reservas%rowtype;
+  v_var tbl_variantes%rowtype;
+  v_prod tbl_productos%rowtype;
+  v_pedido uuid;
+  v_subtotal numeric(14,2);
+begin
+  select * into v_res
+  from tbl_reservas
+  where id_reserva=p_id_reserva
+  for update;
+
+  if not found then
+    raise exception 'Reserva inexistente';
+  end if;
+
+  if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') then
+    raise exception 'La reserva no puede generar pedido';
+  end if;
+
+  select v.* into v_var
+  from tbl_variantes v
+  where v.id_variante=v_res.id_variante;
+
+  select p.* into v_prod
+  from tbl_productos p
+  where p.id_producto=v_var.id_producto;
+
+  v_subtotal := v_var.precio * v_res.cantidad;
+
+  insert into tbl_pedidos(
+    id_comercio,id_sucursal,id_cliente,estado,subtotal,descuento,id_reserva
+  )
+  values(
+    v_res.id_comercio,v_res.id_sucursal,v_res.id_cliente,
+    'ESPERANDO_PAGO',v_subtotal,0,p_id_reserva
+  )
+  returning id_pedido into v_pedido;
+
+  insert into tbl_pedido_detalles(
+    id_pedido,id_variante,sku_snapshot,nombre_snapshot,precio_unitario,cantidad
+  )
+  values(
+    v_pedido,v_var.id_variante,v_var.sku,
+    v_prod.nombre || ' - ' || v_var.nombre,
+    v_var.precio,v_res.cantidad
+  );
+
+  update tbl_reservas
+  set id_pedido=v_pedido
+  where id_reserva=p_id_reserva;
+
+  return v_pedido;
+end;
+$$;
+
+-- Consumo atómico de créditos
+create or replace function fn_consumir_creditos(
+  p_id_comercio uuid,
+  p_id_servicio uuid,
+  p_referencia_id uuid
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_cuenta tbl_cuentas_creditos%rowtype;
+  v_serv tbl_servicios_creditos%rowtype;
+  v_anterior bigint;
+  v_nuevo bigint;
+begin
+  select * into v_serv
+  from tbl_servicios_creditos
+  where id_servicio=p_id_servicio
+    and activo
+  for share;
+
+  if not found then
+    raise exception 'Servicio de créditos inexistente o inactivo';
+  end if;
+
+  select * into v_cuenta
+  from tbl_cuentas_creditos
+  where id_comercio=p_id_comercio
+  for update;
+
+  if not found then
+    insert into tbl_cuentas_creditos(id_comercio,saldo_actual)
+    values(p_id_comercio,0)
+    returning * into v_cuenta;
+  end if;
+
+  v_anterior := v_cuenta.saldo_actual;
+
+  if v_anterior < v_serv.costo_creditos then
+    raise exception 'SALDO_INSUFICIENTE';
+  end if;
+
+  v_nuevo := v_anterior-v_serv.costo_creditos;
+
+  update tbl_cuentas_creditos
+  set saldo_actual=v_nuevo
+  where id_cuenta_creditos=v_cuenta.id_cuenta_creditos;
+
+  insert into tbl_movimientos_creditos(
+    id_comercio,id_cuenta_creditos,tipo,cantidad,
+    saldo_anterior,saldo_posterior,concepto,referencia_tipo,referencia_id
+  )
+  values(
+    p_id_comercio,v_cuenta.id_cuenta_creditos,
+    'CONSUMO_VERIFICACION',-v_serv.costo_creditos,
+    v_anterior,v_nuevo,
+    'Consumo de servicio de verificación',
+    'VERIFICACION',p_referencia_id
+  );
+
+  update tbl_verificaciones
+  set creditos_consumidos=v_serv.costo_creditos
+  where id_verificacion=p_referencia_id;
+
+  return v_serv.costo_creditos;
+end;
+$$;
+
+-- Acreditar créditos
+create or replace function fn_acreditar_creditos(
+  p_id_comercio uuid,
+  p_cantidad bigint,
+  p_tipo tipo_movimiento_credito,
+  p_concepto text default null,
+  p_referencia_tipo text default null,
+  p_referencia_id uuid default null
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_cuenta tbl_cuentas_creditos%rowtype;
+  v_anterior bigint;
+  v_nuevo bigint;
+begin
+  if p_cantidad <= 0 then
+    raise exception 'La cantidad debe ser positiva';
+  end if;
+
+  insert into tbl_cuentas_creditos(id_comercio,saldo_actual)
+  values(p_id_comercio,0)
+  on conflict(id_comercio) do nothing;
+
+  select * into v_cuenta
+  from tbl_cuentas_creditos
+  where id_comercio=p_id_comercio
+  for update;
+
+  v_anterior := v_cuenta.saldo_actual;
+  v_nuevo := v_anterior+p_cantidad;
+
+  update tbl_cuentas_creditos
+  set saldo_actual=v_nuevo
+  where id_cuenta_creditos=v_cuenta.id_cuenta_creditos;
+
+  insert into tbl_movimientos_creditos(
+    id_comercio,id_cuenta_creditos,tipo,cantidad,
+    saldo_anterior,saldo_posterior,concepto,referencia_tipo,referencia_id
+  )
+  values(
+    p_id_comercio,v_cuenta.id_cuenta_creditos,p_tipo,p_cantidad,
+    v_anterior,v_nuevo,p_concepto,p_referencia_tipo,p_referencia_id
+  );
+
+  return v_nuevo;
+end;
+$$;
+
+-- Confirmar pago
+create or replace function fn_confirmar_pago(
+  p_id_verificacion uuid,
+  p_resultado jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_ver tbl_verificaciones%rowtype;
+  v_res tbl_reservas%rowtype;
+begin
+  select * into v_ver
+  from tbl_verificaciones
+  where id_verificacion=p_id_verificacion
+  for update;
+
+  if not found then
+    raise exception 'Verificación inexistente';
+  end if;
+
+  select * into v_res
+  from tbl_reservas
+  where id_pedido=v_ver.id_pedido
+  for update;
+
+  if not found then
+    raise exception 'No existe reserva asociada al pedido';
+  end if;
+
+  update tbl_verificaciones
+  set estado='COMPLETADA',
+      resultado=p_resultado,
+      fecha_fin=now()
+  where id_verificacion=p_id_verificacion;
+
+  update tbl_comprobantes_pago
+  set estado='VALIDO'
+  where id_comprobante=v_ver.id_comprobante;
+
+  update tbl_pedidos
+  set estado='PAGADO',
+      fecha_confirmacion=now()
+  where id_pedido=v_ver.id_pedido;
+
+  update tbl_reservas
+  set estado='CONFIRMADA',
+      fecha_finalizacion=now()
+  where id_reserva=v_res.id_reserva;
+
+  update tbl_inventario
+  set stock_reservado=stock_reservado-v_res.cantidad,
+      stock_actual=stock_actual-v_res.cantidad
+  where id_sucursal=v_res.id_sucursal
+    and id_variante=v_res.id_variante
+    and stock_reservado >= v_res.cantidad
+    and stock_actual >= v_res.cantidad;
+
+  if not found then
+    raise exception 'Inconsistencia de inventario al confirmar venta';
+  end if;
+
+  insert into tbl_inventario_movimientos(
+    id_comercio,id_sucursal,id_variante,tipo,cantidad,referencia_tipo,referencia_id
+  )
+  values(
+    v_res.id_comercio,v_res.id_sucursal,v_res.id_variante,
+    'VENTA',v_res.cantidad,'PEDIDO',v_ver.id_pedido
+  );
+
+  return jsonb_build_object(
+    'resultado','PAGO_CONFIRMADO',
+    'id_pedido',v_ver.id_pedido,
+    'id_reserva',v_res.id_reserva
+  );
+end;
+$$;
+
+-- Rechazar verificación
+create or replace function fn_rechazar_verificacion(
+  p_id_verificacion uuid,
+  p_resultado jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_ver tbl_verificaciones%rowtype;
+begin
+  select * into v_ver
+  from tbl_verificaciones
+  where id_verificacion=p_id_verificacion
+  for update;
+
+  if not found then
+    raise exception 'Verificación inexistente';
+  end if;
+
+  update tbl_verificaciones
+  set estado='COMPLETADA',
+      resultado=p_resultado,
+      fecha_fin=now()
+  where id_verificacion=p_id_verificacion;
+
+  update tbl_comprobantes_pago
+  set estado='INVALIDO'
+  where id_comprobante=v_ver.id_comprobante;
+
+  update tbl_pedidos
+  set estado='CANCELADO'
+  where id_pedido=v_ver.id_pedido
+    and estado in ('ESPERANDO_PAGO','PAGO_RECIBIDO','PAGO_VALIDANDO');
+
+  return jsonb_build_object(
+    'resultado','PAGO_RECHAZADO',
+    'id_pedido',v_ver.id_pedido
+  );
+end;
+$$;
+
+-- Crear envío
+create or replace function fn_crear_envio(
+  p_id_pedido uuid,
+  p_direccion text,
+  p_referencia text,
+  p_telefono_contacto text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_pedido tbl_pedidos%rowtype;
+  v_id uuid;
+begin
+  select * into v_pedido
+  from tbl_pedidos
+  where id_pedido=p_id_pedido
+  for update;
+
+  if not found then
+    raise exception 'Pedido inexistente';
+  end if;
+
+  if v_pedido.estado <> 'PAGADO' then
+    raise exception 'El pedido todavía no está pagado';
+  end if;
+
+  insert into tbl_envios(
+    id_comercio,id_pedido,id_sucursal,direccion,referencia,telefono_contacto
+  )
+  values(
+    v_pedido.id_comercio,p_id_pedido,v_pedido.id_sucursal,
+    p_direccion,p_referencia,p_telefono_contacto
+  )
+  returning id_envio into v_id;
+
+  insert into tbl_env_seguimiento_estados(
+    id_envio,estado,observacion,usuario_id
+  )
+  values(
+    v_id,'PENDIENTE','Envío creado',fn_current_usuario_id()
+  );
+
+  update tbl_pedidos
+  set estado='PREPARANDO'
+  where id_pedido=p_id_pedido;
+
+  return v_id;
+end;
+$$;
+
+-- Auditoría genérica
+create or replace function fn_auditar_cambio()
+returns trigger
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_id_comercio uuid;
+  v_registro_id uuid;
+begin
+  begin
+    v_registro_id := coalesce((to_jsonb(new)->>'id')::uuid,(to_jsonb(old)->>'id')::uuid);
+  exception when others then
+    v_registro_id := null;
+  end;
+
+  begin
+    v_id_comercio := coalesce(
+      (to_jsonb(new)->>'id_comercio')::uuid,
+      (to_jsonb(old)->>'id_comercio')::uuid
+    );
+  exception when others then
+    v_id_comercio := null;
+  end;
+
+  insert into tbl_logs_auditoria(
+    id_comercio,id_usuario,accion,tabla,registro_id,
+    datos_anteriores,datos_nuevos
+  )
+  values(
+    v_id_comercio,fn_current_usuario_id(),tg_op,tg_table_name,
+    v_registro_id,
+    case when tg_op in ('UPDATE','DELETE') then to_jsonb(old) end,
+    case when tg_op in ('INSERT','UPDATE') then to_jsonb(new) end
+  );
+
+  return coalesce(new,old);
+end;
+$$;
+
+-- Procesar reservas vencidas (para cron/WF-30)
+create or replace function fn_procesar_reservas_vencidas(p_limite integer default 100)
+returns integer
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_count integer := 0;
+  r record;
+begin
+  for r in
+    select id_reserva
+    from tbl_reservas
+    where estado='ACTIVA'
+      and fecha_expiracion <= now()
+    order by fecha_expiracion
+    limit p_limite
+    for update skip locked
+  loop
+    begin
+      perform fn_expirar_reserva(r.id_reserva);
+      v_count := v_count+1;
+    exception when others then
+      raise warning 'No se pudo expirar reserva %: %',r.id_reserva,sqlerrm;
+    end;
+  end loop;
+
+  return v_count;
+end;
+$$;
