@@ -10,7 +10,8 @@
 |-----|-----------|---------|--------|----------------|
 | **n8n** | remote HTTP + Bearer JWT | `https://rsuelvo2026.app.n8n.cloud/mcp-server/http` | ✅ **OPERATIVO** | `search_projects` → 1 proyecto personal · `search_workflows` → 3 WFs · `list_credentials` → 2 |
 | **Supabase** | remote + OAuth | `https://mcp.supabase.com/mcp` | 🟡 **RECONFIGURADO — requiere login OAuth 1 vez** | Antes apuntaba a `127.0.0.1:54321` (LOCAL, corregido) |
-| **Meta** | — vía n8n WF-80 | Cloud API (producción) | ⛔ **NO usar MCP directo — Decisión D11** | Credencial Meta aún no creada en n8n |
+| **meta-devtools** | remote + OAuth | `https://mcp.facebook.com/devtools` | 🟡 **CONFIGURADO — requiere login OAuth 1 vez** (beta Meta) | Endpoint verificado: 405/401 = vivo y pidiendo auth |
+| **Meta (mensajería)** | — vía n8n WF-80 | Cloud API (producción) | ⛔ Sin MCP por diseño — D11/D12 | Credencial Meta aún no creada en n8n |
 
 ## 2. Supabase
 
@@ -76,16 +77,46 @@ El token NUNCA se pega en el vault ni en Git (HU-136).
 - Todo webhook entra primero por idempotencia (`fn_registrar_evento_whatsapp`, HU-143).
 - Errores de proveedor ≠ error de negocio (WF-00); backoff 1/2/4/8 s, sin reintentos infinitos.
 
-## 4. Meta — Decisión D11 (NO habrá MCP de Meta)
+## 4. Meta
 
-**Decisión:** RSUELVO **no usa un MCP directo de Meta**. Todo tráfico con WhatsApp Cloud API pasa exclusivamente por **n8n WF-80**, que implementa cola, rate-limiting, circuit breaker, opt-out e idempotencia (política §4.3/§9-14, HU-142-145).
+### 4.1 meta-devtools — Developer Tools MCP (OFICIAL de Meta) ✅ configurado
 
-**Razón:** un MCP de Meta conectaría a la IA directamente contra Graph API **saltándose** esos controles obligatorios — violaría la política técnica propia y los criterios de producción §30.
+**Qué es:** servidor remoto OFICIAL de Meta (`https://mcp.facebook.com/devtools`, Streamable HTTP, OAuth con cuenta Meta developer). Es **tooling de desarrollo/administración**: NO envía mensajes a clientes.
 
-**Configuración Meta cuando corresponda (checklist F1/F7 — Guía §72):**
-Portfolio → App → WABA → número → Business Profile → System User con least-privilege → token en credenciales n8n → webhook HTTPS `POST /webhooks/whatsapp/meta` + verify token → plantillas aprobadas registradas en `tbl_plantillas_whatsapp`.
+**Configuración aplicada en `~/.config/opencode/opencode.jsonc`:**
+```json
+"meta-devtools": {
+  "type": "remote",
+  "url": "https://mcp.facebook.com/devtools",
+  "enabled": true,
+  "oauth": true,
+  "timeout": 30000
+}
+```
 
-Si en el futuro se desea ergonomía MCP sobre WhatsApp, se construirá un **wrapper interno** cuyo único backend sea WF-80 — nunca Graph API directa.
+**Pendiente del usuario (una vez):** abrir opencode → autenticar el servidor → sign-in con la cuenta Meta developer que posee la App/WABA de RSUELVO → otorgar scope sobre las apps. Nota: acceso **beta gradual**; si responde "this app isn't available", la cuenta aún no está habilitada en el rollout.
+
+**Alcance (scopes):**
+| Scope | Permite |
+|---|---|
+| Read | Config de apps, App Review/compliance, uso y salud de API, topics/suscripciones webhook, changelog, búsqueda de docs |
+| Manage | Todo lo anterior + **crear/actualizar/borrar suscripciones de webhook** (única escritura) |
+
+**10 herramientas (`devtools_*`):** app_list, app (settings), api_health, api_usage/rate-limits, app_review status, compliance, webhook_topics/list, **webhook_manage**, **webhook_test**, api_changelog + discovery/docs-search.
+
+**Usos concretos en RSUELVO (F1/F7):**
+1. Registrar la suscripción webhook de WhatsApp Cloud API apuntando a `https://rsuelvo2026.app.n8n.cloud/webhook/whatsapp/meta` (fields: `messages`) — antes era paso manual del Dashboard.
+2. `webhook_test` para disparar payloads de prueba contra WF-02 sin clientes reales.
+3. Monitorear rate limits y salud de API (insumo para política §9).
+4. Vigilar App Review/compliance (criterios producción §30) y changelog/deprecaciones de Graph API.
+5. Buscar documentación oficial in-context.
+
+### 4.2 Mensajería WhatsApp — SIN MCP (D11 se mantiene)
+
+El tráfico de mensajes (enviar/recibir a compradores) sigue **exclusivamente** por **n8n WF-80**: cola, rate-limiting, circuit breaker, opt-out e idempotencia viven ahí y un MCP los saltaría. Los MCP oficiales de Meta hoy no incluyen mensajería de todos modos — si Meta lanza uno, evaluar con la misma regla: solo si respeta WF-80 como único gateway.
+
+### 4.3 Credenciales Meta pendientes en n8n (para mensajería, F1)
+System User token (least privilege) según Guía §8-10 → credencial en n8n para WF-02/WF-80. El devtools-mcp **no sustituye** este token: son planos distintos (administración vs mensajería).
 
 ## 5. Nota adicional — canal OpenWA (local, dev)
 

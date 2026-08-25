@@ -1,7 +1,8 @@
 # ⭐ PROMPT MAESTRO RSUELVO — Fuente Única de Verdad
 
-> **Versión:** 1.2-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
-> **Changelog v1.2:** MCPs verificados/configurados para opencode (n8n cloud ✅, Supabase → mcp.supabase.com OAuth, sin MCP de Meta) · nueva sección `06-Integraciones/MCP-Servers.md` · workflows legacy n8n (WF1/WF2) marcados para archivar en F1
+> **Versión:** 1.3-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Changelog v1.3:** Meta Developer Tools MCP (oficial, beta) configurado para TOOLING de desarrollo — webhooks/salud API/docs (D12); mensajería sigue exclusivamente por WF-80 (D11 intacto)
+**Changelog v1.2:** MCPs verificados/configurados para opencode (n8n cloud ✅, Supabase → mcp.supabase.com OAuth, sin MCP de Meta) · nueva sección `06-Integraciones/MCP-Servers.md` · workflows legacy n8n (WF1/WF2) marcados para archivar en F1
 **Changelog v1.1:** guía Meta integrada (04) + SQL v2.1 (eventos/pnid/plantillas) + auditorías históricas movidas a `07-Control-de-Calidad/` + HU-147 descartada (D7)
 > **Propósito:** documento raíz para cualquier IA o humano que construya RSUELVO. Todo lo demás en el vault es detalle; esto es la ley.
 > Si encuentras un conflicto entre este documento y cualquier otro archivo: **gana este documento** y abre incidencia para corregir el archivo.
@@ -91,7 +92,8 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | **D8** | Verificación manual: admin o cajero relanza comprobantes RECIBIDO/BLOQUEADO mediante `fn_iniciar_verificacion(forzar)` | I5/HU-141 |
 | **D9** | Cola + rate-limiter + circuit breaker son **capa n8n (WF-80)**; la BD aporta opt-out e idempotencia. Implementación fase F7 | G3 |
 | **D10** | El comprador jamás tendrá cuenta/app; su identidad es `(id_comercio, telefono_whatsapp)` único | refuerzo |
-| **D11** | **Sin MCP de Meta**: Graph API se accede EXCLUSIVAMENTE vía n8n WF-80 (cola/rate-limit/breaker/opt-out). Un MCP directo saltaría los controles obligatorios de la política §4.3. Wrapper interno sobre WF-80 permitido a futuro. Stack local Supabase `54321` prohibido para proyecto | auditoría MCP 2026-08-24 |
+| **D12** | **Meta Developer Tools MCP aprobado SOLO para tooling de desarrollo** (registrar/probar webhooks, salud API, compliance, docs). Prohibido para tráfico de mensajes: eso permanece exclusivo de WF-80 (D11) | auditoría MCP + guía Meta oficial |
+| **D11** | **Sin MCP de MENSAJERÍA de Meta**: Graph API se accede EXCLUSIVAMENTE vía n8n WF-80 (cola/rate-limit/breaker/opt-out). Un MCP directo saltaría los controles obligatorios de la política §4.3. Wrapper interno sobre WF-80 permitido a futuro. Stack local Supabase `54321` prohibido para proyecto | auditoría MCP 2026-08-24 |
 
 ## 6. Mapa de módulos (fuente canónica de cada dominio)
 
