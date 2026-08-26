@@ -6,6 +6,9 @@
 .obsidian/workspace-mobile.json
 .obsidian/cache/
 
+# opencode: dependencias locales del sistema de agentes (no versionar)
+.opencode/node_modules/
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

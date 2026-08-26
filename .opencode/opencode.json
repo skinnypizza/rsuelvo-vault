@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "rsuelvo",
+  "instructions": ["00-Index/00-PROMPT-MAESTRO-RSUELVO.md"],
+  "permission": {
+    "external_directory": {
+      "*": "ask",
+      "/home/nico/StudioProjects/rsuelvo/**": "allow"
+    }
+  }
+}

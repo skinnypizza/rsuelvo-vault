@@ -1,6 +1,7 @@
 # ⭐ PROMPT MAESTRO RSUELVO — Fuente Única de Verdad
 
-> **Versión:** 1.3-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Versión:** 1.4-FINAL · **Fecha:** 2026-08-26 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Changelog v1.4:** Ruta canónica del código Flutter = `/home/nico/StudioProjects/rsuelvo/` (proyecto creado por el usuario, reemplaza la referencia histórica a `/mnt/windows/...`; §6 y README actualizados) + sistema de agentes opencode instalado en `.opencode/` + bitácora `00-Index/ESTADO-EJECUCION.md`
 > **Changelog v1.3:** Meta Developer Tools MCP (oficial, beta) configurado para TOOLING de desarrollo — webhooks/salud API/docs (D12); mensajería sigue exclusivamente por WF-80 (D11 intacto)
 **Changelog v1.2:** MCPs verificados/configurados para opencode (n8n cloud ✅, Supabase → mcp.supabase.com OAuth, sin MCP de Meta) · nueva sección `06-Integraciones/MCP-Servers.md` · workflows legacy n8n (WF1/WF2) marcados para archivar en F1
 **Changelog v1.1:** guía Meta integrada (04) + SQL v2.1 (eventos/pnid/plantillas) + auditorías históricas movidas a `07-Control-de-Calidad/` + HU-147 descartada (D7)
@@ -100,7 +101,7 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | Dominio | Documento(s) | Código |
 |---|---|---|
 | **Este prompt** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md` | — |
-| Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/` |
+| Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/home/nico/StudioProjects/rsuelvo/` |
 | Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `07-Control-de-Calidad/Auditoria-SQL-vs-ERD.md` (histórico, resuelto en v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
 | Workflows | `03-n8n/workflows.md` · `Matriz-Consistencia-WF-BD-HU.md` | n8n Cloud |
 | Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `07-Control-de-Calidad/Auditoria-Guia-Meta-Business.md` (histórico) | OpenWA 0.21 / Meta Cloud API |
