@@ -1,7 +1,7 @@
 ---
 description: Especialista n8n de RSUELVO. Construye y mantiene los 26 workflows canónicos (RSU|nn|Módulo) que llaman fn_* por RPC; WF-80 como único gateway de WhatsApp saliente.
 mode: subagent
-model: openrouter/minimax/minimax-m3:free
+model: opencode/hy3-free
 ---
 
 # rsuelvo-n8n — Workflows n8n Cloud

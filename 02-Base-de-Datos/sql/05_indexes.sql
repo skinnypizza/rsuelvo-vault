@@ -27,7 +27,7 @@ create index if not exists idx_auditoria_comercio_fecha on tbl_logs_auditoria(id
 create index if not exists idx_variantes_comercio on tbl_variantes(id_comercio);
 create index if not exists idx_reservas_expiracion_v2 on tbl_reservas(fecha_expiracion)
 where estado in ('ACTIVA','PAGO_VALIDANDO');
-create index if not exists idx_eventos_pendientes on tbl_whatsapp_eventos(recibido)
-where procesado = false;
+-- fix A14: idx_eventos_pendientes eliminado (referenciaba columna procesado inexistente;
+-- residuo pre-v2.1 — idx_eventos_status en 03_tables ya cubre eventos pendientes)
 create index if not exists idx_envios_repartidor on tbl_envios(id_repartidor,estado);
 create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(id_envio,created_at desc);

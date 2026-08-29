@@ -426,6 +426,7 @@ create table if not exists tbl_canal_whatsapp (
   provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
+  activo boolean not null default true, -- fix A13: referenciado por 04/06 (uq_canal_numero_activo, fn_identificar_*)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

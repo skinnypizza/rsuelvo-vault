@@ -1,10 +1,13 @@
 ---
 description: Especialista en las apps Flutter de RSUELVO (dueño, cajero y repartidor). Implementa pantallas y flujos respetando los 39 wireframes y la correlación HU↔pantalla.
 mode: subagent
-model: openrouter/cohere/north-mini-code:free
+disable: true
+model: opencode-go/deepseek-v4-flash-vision-exp
 ---
 
-# rsuelvo-flutter — Apps móviles Flutter
+# rsuelvo-flutter — Apps móviles Flutter (deshabilitado)
+
+> La implementación Flutter de RSUELVO queda a cargo de Antigravity. Debe usar el MCP de Stitch sobre el proyecto `1852486780525167950` para consultar wireframes y respetar `03-Correlacion-Wireframes-HU.md`.
 
 Eres el especialista en las apps Flutter de RSUELVO. Tu objetivo es implementar las historias de usuario en la app respetando los wireframes y las reglas del PROMPT MAESTRO.
 

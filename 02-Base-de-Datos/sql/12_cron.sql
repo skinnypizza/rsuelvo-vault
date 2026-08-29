@@ -15,7 +15,7 @@ select cron.schedule(
 -- Nunca implementar expiración/liberación dentro de n8n.
 
 comment on function fn_solicitar_reserva is
-'Reserva atómica de inventario. Bloquea la fila de inventario con FOR UPDATE. Debe ser llamada desde n8n/Backend mediante RPC y no replicarse en lógica de workflow.';
+'Reserva atómica de inventario (v2/15). Retorna RESERVA_CREADA, SIN_STOCK, o RESERVA_YA_EXISTENTE cuando ya hay una reserva activa para la misma (sucursal,variante) — sin duplicar filas ni mutar inventario. Bloquea inventario con FOR UPDATE; debe llamarse vía RPC desde n8n/Backend.';
 
 comment on function fn_expirar_reserva is
 'Libera stock de una reserva vencida de forma transaccional.';

@@ -920,4 +920,24 @@ Esta política forma parte de las reglas técnicas de RSUELVO y deberá aplicars
 
 Cualquier excepción deberá documentarse y aprobarse antes de desplegarse en producción.
 
+---
+
+# 32. Anexo de trazabilidad canónica (PROMPT MAESTRO v1.4-FINAL)
+
+Esta política es la normativa técnica obligatoria citada en [[00-PROMPT-MAESTRO-RSUELVO]] §6 ("Canal WhatsApp → `04-OpenWA/Política Técnica…md`"). Las reglas aquí definidas se enlazan con los artefactos canónicos del proyecto:
+
+| Requisito del PROMPT MAESTRO | Sección de esta política | Artefacto canónico |
+|---|---|---|
+| WF-80 = único gateway saliente de mensajes | §4.3, §25, §26 | WF-80 (WhatsApp Send Message, `workflows.md` §56-57) |
+| Opt-out antes de cada envío | §16 | `tbl_contact_preferences` (Regla de Oro 8) |
+| Idempotencia vía BD | §11, §12 | `tbl_whatsapp_eventos` (Regla de Oro 7) |
+| n8n orquesta, no decide | §4.2, §25 | Regla de Oro 3 + `workflows.md` §3 |
+| OpenWA tratado como canal/transporte | §2, §19, §20, §28 | Stack PROMPT MAESTRO §1 |
+| Mensajería NO vía MCP (D11) / MCP solo tooling (D12) | §25 (ningún workflow salta controles) | D11, D12 (PROMPT MAESTRO §5) |
+| Manejo de errores (reintentos/backoff/breaker) | §13, §14, §23, §27 | WF-00 (Error Handler Global) |
+| Mensajes mínimos y agrupados en español | §7, §8 | Regla 6 PROMPT MAESTRO §9.6 |
+| HU de recepción WF-01/02/03/04 + WF-80 | §4.1-4.3, §26 | HU-142, HU-143, HU-144, HU-145 (F1) |
+
+> Nota de cumplimiento: los nombres de tabla `contact_preferences`/`WhatsAppMessageLog` de esta política son representaciones conceptuales; los nombres reales del schema v2 son `tbl_contact_preferences` y `tbl_whatsapp_eventos` (PROMPT MAESTRO §3 Reglas 7-8). No se inventan tablas, columnas, enums ni funciones fuera de `02-Base-de-Datos/sql/` (v2).
+
 **Fin de la Política Técnica de Uso de WhatsApp y OpenWA — RSUELVO**

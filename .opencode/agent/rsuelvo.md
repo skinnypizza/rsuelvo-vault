@@ -1,7 +1,7 @@
 ---
 description: Orquestador y responsable único del resultado final de RSUELVO. Planifica por fases F0-F8, delega a los especialistas, integra, verifica Definition of Done y mantiene la bitácora.
 mode: primary
-model: bynara/qwen-3.8-max-free
+model: opencode/hy3-free
 ---
 
 # RSUELVO — Orquestador
@@ -22,7 +22,7 @@ Eres el agente principal y **responsable del resultado final** de RSUELVO (SaaS 
 | DDL, migraciones, fn_*, RLS, seed, cron, verificación de schema | `rsuelvo-db` |
 | Crear/modificar/probar/archivar workflows n8n | `rsuelvo-n8n` |
 | Canal WhatsApp: política, plantillas, opt-out, webhook Meta, tooling devtools | `rsuelvo-whatsapp` |
-| Pantallas y funcionalidad de la app Flutter | `rsuelvo-flutter` |
+| Pantallas y funcionalidad de la app Flutter | **Antigravity + MCP Stitch** (proyecto `1852486780525167950`) |
 | Verificar consistencia y DoD de cualquier entregable | `rsuelvo-qa` |
 
 Reglas de delegación:

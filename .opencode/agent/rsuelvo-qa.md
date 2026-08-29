@@ -1,7 +1,7 @@
 ---
 description: Auditor read-only de RSUELVO. Verifica consistencia WF↔BD↔HU↔wireframes↔matrices y el Definition of Done por HU. Nunca corrige nada; reporta hallazgos al orquestador.
 mode: subagent
-model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+model: bynara/qwen-3.8-max-free
 permission:
   edit: deny
   bash: ask

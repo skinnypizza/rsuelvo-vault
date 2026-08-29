@@ -87,6 +87,17 @@ Meta solamente debe funcionar como canal de comunicación.
 
 ---
 
+## 1.1 Nota de cumplimiento obligatoria — mensajería exclusiva por WF-80 (D11 / D12)
+
+Por decisión de arquitectura del PROMPT MAESTRO (registro D11 y D12, §5), **toda mensajería de WhatsApp hacia compradores se envía exclusivamente a través del workflow n8n WF-80** (gateway único de salida). WF-80 es el único punto que aplica cola, rate-limiting, circuit breaker, idempotencia (HU-143 / `tbl_whatsapp_eventos`) y la verificación de opt-out (`tbl_contact_preferences`, HU-142) antes de cada envío; su diseño está normado por la Política Técnica §4.3 y §25.
+
+- **D11 — Sin MCP de mensajería de Meta:** la Graph API se consume EXCLUSIVAMENTE vía WF-80. Un MCP de mensajería directo saltaría los controles obligatorios de la política §4.3 y está prohibido.
+- **D12 — meta-devtools MCP solo para tooling de desarrollo:** el servidor oficial `meta-devtools` (webhooks, salud API, compliance, docs) es administración, NO envía mensajes. Su uso queda limitado al registro/prueba de webhooks hacia n8n (WF-02) y al monitoreo; jamás como canal de envío a compradores.
+
+Por lo tanto, esta guía **no define un workflow de envío separado de WF-80**. Los bloques de "envío de mensajes" (ver §40) son una **rama conceptual Meta Cloud API dentro de WF-80**, no un subworkflow independiente. Ningún otro workflow (WF-00…WF-42) debe realizar llamadas HTTP directas a Meta/OpenWA para enviar mensajes. Las historias HU-142, HU-143, HU-144 y HU-145 (F1) describen recepción (WF-02/03/04) y el envío único (WF-80) bajo estas reglas.
+
+---
+
 # 2. Arquitectura oficial
 
 La arquitectura objetivo es:
@@ -1130,7 +1141,7 @@ sin comprobar que exista una plantilla aprobada para ese idioma.
 
 ---
 
-# 40. Envío de mensajes
+# 40. Envío de mensajes (rama Meta dentro de WF-80)
 
 La capa de integración debe abstraer Meta.
 
@@ -1140,13 +1151,11 @@ En lugar de que todos los workflows construyan manualmente llamadas HTTP:
 POST Graph API
 ```
 
-crear un subworkflow conceptual:
+el envío se concentra en el gateway único **WF-80** (PROMPT MAESTRO D9/D11). Lo que esta guía denomina conceptualmente `WF-META-SEND-MESSAGE` **NO es un workflow independiente**: es la **rama de envío Meta Cloud API dentro de WF-80**, responsable de traducir la solicitud interna de RSUELVO a la llamada Graph API, aplicando ya la cola, el rate-limiter, el circuit breaker y la verificación de opt-out (HU-142 / `tbl_contact_preferences`).
 
-```text
-WF-META-SEND-MESSAGE
-```
+> Nota: cualquier otro workflow (WF-00…WF-42) delega el envío a WF-80; ninguno debe realizar un POST directo a Graph API / OpenWA (política §4.3 y §25). Ver también §1.1 (D11 / D12).
 
-Entrada:
+Entrada (contrato interno → rama Meta de WF-80):
 
 ```json
 {
@@ -1157,7 +1166,7 @@ Entrada:
 }
 ```
 
-Salida:
+Salida (respuesta de Meta normalizada):
 
 ```json
 {
@@ -1282,7 +1291,7 @@ La migración debe planificarse antes de mover producción.
 
 ## 45. Arquitectura n8n
 
-> **Nota canónica:** la numeración oficial de workflows del vault es la de `workflows.md` (WF-00…WF-80, formato `RSU | nn | Módulo`). Los identificadores siguientes son **adaptadores específicos de Meta** y se mapean así: WF01→WF-02 · WF02/WF03→WF-03/04 · WF04-09→WF-10…24/40-42 según dominio · WF10→WF-80 · WF11→(parte de WF-21) · WF12→WF-00 · WF13→política §13. No crear una numeración paralela en producción.
+> **Nota canónica:** la numeración oficial de workflows del vault es la de `workflows.md` (WF-00…WF-80, formato `RSU | nn | Módulo`). Los identificadores siguientes son **adaptadores específicos de Meta** y se mapean así: WF01→WF-02 · WF02/WF03→WF-03/04 · WF04-09→WF-10…24/40-42 según dominio · WF10→WF-80 · WF11→(parte de WF-21) · WF12→WF-00 · WF13→política §13. No crear una numeración paralela en producción. Concretamente, `WF10_META_SEND` no es un workflow aparte: es la rama de envío Meta dentro de WF-80 (ver §40 y §1.1, D11/D12).
 
 Se recomienda dividir los adapters Meta así:
 ```text

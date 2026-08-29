@@ -179,6 +179,7 @@ WF-52  Créditos - Devolución
 
 WF-60  Auditoría
 WF-70  Health Check
+WF-80  WhatsApp - Send Message
 ```
 
 No necesariamente todos necesitan ser workflows independientes desde el primer día. Algunos pueden convertirse en sub-workflows reutilizables mediante `Execute Workflow`.
@@ -684,6 +685,8 @@ estado actual
    ↓
 n8n
 ```
+
+> **Bloqueo / dependencia (WF-04, H3):** en el schema SQL v2 no existe una función `fn_*` canónica que exponga o gestione el estado conversacional del comprador. Por tanto, WF-04 NO realiza `SELECT` ni usa funciones inventadas para este fin. El routing actual se basa en el tipo de mensaje y en la detección de SKU; las transiciones de estado conversacional (IDLE → ESPERANDO_SKU → RESERVA_ACTIVA → …) quedan pendientes de una RPC futura o se gestionan dentro del contexto de WF-10/WF-21/WF-40. Esto respeta la Regla de Oro 3: n8n orquesta, no decide.
 
 ---
 
@@ -1906,6 +1909,9 @@ Estructura:
 Execute Workflow Trigger
         │
         ▼
+   IF opt-out? ──fn_cliente_optado()──→ SI → omitir envío
+        │ NO
+        ▼
        IF
    ┌────┴────┐
  Meta       OpenWA
@@ -1919,6 +1925,8 @@ HTTP Request  HTTP Request
 ```
 
 Esto evita duplicar la lógica de envío.
+
+> **Responsabilidad H7:** la verificación de opt-out antes de cada envío (`fn_cliente_optado(id_comercio, telefono_whatsapp)`) es responsabilidad exclusiva de WF-80. Los workflows upstream (WF-04, WF-10, WF-21, etc.) solo registran la preferencia mediante `fn_registrar_opt_out`; nunca deciden por sí solos si se puede enviar un mensaje.
 
 ---
 

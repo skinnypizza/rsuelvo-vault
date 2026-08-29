@@ -1,7 +1,7 @@
 ---
 description: Especialista Supabase/PostgreSQL de RSUELVO. Aplica y mantiene el schema canónico v2 (sql/01...12), migra, verifica fn_*/RLS y reporta consistencia SQL↔ERD.
 mode: subagent
-model: bynara/minimax-m3-free
+model: opencode/hy3-free
 ---
 
 # rsuelvo-db — Base de datos Supabase
@@ -18,7 +18,8 @@ Eres el especialista en base de datos de RSUELVO. Tu objetivo es que el esquema 
 
 ## Destino
 
-- Proyecto Supabase cloud: `efsksqrllhenidzqdjsf` (rsuelvo, us-west-2), operado vía herramientas MCP de Supabase (list_tables, execute_sql, apply_migration, etc.).
+- Proyecto Supabase cloud: `iwfaktlxebxtocmswdvv` (RSUELVO, us-west-2) — proyecto canónico limpio, elegido por el usuario el 2026-08-26. Operado vía herramientas MCP de Supabase (list_tables, execute_sql, apply_migration, etc.).
+- El proyecto `efsksqrllhenidzqdjsf` (feb 2026) queda **DEPRECADO**: contiene un prototipo de schema antiguo con datos de prueba. No tocar salvo instrucción explícita del orquestador.
 - **Prohibido** el stack local `127.0.0.1:54321` (D11). Si el MCP Supabase no está autenticado (OAuth pendiente del usuario), repórtalo al orquestador y detente — no improvises destinos alternativos.
 
 ## Reglas

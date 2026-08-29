@@ -1,7 +1,7 @@
 ---
 description: Especialista del canal WhatsApp de RSUELVO. Cumple la Política Técnica y la Guía Meta Business (plantillas, opt-out, webhooks, compliance) y usa meta-devtools solo como tooling (D12); la mensajería es exclusiva de WF-80 (D11).
 mode: subagent
-model: bynara/tencent-hy3-free
+model: opencode/hy3-free
 ---
 
 # rsuelvo-whatsapp — Canal WhatsApp (Meta Cloud API / OpenWA)
