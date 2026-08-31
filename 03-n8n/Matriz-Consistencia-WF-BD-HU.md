@@ -3,6 +3,27 @@
 > **Fecha:** 2026-08-24 · **Base:** [[workflows]] v1.0 × schema SQL **v2** × [[01-Backlog-Historias-de-Usuario]] (148 HU) × diagramas de flujo (ERD §13, workflows §69-83) × wireframes.
 > **Regla de oro verificada:** n8n orquesta; PostgreSQL decide. Cada WF crítico llama exactamente a una RPC transaccional.
 
+## 0. IDs reales en la cuenta n8n ACTIVA (re-import 2026-08-29)
+
+> ⚠️ **H-08 (Auditoría 2026-08-29):** tras la migración a la cuenta trial nueva `rsuelvo.app.n8n.cloud` (ivanluiscardenas), los workflows fueron re-importados y **obtuvieron IDs nuevos**. Los IDs antiguos (`Kem88sByaFk6bUNO`, `TSC1otHnDCr0ADiW`, …) pertenecen a la cuenta agotada `rsuelvo2026.app.n8n.cloud` y se citan en esta matriz solo como histórico de builds. **Los IDs válidos para depuración son los de la tabla siguiente:**
+
+| WF | Nombre | ID real (cuenta activa) | Estado |
+|----|--------|------------------------|--------|
+| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kWGXKtmjdsL2Nrkc` | ⚠️ H-02 cableado (ver §6) |
+| WF-03 | RSU \| 03 \| WhatsApp Normalizer | `UTRbn1CpqifIQEkx` | ✅ |
+| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `qLyBczowLOcnNXe5` | ✅ |
+| WF-10 | RSU \| 10 \| Sales \| SKU Reservation | `ACKpE0cfySCJ7D3F` | ✅ |
+| WF-12 | RSU\|12\|Lista de Espera | `By4Vj2e8aonsdnOP` | ✅ |
+| WF-13 | RSU \| 13 \| Notificar Lista Espera | `SHE66obsbreFcTiT` | ✅ |
+| WF-14 | RSU\|14\|Aceptar Oportunidad | `MLgnwfXbg7HnWVHC` | ✅ |
+| WF-20 | RSU \| 20 \| Pago \| Generar QR | `4rBWeSKraB7pRj2U` | ✅ |
+| WF-21 | RSU \| 21 \| Payments \| Receipt Intake | `kLwQeDISpfCysgmx` | ✅ |
+| WF-22 | RSU \| 22 \| Pago \| GPT-4o Vision | `NmPlyIjvdvytzDRc` | ✅ |
+| WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `qQK5wdjYX26Q41Vo` | ✅ |
+| WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `T3OLjA60aR3TD3xz` | ✅ |
+| WF-30 | RSU\|30\|Expirar Reservas | `CF7FO9bxV1n9qoKD` | ⚠️ H-03/H-04 (ver §6) |
+| WF-80 | RSU\|80\|WhatsApp Gateway | `CDizafXZQCL5SjOz` | ⚠️ H-05/H-06 (ver §6) |
+
 ## 1. Matriz principal
 
 | WF | Responsabilidad | Tablas | Funciones/RPC (schema v2) | HU | Flujo/Diagrama | Wireframes | Estado |
@@ -78,3 +99,26 @@
 |----|-----------|--------|--------|
 | **H-1** | `fn_crear_pedido_desde_reserva` ya **idempotente** (migración 19): reintentos de WF-20 tras fallo parcial no duplican pedido/cobro. WF-20 además envía el QR como **imagen** vía WF-80 (D11). | WF-20 (`BopJBfl3CQ9Ck2YL`, publicado v2 `2947625b`), `fn_crear_pedido_desde_reserva`, `tbl_pedidos`, `tbl_pedido_detalles` | ✅ CERRADO (migración 19) |
 | **H-2** | WF-10 ahora dispara WF-20 también en la rama **RESERVA_YA_EXISTENTE** (IF `¿Reserva ya existente?` → `Call WF-20`), reenviando el QR de pago en reintentos; SIN_STOCK sigue sin llamar a WF-20. WF-20 publicado envía la **imagen** del QR (`type:'image'` + `media_url` pública) vía WF-80. | WF-10 (`TSC1otHnDCr0ADiW`, publicado v2 `9f04d398`), WF-20 (`BopJBfl3CQ9Ck2YL`), `fn_solicitar_reserva` | ✅ CERRADO (H-2 en WF-10 + imagen WF-20) |
+
+## 6. Hallazgos de auditoría externa (Auditoría-RSUELVO-2026-08-29)
+
+> Emitida por Claude (conectores Supabase MCP + n8n MCP; Capa C/vault NO verificada por repo privado). Los IDs de estos hallazgos (`Aud-H-xx`) NO colisionan con las incidencias H-1/H-2 de §5. Reporte completo en `~/Escritorio/Auditoria-RSUELVO-2026-08-29.md`.
+
+| ID | Severidad | Resumen | Estado |
+|----|-----------|---------|--------|
+| **Aud-H-01** | BLOQUEANTE | `fn_confirmar_pago` sin guarda de idempotencia → doble invocación duplicaba stock/movimiento VENTA (Regla 2) | ✅ RESUELTO — migración 22 (guarda `YA_PROCESADO` si verificación `COMPLETADA`) |
+| **Aud-H-02** | BLOQUEANTE | WF-02 (`kWGXKtmjdsL2Nrkc`): nodo `Route to WF-03` con éxito y error fusionados en main[0] → `Close Event Error` se ejecuta también en camino feliz (Regla 7) | ⬜ ABIERTO — fix manual n8n (recablear salida error) |
+| **Aud-H-03** | ALTO | `pg_cron` SÍ activo (job 1, `* * * * *`, `fn_procesar_reservas_vencidas(200)`) — contradice bitácora previa; decide fuente única de expiración | ⬜ ABIERTO — recomendación: mantener pg_cron (canon `12_cron.sql`) y desactivar WF-30 |
+| **Aud-H-04** | ALTO | WF-30 (`CF7FO9bxV1n9qoKD`) Schedule Trigger `field:hours` sin intervalo → dispara cada 1h, no cada 1min | ⬜ ABIERTO — obsoleto si se adopta Aud-H-03(a) |
+| **Aud-H-05** | ALTO | WF-80 rate-limit hardcodeado 20/60s (Regla 10) | 🟡 BD RESUELTO — migración 22 columna `rate_limit_whatsapp_por_minuto`; edición WF-80 (leer config) = P2 manual |
+| **Aud-H-06** | MEDIO | WF-80: 5 nodos Postgres arman SQL por concatenación JS (historia: binding `queryReplacement` falló en smoke 6; interpolación fue fix deliberado) | ⬜ ABIERTO P2 — reintentar query params con hardening de `esc()` |
+| **Aud-H-07** | MEDIO | `audit_insert` permitía INSERT a cualquier usuario con acceso al comercio (log falso, Regla 9) | ✅ RESUELTO — migración 22 (`fn_es_superadmin()` only; n8n usa roles BYPASSRLS, sin impacto) |
+| **Aud-H-08** | BAJO | IDs de WFs en docs obsoletos tras re-import | ✅ RESUELTO — §0 de esta matriz |
+| **Aud-H-09** | BAJO | Migraciones 20/21 verificadas correctas en cloud (idempotencia reenvío comprobante) | ✅ CONFIRMADO |
+| **Aud-H-10** | BAJO | Umbral de confianza OCR 0.8/0.5 hardcodeado en Code node de WF-23 (Regla 10) | ⬜ ABIERTO P2 — proponer columnas config + edición WF-23 |
+| **Aud-H-11** | BLOQUEANTE | Triggers `trg_*_updated_at` sobre `tbl_verificaciones`/`tbl_metodos_pago` sin la columna → `record "new" has no field "updated_at"` en el primer INSERT real (dormía desde F0) | ✅ RESUELTO — migración 23 (columnas añadidas) |
+| **Aud-H-12** | ALTO | `fn_registrar_comprobante` ligaba comprobantes a pedidos con reserva vencida → confirmaba sobre stock inexistente | ✅ RESUELTO — migración 24 (prefiere pedido con reserva ACTIVA) |
+| **Aud-H-13** | BLOQUEANTE | `fn_confirmar_pago` sin validar estado/vigencia de la reserva ni pedido ya PAGADO | ✅ RESUELTO — migración 25 (`RESERVA_VENCIDA` / `YA_PROCESADO`) |
+| **Aud-H-14** | MEDIO | WF-22 usaba un **mock de OCR** hardcodeado (TXN123456/Juan Pérez/0.95); nunca hubo IA real | ✅ RESUELTO — extractor real Google Gemini (`gemini-3.6-flash` vía HTTP, `$vars.GEMINI_API_KEY`); Regla 4 intacta. Pendiente: actualizar refs "GPT-4o" del PROMPT §1/§6 |
+
+**Pendientes de auditoría (sin acceso al vault ese día):** inspección profunda de WF-03/04/10/12/13/14/20/21/22; búsqueda de salidas HTTP a Graph API fuera de WF-80 (D11); `get_advisors`; Capa C (Matriz↔realidad) — parcialmente cubierta por esta actualización.

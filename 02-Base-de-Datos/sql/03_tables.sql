@@ -38,6 +38,7 @@ create table if not exists tbl_comercio_config (
   tiempo_aceptacion_lista_espera_minutos integer not null default 2 check (tiempo_aceptacion_lista_espera_minutos > 0),
   max_lista_espera_por_producto integer not null default 5 check (max_lista_espera_por_producto > 0),
   verificacion_automatica boolean not null default true,
+  rate_limit_whatsapp_por_minuto integer not null default 20 check (rate_limit_whatsapp_por_minuto > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -253,6 +254,7 @@ create table if not exists tbl_metodos_pago (
   proveedor text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique(id_comercio,nombre)
 );
 
@@ -302,7 +304,8 @@ create table if not exists tbl_verificaciones (
   creditos_consumidos integer not null default 0 check (creditos_consumidos >= 0),
   fecha_inicio timestamptz,
   fecha_fin timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 

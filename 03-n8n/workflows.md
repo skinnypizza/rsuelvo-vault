@@ -2,6 +2,8 @@
 
 > 🔧 **Complementos posteriores (canónicos):** convención de funciones = `fn_*` (D3, alias `rpc_*` documentados) · variables Meta actualizadas §5.3 · matriz de trazabilidad completa en [Matriz-Consistencia-WF-BD-HU](Matriz-Consistencia-WF-BD-HU.md) · adaptadores Meta según [Guía Meta WhatsApp Business](../04-OpenWA/Guia%20Meta%20WhatsApp%20Business.md).
 
+> ⚠️ **Cuenta n8n activa (2026-08-29):** `rsuelvo.app.n8n.cloud` (trial, ivanluiscardenas). Tras la re-importación los workflows tienen **IDs nuevos** — tabla de IDs reales en [Matriz-Consistencia-WF-BD-HU §0](Matriz-Consistencia-WF-BD-HU.md). Los IDs históricos citados en este documento pertenecen a `rsuelvo2026.app.n8n.cloud` (agotada). Hallazgos de auditoría externa: Matriz §6.
+
 ## n8n Cloud 2.36.5 + Supabase + OpenAI GPT-4o Vision + OpenWA + Meta WhatsApp Cloud API
 
 **Versión:** 1.0  

@@ -169,6 +169,7 @@ create table if not exists tbl_comercio_config (
   tiempo_aceptacion_lista_espera_minutos integer not null default 2 check (tiempo_aceptacion_lista_espera_minutos > 0),
   max_lista_espera_por_producto integer not null default 5 check (max_lista_espera_por_producto > 0),
   verificacion_automatica boolean not null default true,
+  rate_limit_whatsapp_por_minuto integer not null default 20 check (rate_limit_whatsapp_por_minuto > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -384,6 +385,7 @@ create table if not exists tbl_metodos_pago (
   proveedor text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique(id_comercio,nombre)
 );
 
@@ -433,7 +435,8 @@ create table if not exists tbl_verificaciones (
   creditos_consumidos integer not null default 0 check (creditos_consumidos >= 0),
   fecha_inicio timestamptz,
   fecha_fin timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 
@@ -1901,6 +1904,15 @@ begin
     raise exception 'Verificación inexistente';
   end if;
 
+  -- H-01: guarda de idempotencia por verificación
+  if v_ver.estado = 'COMPLETADA' then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','Esta verificación ya fue confirmada previamente; no se repiten efectos de inventario.'
+    );
+  end if;
+
   select * into v_res
   from tbl_reservas
   where id_pedido=v_ver.id_pedido
@@ -1908,6 +1920,24 @@ begin
 
   if not found then
     raise exception 'No existe reserva asociada al pedido';
+  end if;
+
+  -- H-12: el pedido no debe confirmarse dos veces
+  if exists (select 1 from tbl_pedidos where id_pedido=v_ver.id_pedido and estado='PAGADO') then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','El pedido ya estaba pagado; no se repiten efectos de inventario.'
+    );
+  end if;
+
+  -- H-12: la reserva debe seguir viva para poder convertirse en venta
+  if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') or v_res.fecha_expiracion < now() then
+    return jsonb_build_object(
+      'resultado','RESERVA_VENCIDA',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','La reserva expiró. El comprador debe solicitar el SKU nuevamente.'
+    );
   end if;
 
   update tbl_verificaciones
@@ -2005,6 +2035,97 @@ begin
   );
 end;
 $$;
+
+-- (v2/WF-21/HU-057..058) Registra un comprobante de pago y lo vincula al pedido en
+-- espera de pago del cliente/comercio. SECURITY DEFINER para que n8n pueda invocarla
+-- con la credencial anon (mismo patrón que fn_upsert_cliente), sin requerir
+-- service_role en el app layer. Resuelve id_pedido si no se provee.
+-- Migración 20: idempotencia de reenvío (D5). Migración 21: fix ambigüedad PL/pgSQL.
+create or replace function fn_registrar_comprobante(
+  p_id_comercio uuid,
+  p_id_cliente uuid,
+  p_tipo_archivo text,
+  p_archivo_url text,
+  p_monto_detectado numeric default null,
+  p_fecha_detectada timestamptz default null,
+  p_numero_operacion text default null,
+  p_nombre_pagador text default null,
+  p_estado rsuelvo.estado_comprobante default 'RECIBIDO',
+  p_id_pedido uuid default null
+)
+returns table(id_comprobante uuid, id_pedido uuid)
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_id_comprobante uuid := gen_random_uuid();
+  v_id_pedido uuid := p_id_pedido;
+  v_existente uuid;
+  v_pedido_existente uuid;
+begin
+  if not fn_tiene_acceso_comercio(p_id_comercio) then
+    raise exception 'Sin acceso al comercio';
+  end if;
+
+  if v_id_pedido is null then
+    select p.id_pedido into v_id_pedido
+    from tbl_pedidos p
+    where p.id_comercio = p_id_comercio
+      and p.id_cliente = p_id_cliente
+      and p.estado = 'ESPERANDO_PAGO'
+    order by p.created_at desc
+    limit 1;
+  end if;
+
+  if v_id_pedido is null then
+    raise exception 'No se encontro pedido en espera de pago para vincular el comprobante';
+  end if;
+
+  -- Idempotencia de reenvío: mismo numero de operacion en el mismo comercio
+  if p_numero_operacion is not null then
+    select c.id_comprobante, c.id_pedido
+      into v_existente, v_pedido_existente
+      from tbl_comprobantes_pago c
+      where c.id_comercio = p_id_comercio
+        and c.numero_operacion = p_numero_operacion
+      limit 1;
+
+    if v_existente is not null then
+      if v_pedido_existente = v_id_pedido then
+        update tbl_comprobantes_pago as c
+           set tipo_archivo     = p_tipo_archivo,
+               archivo_url      = p_archivo_url,
+               monto_detectado  = coalesce(p_monto_detectado, c.monto_detectado),
+               fecha_detectada  = coalesce(p_fecha_detectada, c.fecha_detectada),
+               nombre_pagador   = coalesce(p_nombre_pagador, c.nombre_pagador),
+               estado           = p_estado
+         where c.id_comprobante = v_existente;
+        return query select v_existente, v_id_pedido;
+        return;
+      else
+        raise exception 'COMPROBANTE_DUPLICADO: el numero de operacion % ya fue registrado para otro pedido', p_numero_operacion;
+      end if;
+    end if;
+  end if;
+
+  insert into tbl_comprobantes_pago (
+    id_comprobante, id_comercio, id_pedido, id_cliente,
+    tipo_archivo, archivo_url, monto_detectado, fecha_detectada,
+    numero_operacion, nombre_pagador, estado
+  ) values (
+    v_id_comprobante, p_id_comercio, v_id_pedido, p_id_cliente,
+    p_tipo_archivo, p_archivo_url, p_monto_detectado, p_fecha_detectada,
+    p_numero_operacion, p_nombre_pagador, p_estado
+  );
+
+  return query select v_id_comprobante, v_id_pedido;
+end;
+$$;
+
+grant execute on function fn_registrar_comprobante(
+  uuid, uuid, text, text, numeric, timestamptz, text, text, rsuelvo.estado_comprobante, uuid
+) to anon, authenticated, service_role;
 
 
 -- Crear envío
@@ -2632,7 +2753,9 @@ create policy shipment_tracking_insert on tbl_env_seguimiento_estados for insert
 
 -- AUDITORÍA
 create policy audit_select on tbl_logs_auditoria for select using (fn_es_superadmin() or fn_es_admin_comercio(id_comercio));
-create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin() or fn_tiene_acceso_comercio(id_comercio));
+-- H-07 (Auditoría 2026-08-29, Regla de Oro 9): INSERT directo solo superadmin.
+-- La auditoría normal entra via trigger fn_auditar_cambio (SECURITY DEFINER) o roles BYPASSRLS (n8n).
+create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin());
 
 -- CANALES WHATSAPP
 create policy canal_select on tbl_canal_whatsapp for select using (fn_tiene_acceso_comercio(id_comercio));

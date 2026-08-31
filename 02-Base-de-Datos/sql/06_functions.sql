@@ -1205,6 +1205,15 @@ begin
     raise exception 'Verificación inexistente';
   end if;
 
+  -- H-01: guarda de idempotencia por verificación
+  if v_ver.estado = 'COMPLETADA' then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','Esta verificación ya fue confirmada previamente; no se repiten efectos de inventario.'
+    );
+  end if;
+
   select * into v_res
   from tbl_reservas
   where id_pedido=v_ver.id_pedido
@@ -1212,6 +1221,24 @@ begin
 
   if not found then
     raise exception 'No existe reserva asociada al pedido';
+  end if;
+
+  -- H-12: el pedido no debe confirmarse dos veces
+  if exists (select 1 from tbl_pedidos where id_pedido=v_ver.id_pedido and estado='PAGADO') then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','El pedido ya estaba pagado; no se repiten efectos de inventario.'
+    );
+  end if;
+
+  -- H-12: la reserva debe seguir viva para poder convertirse en venta
+  if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') or v_res.fecha_expiracion < now() then
+    return jsonb_build_object(
+      'resultado','RESERVA_VENCIDA',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','La reserva expiró. El comprador debe solicitar el SKU nuevamente.'
+    );
   end if;
 
   update tbl_verificaciones
