@@ -38,12 +38,12 @@
 
 ## 2. Cobertura cruzada resumida
 
-| Dimensión | Cobertura |
-|---|---|
-| 26 workflows definidos ↔ matriz | **26/26 mapeados** a tablas+función+HU |
-| HU de sistema/backend (E07,E09-E14,E19-E21) | cubiertas por ≥1 WF o RPC |
-| Funciones v2 (36) usadas por workflows | todas las operativas; helpers tenancy/RLS son internos |
-| Estados conversacionales §16 ↔ flujos | ESPERANDO_SKU→RESERVA_ACTIVA→ESPERANDO_COMPROBANTE→PAGO_VALIDANDO→ESPERANDO_DIRECCION→PEDIDO_CONFIRMADO: cada transición tiene WF+RPC ✅ |
+| Dimensión                                   | Cobertura                                                                                                                               |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 26 workflows definidos ↔ matriz             | **26/26 mapeados** a tablas+función+HU                                                                                                  |
+| HU de sistema/backend (E07,E09-E14,E19-E21) | cubiertas por ≥1 WF o RPC                                                                                                               |
+| Funciones v2 (36) usadas por workflows      | todas las operativas; helpers tenancy/RLS son internos                                                                                  |
+| Estados conversacionales §16 ↔ flujos       | ESPERANDO_SKU→RESERVA_ACTIVA→ESPERANDO_COMPROBANTE→PAGO_VALIDANDO→ESPERANDO_DIRECCION→PEDIDO_CONFIRMADO: cada transición tiene WF+RPC ✅ |
 
 ## 3. Inconsistencias que esta matriz cierra (heredadas de auditorías)
 
