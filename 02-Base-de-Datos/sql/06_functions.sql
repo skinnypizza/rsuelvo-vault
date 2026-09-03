@@ -1281,6 +1281,10 @@ begin
     'VENTA',v_res.cantidad,'PEDIDO',v_ver.id_pedido
   );
 
+  -- D14 (migración 27): consume 1 crédito por venta confirmada en la misma transacción
+  -- (SD-1: nunca bloquea la venta; SD-5: los rechazos no consumen; SD-6: aplica a toda venta)
+  PERFORM fn_consumir_credito_venta(v_res.id_comercio, v_ver.id_pedido);
+
   return jsonb_build_object(
     'resultado','PAGO_CONFIRMADO',
     'id_pedido',v_ver.id_pedido,
@@ -1851,3 +1855,55 @@ $$;
 grant execute on function fn_registrar_comprobante(
   uuid, uuid, text, text, numeric, timestamptz, text, text, rsuelvo.estado_comprobante, uuid
 ) to anon, authenticated, service_role;
+
+
+-- (D14/migración 27) Consume 1 crédito por venta confirmada — SD-1: saldo puede quedar
+-- negativo (la venta NUNCA se bloquea); atribuye usuario_id del cajero vía JWT (D13).
+create or replace function fn_consumir_credito_venta(
+  p_id_comercio uuid,
+  p_id_pedido uuid
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_cuenta tbl_cuentas_creditos%rowtype;
+  v_anterior bigint;
+  v_nuevo bigint;
+begin
+  select * into v_cuenta
+  from tbl_cuentas_creditos
+  where id_comercio=p_id_comercio
+  for update;
+
+  if not found then
+    insert into tbl_cuentas_creditos(id_comercio,saldo_actual)
+    values(p_id_comercio,0)
+    returning * into v_cuenta;
+  end if;
+
+  v_anterior := v_cuenta.saldo_actual;
+  v_nuevo := v_anterior - 1;
+
+  update tbl_cuentas_creditos
+  set saldo_actual=v_nuevo
+  where id_cuenta_creditos=v_cuenta.id_cuenta_creditos;
+
+  insert into tbl_movimientos_creditos(
+    id_comercio,id_cuenta_creditos,tipo,cantidad,
+    saldo_anterior,saldo_posterior,concepto,referencia_tipo,referencia_id,usuario_id
+  )
+  values(
+    p_id_comercio,v_cuenta.id_cuenta_creditos,
+    'CONSUMO_VENTA',-1,
+    v_anterior,v_nuevo,
+    'Consumo de crédito por venta confirmada (D14)',
+    'PEDIDO',p_id_pedido,
+    fn_current_usuario_id()
+  );
+
+  return 1;
+end;
+$$;

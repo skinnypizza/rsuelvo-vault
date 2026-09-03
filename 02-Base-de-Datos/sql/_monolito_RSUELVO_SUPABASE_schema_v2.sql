@@ -89,7 +89,7 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type tipo_movimiento_credito as enum (
-    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','DEVOLUCION','EXPIRACION'
+    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','CONSUMO_VENTA','DEVOLUCION','EXPIRACION'
   );
 exception when duplicate_object then null; end $$;
 
@@ -444,7 +444,7 @@ create table if not exists tbl_verificaciones (
 create table if not exists tbl_cuentas_creditos (
   id_cuenta_creditos uuid primary key default gen_random_uuid(),
   id_comercio uuid not null unique references tbl_comercios(id_comercio) on delete cascade,
-  saldo_actual bigint not null default 0 check (saldo_actual >= 0),
+  saldo_actual bigint not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -454,11 +454,12 @@ create table if not exists tbl_movimientos_creditos (
   id_cuenta_creditos uuid not null references tbl_cuentas_creditos(id_cuenta_creditos) on delete restrict,
   tipo tipo_movimiento_credito not null,
   cantidad bigint not null check (cantidad <> 0),
-  saldo_anterior bigint not null check (saldo_anterior >= 0),
-  saldo_posterior bigint not null check (saldo_posterior >= 0),
+  saldo_anterior bigint not null,
+  saldo_posterior bigint not null,
   concepto text,
   referencia_tipo text,
   referencia_id uuid,
+  usuario_id uuid references tbl_usuarios(id_usuario) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -467,7 +468,7 @@ create table if not exists tbl_servicios_creditos (
   codigo text not null unique,
   nombre text not null,
   descripcion text,
-  costo_creditos bigint not null check (costo_creditos > 0),
+  costo_creditos bigint not null check (costo_creditos >= 0),
   activo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -1980,6 +1981,9 @@ begin
     'VENTA',v_res.cantidad,'PEDIDO',v_ver.id_pedido
   );
 
+  -- D14 (migración 27): consume 1 crédito por venta confirmada en la misma transacción
+  PERFORM fn_consumir_credito_venta(v_res.id_comercio, v_ver.id_pedido);
+
   return jsonb_build_object(
     'resultado','PAGO_CONFIRMADO',
     'id_pedido',v_ver.id_pedido,
@@ -2850,6 +2854,7 @@ on conflict (codigo) do nothing;
 insert into tbl_servicios_creditos(codigo,nombre,descripcion,costo_creditos)
 values
 ('VERIFICACION_COMPROBANTE','Verificación de comprobante','Verificación completa de un comprobante de pago',1),
+('VERIFICACION_MANUAL','Verificación manual (cajero)','Verificación de comprobante por el cajero en la app (D13). No consume al iniciar; consumo por venta (D14).',0),
 ('OCR_COMPROBANTE','OCR de comprobante','Extracción de información del comprobante',1),
 ('VALIDACION_AVANZADA','Validación avanzada','Validaciones adicionales del comprobante',3)
 on conflict (codigo) do nothing;
@@ -2942,5 +2947,56 @@ comment on function fn_generar_cobro is 'Crea el cobro QR con referencia única 
 comment on table tbl_variantes is 'SKU v2: 6 caracteres [3 tienda][3 producto] base36. id_comercio denormalizado por trigger.';
 comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y Meta (política §17).';
 comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
+
+-- (D14/migración 27) Consume 1 crédito por venta confirmada — SD-1: saldo puede quedar
+-- negativo (la venta NUNCA se bloquea); atribuye usuario_id del cajero vía JWT (D13).
+create or replace function fn_consumir_credito_venta(
+  p_id_comercio uuid,
+  p_id_pedido uuid
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_cuenta tbl_cuentas_creditos%rowtype;
+  v_anterior bigint;
+  v_nuevo bigint;
+begin
+  select * into v_cuenta
+  from tbl_cuentas_creditos
+  where id_comercio=p_id_comercio
+  for update;
+
+  if not found then
+    insert into tbl_cuentas_creditos(id_comercio,saldo_actual)
+    values(p_id_comercio,0)
+    returning * into v_cuenta;
+  end if;
+
+  v_anterior := v_cuenta.saldo_actual;
+  v_nuevo := v_anterior - 1;
+
+  update tbl_cuentas_creditos
+  set saldo_actual=v_nuevo
+  where id_cuenta_creditos=v_cuenta.id_cuenta_creditos;
+
+  insert into tbl_movimientos_creditos(
+    id_comercio,id_cuenta_creditos,tipo,cantidad,
+    saldo_anterior,saldo_posterior,concepto,referencia_tipo,referencia_id,usuario_id
+  )
+  values(
+    p_id_comercio,v_cuenta.id_cuenta_creditos,
+    'CONSUMO_VENTA',-1,
+    v_anterior,v_nuevo,
+    'Consumo de crédito por venta confirmada (D14)',
+    'PEDIDO',p_id_pedido,
+    fn_current_usuario_id()
+  );
+
+  return 1;
+end;
+$$;
 
 commit;

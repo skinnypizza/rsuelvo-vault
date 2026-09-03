@@ -313,7 +313,7 @@ create table if not exists tbl_verificaciones (
 create table if not exists tbl_cuentas_creditos (
   id_cuenta_creditos uuid primary key default gen_random_uuid(),
   id_comercio uuid not null unique references tbl_comercios(id_comercio) on delete cascade,
-  saldo_actual bigint not null default 0 check (saldo_actual >= 0),
+  saldo_actual bigint not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -323,11 +323,12 @@ create table if not exists tbl_movimientos_creditos (
   id_cuenta_creditos uuid not null references tbl_cuentas_creditos(id_cuenta_creditos) on delete restrict,
   tipo tipo_movimiento_credito not null,
   cantidad bigint not null check (cantidad <> 0),
-  saldo_anterior bigint not null check (saldo_anterior >= 0),
-  saldo_posterior bigint not null check (saldo_posterior >= 0),
+  saldo_anterior bigint not null,
+  saldo_posterior bigint not null,
   concepto text,
   referencia_tipo text,
   referencia_id uuid,
+  usuario_id uuid references tbl_usuarios(id_usuario) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -336,7 +337,7 @@ create table if not exists tbl_servicios_creditos (
   codigo text not null unique,
   nombre text not null,
   descripcion text,
-  costo_creditos bigint not null check (costo_creditos > 0),
+  costo_creditos bigint not null check (costo_creditos >= 0),
   activo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
