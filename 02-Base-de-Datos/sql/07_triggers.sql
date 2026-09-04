@@ -74,3 +74,20 @@ begin
       'create trigger trg_audit_%s after insert or update or delete on %I for each row execute function fn_auditar_cambio()',t,t);
   end loop;
 end $$;
+
+
+-- ========== (Migración 30) Triggers event-driven de entrega ==========
+-- Funciones fn_notifica_pedido_pagado / fn_notifica_envio_estado definidas en 06_functions.sql
+-- (copiar los cuerpos desde 30_logistica_entrega_eventos.sql). Triggers:
+
+-- CREATE TRIGGER trg_pedido_pagado_notifica
+-- AFTER UPDATE OF estado ON rsuelvo.tbl_pedidos
+-- FOR EACH ROW
+-- WHEN (NEW.estado = 'PAGADO' AND OLD.estado IS DISTINCT FROM 'PAGADO')
+-- EXECUTE FUNCTION rsuelvo.fn_notifica_pedido_pagado();
+
+-- CREATE TRIGGER trg_envio_estado_notifica
+-- AFTER UPDATE OF estado ON rsuelvo.tbl_envios
+-- FOR EACH ROW
+-- WHEN (NEW.estado IS DISTINCT FROM OLD.estado)
+-- EXECUTE FUNCTION rsuelvo.fn_notifica_envio_estado();

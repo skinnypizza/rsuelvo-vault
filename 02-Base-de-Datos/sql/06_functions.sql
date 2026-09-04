@@ -1907,3 +1907,11 @@ begin
   return 1;
 end;
 $$;
+
+
+-- ========== (Migración 30) F5 — Logística de entrega ==========
+-- fn_registrar_entrega: valida PAGADO, actualiza nombre del cliente, crea envío
+-- vía fn_crear_envio (pedido -> PREPARANDO). Ver cuerpo completo en
+-- 30_logistica_entrega_eventos.sql (idéntico en cloud).
+-- fn_notifica_pedido_pagado / fn_notifica_envio_estado: triggers pg_net (07_triggers.sql).
+
