@@ -10,9 +10,10 @@ on tbl_clientes(id_comercio,telefono_whatsapp)
 where telefono_whatsapp is not null;
 
 
--- Una sola reserva activa por variante+sucursal
+-- Una sola reserva activa POR CLIENTE por variante+sucursal (opción B: clientes
+-- distintos pueden reservar el mismo SKU en paralelo mientras haya stock).
 create unique index if not exists uq_reserva_activa_variante_sucursal
-on tbl_reservas(id_sucursal,id_variante)
+on tbl_reservas(id_sucursal,id_variante,id_cliente)
 where estado in ('ACTIVA','PAGO_VALIDANDO');
 
 

@@ -7,15 +7,18 @@ set search_path = rsuelvo, public;
 select cron.schedule(
   'rsuelvo_expirar_reservas',
   '* * * * *',
-  $$select rsuelvo.fn_procesar_reservas_vencidas(200);$$
+  $$select rsuelvo.fn_cron_expirar_y_notificar();$$
 );
 
--- Alternativa n8n: WF-30 (Schedule) -> RPC fn_procesar_reservas_vencidas()
---                  WF-31 -> fn_notificar_siguiente_lista_espera() por variante liberada.
+-- Expiración + notificación event-driven (migración 26):
+-- fn_cron_expirar_y_notificar() expira reservas y dispara webhook pg_net a WF-13
+-- SOLO cuando hay grupos de lista de espera con stock disponible.
+-- Alternativa n8n (solo si pg_cron no existiera): WF-30 (Schedule) + WF-13 (Schedule polling).
+-- Con pg_cron activo, WF-30 debe estar DESACTIVADO y WF-13 en modo webhook.
 -- Nunca implementar expiración/liberación dentro de n8n.
 
 comment on function fn_solicitar_reserva is
-'Reserva atómica de inventario. Bloquea la fila de inventario con FOR UPDATE. Debe ser llamada desde n8n/Backend mediante RPC y no replicarse en lógica de workflow.';
+'Reserva atómica de inventario (v2/15). Retorna RESERVA_CREADA, SIN_STOCK, o RESERVA_YA_EXISTENTE cuando ya hay una reserva activa para la misma (sucursal,variante) — sin duplicar filas ni mutar inventario. Bloquea inventario con FOR UPDATE; debe llamarse vía RPC desde n8n/Backend.';
 
 comment on function fn_expirar_reserva is
 'Libera stock de una reserva vencida de forma transaccional.';

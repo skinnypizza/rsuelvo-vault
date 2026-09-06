@@ -17,6 +17,7 @@ on conflict (codigo) do nothing;
 insert into tbl_servicios_creditos(codigo,nombre,descripcion,costo_creditos)
 values
 ('VERIFICACION_COMPROBANTE','Verificación de comprobante','Verificación completa de un comprobante de pago',1),
+('VERIFICACION_MANUAL','Verificación manual (cajero)','Verificación de comprobante por el cajero en la app (D13). No consume al iniciar; consumo por venta (D14).',0),
 ('OCR_COMPROBANTE','OCR de comprobante','Extracción de información del comprobante',1),
 ('VALIDACION_AVANZADA','Validación avanzada','Validaciones adicionales del comprobante',3)
 on conflict (codigo) do nothing;

@@ -38,6 +38,7 @@ create table if not exists tbl_comercio_config (
   tiempo_aceptacion_lista_espera_minutos integer not null default 2 check (tiempo_aceptacion_lista_espera_minutos > 0),
   max_lista_espera_por_producto integer not null default 5 check (max_lista_espera_por_producto > 0),
   verificacion_automatica boolean not null default true,
+  rate_limit_whatsapp_por_minuto integer not null default 20 check (rate_limit_whatsapp_por_minuto > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -253,6 +254,7 @@ create table if not exists tbl_metodos_pago (
   proveedor text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique(id_comercio,nombre)
 );
 
@@ -302,7 +304,8 @@ create table if not exists tbl_verificaciones (
   creditos_consumidos integer not null default 0 check (creditos_consumidos >= 0),
   fecha_inicio timestamptz,
   fecha_fin timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 
@@ -310,7 +313,7 @@ create table if not exists tbl_verificaciones (
 create table if not exists tbl_cuentas_creditos (
   id_cuenta_creditos uuid primary key default gen_random_uuid(),
   id_comercio uuid not null unique references tbl_comercios(id_comercio) on delete cascade,
-  saldo_actual bigint not null default 0 check (saldo_actual >= 0),
+  saldo_actual bigint not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -320,11 +323,12 @@ create table if not exists tbl_movimientos_creditos (
   id_cuenta_creditos uuid not null references tbl_cuentas_creditos(id_cuenta_creditos) on delete restrict,
   tipo tipo_movimiento_credito not null,
   cantidad bigint not null check (cantidad <> 0),
-  saldo_anterior bigint not null check (saldo_anterior >= 0),
-  saldo_posterior bigint not null check (saldo_posterior >= 0),
+  saldo_anterior bigint not null,
+  saldo_posterior bigint not null,
   concepto text,
   referencia_tipo text,
   referencia_id uuid,
+  usuario_id uuid references tbl_usuarios(id_usuario) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -333,7 +337,7 @@ create table if not exists tbl_servicios_creditos (
   codigo text not null unique,
   nombre text not null,
   descripcion text,
-  costo_creditos bigint not null check (costo_creditos > 0),
+  costo_creditos bigint not null check (costo_creditos >= 0),
   activo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -426,6 +430,7 @@ create table if not exists tbl_canal_whatsapp (
   provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
+  activo boolean not null default true, -- fix A13: referenciado por 04/06 (uq_canal_numero_activo, fn_identificar_*)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

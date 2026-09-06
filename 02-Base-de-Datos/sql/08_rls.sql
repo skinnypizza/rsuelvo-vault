@@ -125,7 +125,9 @@ create policy shipment_tracking_insert on tbl_env_seguimiento_estados for insert
 
 -- AUDITORÍA
 create policy audit_select on tbl_logs_auditoria for select using (fn_es_superadmin() or fn_es_admin_comercio(id_comercio));
-create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin() or fn_tiene_acceso_comercio(id_comercio));
+-- H-07 (Auditoría 2026-08-29, Regla de Oro 9): INSERT directo solo superadmin.
+-- La auditoría normal entra via trigger fn_auditar_cambio (SECURITY DEFINER) o roles BYPASSRLS (n8n).
+create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin());
 
 -- CANALES WHATSAPP
 create policy canal_select on tbl_canal_whatsapp for select using (fn_tiene_acceso_comercio(id_comercio));

@@ -1,6 +1,8 @@
 # ⭐ PROMPT MAESTRO RSUELVO — Fuente Única de Verdad
 
-> **Versión:** 1.3-FINAL · **Fecha:** 2026-08-24 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Versión:** 1.5 · **Fecha:** 2026-09-02 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Changelog v1.5:** D13 — verificación híbrida (OCR-asistente + cajero confirma vía app, toggle por comercio `verificacion_automatica`) · D14 — créditos por VENTA (CONSUMO_VENTA, saldo negativo permitido) · Regla de Oro 4 reformulada · Propuesta completa en `01-Arquitectura/PROPUESTA-Verificacion-Hibrida-V1-V2.md`
+> **Changelog v1.4:** Ruta canónica del código Flutter = `/home/nico/StudioProjects/rsuelvo/` (proyecto creado por el usuario, reemplaza la referencia histórica a `/mnt/windows/...`; §6 y README actualizados) + sistema de agentes opencode instalado en `.opencode/` + bitácora `00-Index/ESTADO-EJECUCION.md`
 > **Changelog v1.3:** Meta Developer Tools MCP (oficial, beta) configurado para TOOLING de desarrollo — webhooks/salud API/docs (D12); mensajería sigue exclusivamente por WF-80 (D11 intacto)
 **Changelog v1.2:** MCPs verificados/configurados para opencode (n8n cloud ✅, Supabase → mcp.supabase.com OAuth, sin MCP de Meta) · nueva sección `06-Integraciones/MCP-Servers.md` · workflows legacy n8n (WF1/WF2) marcados para archivar en F1
 **Changelog v1.1:** guía Meta integrada (04) + SQL v2.1 (eventos/pnid/plantillas) + auditorías históricas movidas a `07-Control-de-Calidad/` + HU-147 descartada (D7)
@@ -38,7 +40,7 @@ Fuente: [[arquitectura-general]] §RBAC (corregido I1) · `tbl_roles`/`rol_codig
 1. **Una reserva NO es una venta.** Bloqueo temporal → pago verificado → venta.
 2. **Atomicidad en PostgreSQL**: reservas, stock, lista de espera, pedidos, créditos y confirmaciones viven en funciones `fn_*`; jamás en lógica n8n/frontend.
 3. **n8n orquesta, no decide**: ningún `SELECT→IF→UPDATE` de negocio en workflows.
-4. **GPT-4o extrae, el backend decide**: la IA devuelve JSON estructurado con confianza; nunca aprueba dinero.
+4. **La IA (opcional) extrae; el humano o el backend decide**: la extracción OCR es asistente (pre-llena datos); la confirmación de pago corresponde al cajero (modo manual, D13) o a `fn_*` (modo automático). Jamás se confía en la afirmación del comprador.
 5. **QR estático** del comercio/sucursal (`qr-pagos`); RSUELVO no emite QR dinámicos con monto.
 6. **RLS siempre activo**; patrón `auth.uid() → tbl_usuarios.auth_user_id → tbl_usuario_comercio.id_comercio`. `service_role` solo desde backend/n8n (bypass controlado vía `fn_es_service_role()`).
 7. **Idempotencia obligatoria**: todo webhook pasa por `tbl_whatsapp_eventos` antes de procesarse.
@@ -93,6 +95,8 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | **D9** | Cola + rate-limiter + circuit breaker son **capa n8n (WF-80)**; la BD aporta opt-out e idempotencia. Implementación fase F7 | G3 |
 | **D10** | El comprador jamás tendrá cuenta/app; su identidad es `(id_comercio, telefono_whatsapp)` único | refuerzo |
 | **D12** | **Meta Developer Tools MCP aprobado SOLO para tooling de desarrollo** (registrar/probar webhooks, salud API, compliance, docs). Prohibido para tráfico de mensajes: eso permanece exclusivo de WF-80 (D11) | auditoría MCP + guía Meta oficial |
+| **D13** | **Verificación híbrida por comercio** (toggle `verificacion_automatica`): modo manual → el comprobante queda RECIBIDO y el **cajero confirma/rechaza desde la app** (RPC directo, sin n8n); modo automático → OCR (WF-22) + decisión IA (WF-23) como hoy. La confirmación usa `fn_confirmar_pago` con guardas (migraciones 22/25) en ambos modos | propuesta 2026-09-02 · `PROPUESTA-Verificacion-Hibrida-V1-V2.md` |
+| **D14** | **Créditos por VENTA**: cada `PAGO_CONFIRMADO` consume 1 crédito (`CONSUMO_VENTA`, valor nuevo del enum) en la misma transacción; saldo puede quedar negativo (la venta NUNCA se bloquea — SD-1); rechazos no consumen; aplica también a ventas de lista de espera. `CONSUMO_VERIFICACION` se conserva para el modo automático (V2) | propuesta 2026-09-02 · `PROPUESTA-Verificacion-Hibrida-V1-V2.md` |
 | **D11** | **Sin MCP de MENSAJERÍA de Meta**: Graph API se accede EXCLUSIVAMENTE vía n8n WF-80 (cola/rate-limit/breaker/opt-out). Un MCP directo saltaría los controles obligatorios de la política §4.3. Wrapper interno sobre WF-80 permitido a futuro. Stack local Supabase `54321` prohibido para proyecto | auditoría MCP 2026-08-24 |
 
 ## 6. Mapa de módulos (fuente canónica de cada dominio)
@@ -100,7 +104,7 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | Dominio | Documento(s) | Código |
 |---|---|---|
 | **Este prompt** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md` | — |
-| Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/mnt/windows/Desktop/Proyectos/Rsuelvo/rsuelvo/` |
+| Arquitectura | `01-Arquitectura/arquitectura-general.md` | Flutter `/home/nico/StudioProjects/rsuelvo/` |
 | Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `07-Control-de-Calidad/Auditoria-SQL-vs-ERD.md` (histórico, resuelto en v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
 | Workflows | `03-n8n/workflows.md` · `Matriz-Consistencia-WF-BD-HU.md` | n8n Cloud |
 | Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `07-Control-de-Calidad/Auditoria-Guia-Meta-Business.md` (histórico) | OpenWA 0.21 / Meta Cloud API |

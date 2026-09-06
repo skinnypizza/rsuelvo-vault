@@ -52,7 +52,7 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type tipo_movimiento_credito as enum (
-    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','DEVOLUCION','EXPIRACION'
+    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','CONSUMO_VENTA','DEVOLUCION','EXPIRACION'
   );
 exception when duplicate_object then null; end $$;
 

@@ -89,7 +89,7 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type tipo_movimiento_credito as enum (
-    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','DEVOLUCION','EXPIRACION'
+    'COMPRA','BONIFICACION','AJUSTE','CONSUMO_VERIFICACION','CONSUMO_VENTA','DEVOLUCION','EXPIRACION'
   );
 exception when duplicate_object then null; end $$;
 
@@ -169,6 +169,7 @@ create table if not exists tbl_comercio_config (
   tiempo_aceptacion_lista_espera_minutos integer not null default 2 check (tiempo_aceptacion_lista_espera_minutos > 0),
   max_lista_espera_por_producto integer not null default 5 check (max_lista_espera_por_producto > 0),
   verificacion_automatica boolean not null default true,
+  rate_limit_whatsapp_por_minuto integer not null default 20 check (rate_limit_whatsapp_por_minuto > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -384,6 +385,7 @@ create table if not exists tbl_metodos_pago (
   proveedor text,
   activo boolean not null default true,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique(id_comercio,nombre)
 );
 
@@ -433,7 +435,8 @@ create table if not exists tbl_verificaciones (
   creditos_consumidos integer not null default 0 check (creditos_consumidos >= 0),
   fecha_inicio timestamptz,
   fecha_fin timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 
@@ -441,7 +444,7 @@ create table if not exists tbl_verificaciones (
 create table if not exists tbl_cuentas_creditos (
   id_cuenta_creditos uuid primary key default gen_random_uuid(),
   id_comercio uuid not null unique references tbl_comercios(id_comercio) on delete cascade,
-  saldo_actual bigint not null default 0 check (saldo_actual >= 0),
+  saldo_actual bigint not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -451,11 +454,12 @@ create table if not exists tbl_movimientos_creditos (
   id_cuenta_creditos uuid not null references tbl_cuentas_creditos(id_cuenta_creditos) on delete restrict,
   tipo tipo_movimiento_credito not null,
   cantidad bigint not null check (cantidad <> 0),
-  saldo_anterior bigint not null check (saldo_anterior >= 0),
-  saldo_posterior bigint not null check (saldo_posterior >= 0),
+  saldo_anterior bigint not null,
+  saldo_posterior bigint not null,
   concepto text,
   referencia_tipo text,
   referencia_id uuid,
+  usuario_id uuid references tbl_usuarios(id_usuario) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -464,7 +468,7 @@ create table if not exists tbl_servicios_creditos (
   codigo text not null unique,
   nombre text not null,
   descripcion text,
-  costo_creditos bigint not null check (costo_creditos > 0),
+  costo_creditos bigint not null check (costo_creditos >= 0),
   activo boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -557,6 +561,7 @@ create table if not exists tbl_canal_whatsapp (
   provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
+  activo boolean not null default true, -- fix A13: referenciado por 04/06 (uq_canal_numero_activo, fn_identificar_*)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -615,9 +620,10 @@ on tbl_clientes(id_comercio,telefono_whatsapp)
 where telefono_whatsapp is not null;
 
 
--- Una sola reserva activa por variante+sucursal
+-- Una sola reserva activa POR CLIENTE por variante+sucursal (opción B: clientes
+-- distintos pueden reservar el mismo SKU en paralelo mientras haya stock).
 create unique index if not exists uq_reserva_activa_variante_sucursal
-on tbl_reservas(id_sucursal,id_variante)
+on tbl_reservas(id_sucursal,id_variante,id_cliente)
 where estado in ('ACTIVA','PAGO_VALIDANDO');
 
 
@@ -689,8 +695,8 @@ create index if not exists idx_auditoria_comercio_fecha on tbl_logs_auditoria(id
 create index if not exists idx_variantes_comercio on tbl_variantes(id_comercio);
 create index if not exists idx_reservas_expiracion_v2 on tbl_reservas(fecha_expiracion)
 where estado in ('ACTIVA','PAGO_VALIDANDO');
-create index if not exists idx_eventos_pendientes on tbl_whatsapp_eventos(recibido)
-where procesado = false;
+-- fix A14: idx_eventos_pendientes eliminado (referenciaba columna procesado inexistente;
+-- residuo pre-v2.1 — idx_eventos_status ya cubre eventos pendientes)
 create index if not exists idx_envios_repartidor on tbl_envios(id_repartidor,estado);
 create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(id_envio,created_at desc);
 
@@ -701,15 +707,19 @@ create index if not exists idx_seguimiento_envio on tbl_env_seguimiento_estados(
 set search_path = rsuelvo, public;
 
 -- Validación de asignación usuario/comercio (cajero = 1 sucursal)
+-- (fix 17_hardening_search_path_restante) SECURITY INVOKER + SET search_path
+-- = rsuelvo, public y objetos calificados.
 create or replace function fn_validar_asignacion_usuario_comercio()
 returns trigger
 language plpgsql
+security invoker
+set search_path = rsuelvo, public
 as $$
 declare
-  v_codigo rol_codigo;
+  v_codigo rsuelvo.rol_codigo;
   v_sucursal uuid;
 begin
-  select codigo into v_codigo from tbl_roles where id_rol=new.id_rol;
+  select codigo into v_codigo from rsuelvo.tbl_roles where id_rol=new.id_rol;
 
   if v_codigo in ('ROLE_TENANT_CASHIER','ROLE_LOGISTICS_AGENT')
      and new.id_sucursal is null then
@@ -719,8 +729,8 @@ begin
   if v_codigo='ROLE_TENANT_CASHIER' then
     if exists (
       select 1
-      from tbl_usuario_comercio uc
-      join tbl_roles r on r.id_rol=uc.id_rol
+      from rsuelvo.tbl_usuario_comercio uc
+      join rsuelvo.tbl_roles r on r.id_rol=uc.id_rol
       where uc.id_usuario=new.id_usuario
         and uc.activo
         and r.codigo='ROLE_TENANT_CASHIER'
@@ -737,9 +747,13 @@ $$;
 
 -- (v2/A1) Resuelve tenant de la variante, genera SKU de 6 caracteres
 -- [3 tienda][3 producto] en base36 si viene nulo, valida formato y duplicados.
+-- (fix 16_fix_search_path_sku) SECURITY INVOKER + SET search_path = rsuelvo, public
+-- y tablas calificadas para no depender del search_path de sesión.
 create or replace function fn_resolver_variante_tenant_sku()
 returns trigger
 language plpgsql
+security invoker
+set search_path = rsuelvo, public
 as $$
 declare
   v_comercio uuid;
@@ -751,7 +765,7 @@ begin
   -- 1) Resolver id_comercio desde el producto (siempre).
   if new.id_producto is not null then
     select p.id_comercio into v_comercio
-    from tbl_productos p
+    from rsuelvo.tbl_productos p
     where p.id_producto=new.id_producto;
   end if;
 
@@ -762,7 +776,7 @@ begin
   new.id_comercio := v_comercio;
 
   select codigo_tienda into v_codigo
-  from tbl_comercios
+  from rsuelvo.tbl_comercios
   where id_comercio=v_comercio;
 
   if v_codigo is null then
@@ -772,13 +786,13 @@ begin
   -- 2) Generar SKU si no viene (o venir vacío).
   if coalesce(new.sku,'')='' then
     -- serializar por comercio: bloquea la fila del comercio.
-    select 1 into v_max from tbl_comercios
+    select 1 into v_max from rsuelvo.tbl_comercios
     where id_comercio=v_comercio for update;
 
     select coalesce(max(
       ('x'||substr(v.sku,4,3))::bit(12)::int
     ),0) into v_max
-    from tbl_variantes v
+    from rsuelvo.tbl_variantes v
     where v.id_comercio=v_comercio
       and v.sku ~ '^[A-Z0-9]{6}$'
       and substr(v.sku,1,3)=v_codigo::text;
@@ -816,7 +830,7 @@ begin
 
   -- 4) Duplicado amigable (el UNIQUE físico es la garantía real).
   if exists (
-    select 1 from tbl_variantes v
+    select 1 from rsuelvo.tbl_variantes v
     where v.id_comercio=v_comercio
       and v.sku=new.sku
       and v.id_variante<>coalesce(new.id_variante,'00000000-0000-0000-0000-000000000000'::uuid)
@@ -830,9 +844,13 @@ $$;
 
 
 -- Consistencia multi-tenant
+-- (fix 17_hardening_search_path_restante) SECURITY INVOKER + SET search_path
+-- = rsuelvo, public y objetos calificados.
 create or replace function fn_validar_consistencia_tenant()
 returns trigger
 language plpgsql
+security invoker
+set search_path = rsuelvo, public
 as $$
 declare
   v_comercio uuid;
@@ -840,7 +858,7 @@ begin
   -- Sucursal pertenece al comercio.
   if tg_table_name in ('tbl_reservas','tbl_lista_espera','tbl_pedidos','tbl_envios') then
     select id_comercio into v_comercio
-    from tbl_sucursales
+    from rsuelvo.tbl_sucursales
     where id_sucursal=new.id_sucursal;
 
     if v_comercio is distinct from new.id_comercio then
@@ -851,7 +869,7 @@ begin
   -- Cliente pertenece al comercio.
   if tg_table_name in ('tbl_reservas','tbl_pedidos','tbl_comprobantes_pago') then
     select id_comercio into v_comercio
-    from tbl_clientes
+    from rsuelvo.tbl_clientes
     where id_cliente=new.id_cliente;
 
     if v_comercio is distinct from new.id_comercio then
@@ -884,6 +902,21 @@ stable
 as $$
   select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),'service_role')
      = 'service_role';
+$$;
+
+
+-- (fix A15) Resolver auth.uid() -> tbl_usuarios.id_usuario.
+-- Devuelve NULL para sesiones sin usuario de app (service_role/cron);
+-- consumida por fn_solicitar_reserva, fn_crear_envio, fn_actualizar_estado_envio,
+-- fn_movimiento_inventario y fn_auditar_cambio.
+create or replace function fn_current_usuario_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = rsuelvo, public
+as $$
+  select id_usuario from tbl_usuarios where auth_user_id = auth.uid();
 $$;
 
 
@@ -1085,6 +1118,41 @@ end;
 $$;
 
 
+-- (v2/WF-10/HU-037..041) Resuelve SKU exacto dentro del comercio.
+create or replace function fn_resolver_variante_por_sku(
+  p_id_comercio uuid,
+  p_sku text
+)
+returns table(
+  id_variante uuid,
+  nombre text,
+  precio numeric(14,2),
+  id_producto uuid
+)
+language plpgsql
+stable
+security invoker
+set search_path = rsuelvo, pg_catalog
+as $$
+begin
+  if p_sku is null or p_sku !~ '^[A-Z0-9]{6}$' then
+    raise exception 'SKU inválido. Formato requerido: exactamente 6 caracteres [A-Z0-9]'
+      using errcode = '22023';
+  end if;
+
+  return query
+  select v.id_variante, v.nombre, v.precio, v.id_producto
+  from tbl_variantes v
+  where v.id_comercio = p_id_comercio
+    and v.sku = p_sku
+    and v.activo;
+end;
+$$;
+
+revoke execute on function fn_resolver_variante_por_sku(uuid, text) from public;
+grant execute on function fn_resolver_variante_por_sku(uuid, text) to authenticated, service_role;
+
+
 -- (v2/A2/HU-123) Identificar comercio+sucursal por número de WhatsApp destino.
 -- Solo service_role (n8n): nunca expone el mapa completo al cliente.
 create or replace function fn_identificar_comercio_por_whatsapp(p_numero text)
@@ -1102,12 +1170,16 @@ as $$
 $$;
 
 -- Guard: rechazar si NO es service_role
+-- (fix 17_hardening_search_path_restante) SECURITY INVOKER + SET search_path
+-- = rsuelvo, public y llamada calificada a rsuelvo.fn_es_service_role.
 create or replace function fn_assert_service_role()
 returns void
 language plpgsql
+security invoker
+set search_path = rsuelvo, public
 as $$
 begin
-  if not fn_es_service_role() then
+  if not rsuelvo.fn_es_service_role() then
     raise exception 'Operación reservada al backend (service_role)';
   end if;
 end;
@@ -1223,7 +1295,7 @@ as $$
 $$;
 
 
--- Reserva atómica
+-- Reserva atómica (v2/18 RESERVA_YA_EXISTENTE por cliente; opción B)
 create or replace function fn_solicitar_reserva(
   p_id_comercio uuid,
   p_id_sucursal uuid,
@@ -1242,6 +1314,8 @@ declare
   v_reserva uuid;
   v_pedido uuid;
   v_precio numeric(14,2);
+  v_reserva_existente uuid;
+  v_fecha_expiracion timestamptz;
 begin
   if p_cantidad <= 0 then
     raise exception 'La cantidad debe ser mayor a 0';
@@ -1271,7 +1345,31 @@ begin
     raise exception 'SKU/variante inválida para el comercio';
   end if;
 
-  -- Bloqueo pesimista: solo una transacción modifica esta fila.
+  -- (18/RESERVA_YA_EXISTENTE por cliente) Detección temprana SIN tocar inventario:
+  -- si el MISMO cliente ya tiene una reserva activa para (sucursal, variante) la
+  -- devolvemos. El índice uq_reserva_activa_variante_sucursal ahora incluye
+  -- id_cliente, por lo que clientes DISTINTOS NO colisionan y pueden reservar en
+  -- paralelo mientras haya stock. FOR UPDATE serializa contra fn_expirar_reserva
+  -- sobre la misma fila del cliente y evita doble retorno en reintentos.
+  select id_reserva, fecha_expiracion
+    into v_reserva_existente, v_fecha_expiracion
+  from tbl_reservas
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+    and id_cliente=p_id_cliente
+    and estado in ('ACTIVA','PAGO_VALIDANDO')
+  for update;
+
+  if found then
+    return jsonb_build_object(
+      'resultado','RESERVA_YA_EXISTENTE',
+      'id_reserva',v_reserva_existente,
+      'fecha_expiracion',v_fecha_expiracion
+    );
+  end if;
+
+  -- Bloqueo pesimista: solo una transacción modifica esta fila. Este lock serializa
+  -- la carrera primera-reserva/reintento para la misma variante+sucursal.
   select * into v_inv
   from tbl_inventario
   where id_sucursal=p_id_sucursal
@@ -1282,6 +1380,27 @@ begin
     return jsonb_build_object(
       'resultado','SIN_STOCK',
       'motivo','NO_EXISTE_INVENTARIO'
+    );
+  end if;
+
+  -- (18/RESERVA_YA_EXISTENTE por cliente) Re-verificación DENTRO del lock de
+  -- inventario para cerrar la carrera primer-reserva/reintento del MISMO cliente.
+  -- Una transacción concurrente del mismo cliente pudo crear la reserva mientras
+  -- esta esperaba el lock. Cliente distinto no cuenta (puede reservar si hay stock).
+  select id_reserva, fecha_expiracion
+    into v_reserva_existente, v_fecha_expiracion
+  from tbl_reservas
+  where id_sucursal=p_id_sucursal
+    and id_variante=p_id_variante
+    and id_cliente=p_id_cliente
+    and estado in ('ACTIVA','PAGO_VALIDANDO')
+  limit 1;
+
+  if found then
+    return jsonb_build_object(
+      'resultado','RESERVA_YA_EXISTENTE',
+      'id_reserva',v_reserva_existente,
+      'fecha_expiracion',v_fecha_expiracion
     );
   end if;
 
@@ -1570,6 +1689,7 @@ $$;
 
 
 -- Crear pedido desde reserva
+-- (migración 19 / H-1) Idempotencia: reintento de la MISMA reserva devuelve el pedido existente.
 create or replace function fn_crear_pedido_desde_reserva(p_id_reserva uuid)
 returns uuid
 language plpgsql
@@ -1594,6 +1714,11 @@ begin
 
   if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') then
     raise exception 'La reserva no puede generar pedido';
+  end if;
+
+  -- H-1 (migración 19): idempotencia por reserva
+  if v_res.id_pedido is not null then
+    return v_res.id_pedido;
   end if;
 
   select v.* into v_var
@@ -1780,6 +1905,15 @@ begin
     raise exception 'Verificación inexistente';
   end if;
 
+  -- H-01: guarda de idempotencia por verificación
+  if v_ver.estado = 'COMPLETADA' then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','Esta verificación ya fue confirmada previamente; no se repiten efectos de inventario.'
+    );
+  end if;
+
   select * into v_res
   from tbl_reservas
   where id_pedido=v_ver.id_pedido
@@ -1787,6 +1921,24 @@ begin
 
   if not found then
     raise exception 'No existe reserva asociada al pedido';
+  end if;
+
+  -- H-12: el pedido no debe confirmarse dos veces
+  if exists (select 1 from tbl_pedidos where id_pedido=v_ver.id_pedido and estado='PAGADO') then
+    return jsonb_build_object(
+      'resultado','YA_PROCESADO',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','El pedido ya estaba pagado; no se repiten efectos de inventario.'
+    );
+  end if;
+
+  -- H-12: la reserva debe seguir viva para poder convertirse en venta
+  if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') or v_res.fecha_expiracion < now() then
+    return jsonb_build_object(
+      'resultado','RESERVA_VENCIDA',
+      'id_pedido', v_ver.id_pedido,
+      'mensaje','La reserva expiró. El comprador debe solicitar el SKU nuevamente.'
+    );
   end if;
 
   update tbl_verificaciones
@@ -1828,6 +1980,9 @@ begin
     v_res.id_comercio,v_res.id_sucursal,v_res.id_variante,
     'VENTA',v_res.cantidad,'PEDIDO',v_ver.id_pedido
   );
+
+  -- D14 (migración 27): consume 1 crédito por venta confirmada en la misma transacción
+  PERFORM fn_consumir_credito_venta(v_res.id_comercio, v_ver.id_pedido);
 
   return jsonb_build_object(
     'resultado','PAGO_CONFIRMADO',
@@ -1885,6 +2040,97 @@ begin
 end;
 $$;
 
+-- (v2/WF-21/HU-057..058) Registra un comprobante de pago y lo vincula al pedido en
+-- espera de pago del cliente/comercio. SECURITY DEFINER para que n8n pueda invocarla
+-- con la credencial anon (mismo patrón que fn_upsert_cliente), sin requerir
+-- service_role en el app layer. Resuelve id_pedido si no se provee.
+-- Migración 20: idempotencia de reenvío (D5). Migración 21: fix ambigüedad PL/pgSQL.
+create or replace function fn_registrar_comprobante(
+  p_id_comercio uuid,
+  p_id_cliente uuid,
+  p_tipo_archivo text,
+  p_archivo_url text,
+  p_monto_detectado numeric default null,
+  p_fecha_detectada timestamptz default null,
+  p_numero_operacion text default null,
+  p_nombre_pagador text default null,
+  p_estado rsuelvo.estado_comprobante default 'RECIBIDO',
+  p_id_pedido uuid default null
+)
+returns table(id_comprobante uuid, id_pedido uuid)
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_id_comprobante uuid := gen_random_uuid();
+  v_id_pedido uuid := p_id_pedido;
+  v_existente uuid;
+  v_pedido_existente uuid;
+begin
+  if not fn_tiene_acceso_comercio(p_id_comercio) then
+    raise exception 'Sin acceso al comercio';
+  end if;
+
+  if v_id_pedido is null then
+    select p.id_pedido into v_id_pedido
+    from tbl_pedidos p
+    where p.id_comercio = p_id_comercio
+      and p.id_cliente = p_id_cliente
+      and p.estado = 'ESPERANDO_PAGO'
+    order by p.created_at desc
+    limit 1;
+  end if;
+
+  if v_id_pedido is null then
+    raise exception 'No se encontro pedido en espera de pago para vincular el comprobante';
+  end if;
+
+  -- Idempotencia de reenvío: mismo numero de operacion en el mismo comercio
+  if p_numero_operacion is not null then
+    select c.id_comprobante, c.id_pedido
+      into v_existente, v_pedido_existente
+      from tbl_comprobantes_pago c
+      where c.id_comercio = p_id_comercio
+        and c.numero_operacion = p_numero_operacion
+      limit 1;
+
+    if v_existente is not null then
+      if v_pedido_existente = v_id_pedido then
+        update tbl_comprobantes_pago as c
+           set tipo_archivo     = p_tipo_archivo,
+               archivo_url      = p_archivo_url,
+               monto_detectado  = coalesce(p_monto_detectado, c.monto_detectado),
+               fecha_detectada  = coalesce(p_fecha_detectada, c.fecha_detectada),
+               nombre_pagador   = coalesce(p_nombre_pagador, c.nombre_pagador),
+               estado           = p_estado
+         where c.id_comprobante = v_existente;
+        return query select v_existente, v_id_pedido;
+        return;
+      else
+        raise exception 'COMPROBANTE_DUPLICADO: el numero de operacion % ya fue registrado para otro pedido', p_numero_operacion;
+      end if;
+    end if;
+  end if;
+
+  insert into tbl_comprobantes_pago (
+    id_comprobante, id_comercio, id_pedido, id_cliente,
+    tipo_archivo, archivo_url, monto_detectado, fecha_detectada,
+    numero_operacion, nombre_pagador, estado
+  ) values (
+    v_id_comprobante, p_id_comercio, v_id_pedido, p_id_cliente,
+    p_tipo_archivo, p_archivo_url, p_monto_detectado, p_fecha_detectada,
+    p_numero_operacion, p_nombre_pagador, p_estado
+  );
+
+  return query select v_id_comprobante, v_id_pedido;
+end;
+$$;
+
+grant execute on function fn_registrar_comprobante(
+  uuid, uuid, text, text, numeric, timestamptz, text, text, rsuelvo.estado_comprobante, uuid
+) to anon, authenticated, service_role;
+
 
 -- Crear envío
 create or replace function fn_crear_envio(
@@ -1941,6 +2187,7 @@ $$;
 
 
 -- (v2/A4/HU-056) Generar cobro QR del pedido (referencia única por comercio).
+-- (migración 19 / H-1) Idempotencia: reintento del MISMO pedido devuelve el cobro GENERADO vigente.
 create or replace function fn_generar_cobro(
   p_id_pedido uuid,
   p_qr_url text default null
@@ -1964,6 +2211,13 @@ begin
 
   if v_pedido.estado not in ('CREADO','ESPERANDO_PAGO') then
     raise exception 'El pedido % no admite cobro en estado %',p_id_pedido,v_pedido.estado;
+  end if;
+
+  -- H-1 (migración 19): idempotencia por pedido (retorna cobro GENERADO vigente)
+  select id_qr_cobro into v_id from tbl_qr_cobros
+  where id_pedido=p_id_pedido and estado='GENERADO' limit 1;
+  if v_id is not null then
+    return v_id;
   end if;
 
   select id_metodo_pago into v_metodo
@@ -2503,7 +2757,9 @@ create policy shipment_tracking_insert on tbl_env_seguimiento_estados for insert
 
 -- AUDITORÍA
 create policy audit_select on tbl_logs_auditoria for select using (fn_es_superadmin() or fn_es_admin_comercio(id_comercio));
-create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin() or fn_tiene_acceso_comercio(id_comercio));
+-- H-07 (Auditoría 2026-08-29, Regla de Oro 9): INSERT directo solo superadmin.
+-- La auditoría normal entra via trigger fn_auditar_cambio (SECURITY DEFINER) o roles BYPASSRLS (n8n).
+create policy audit_insert on tbl_logs_auditoria for insert with check (fn_es_superadmin());
 
 -- CANALES WHATSAPP
 create policy canal_select on tbl_canal_whatsapp for select using (fn_tiene_acceso_comercio(id_comercio));
@@ -2598,6 +2854,7 @@ on conflict (codigo) do nothing;
 insert into tbl_servicios_creditos(codigo,nombre,descripcion,costo_creditos)
 values
 ('VERIFICACION_COMPROBANTE','Verificación de comprobante','Verificación completa de un comprobante de pago',1),
+('VERIFICACION_MANUAL','Verificación manual (cajero)','Verificación de comprobante por el cajero en la app (D13). No consume al iniciar; consumo por venta (D14).',0),
 ('OCR_COMPROBANTE','OCR de comprobante','Extracción de información del comprobante',1),
 ('VALIDACION_AVANZADA','Validación avanzada','Validaciones adicionales del comprobante',3)
 on conflict (codigo) do nothing;
@@ -2668,7 +2925,7 @@ select cron.schedule(
 -- Nunca implementar expiración/liberación dentro de n8n.
 
 comment on function fn_solicitar_reserva is
-'Reserva atómica de inventario. Bloquea la fila de inventario con FOR UPDATE. Debe ser llamada desde n8n/Backend mediante RPC y no replicarse en lógica de workflow.';
+'Reserva atómica de inventario (v2/18, opción B). Una reserva activa POR CLIENTE por sucursal+variante; clientes distintos pueden reservar en paralelo mientras haya stock. Retorna RESERVA_CREADA, SIN_STOCK, o RESERVA_YA_EXISTENTE (solo si el MISMO cliente ya tiene reserva activa) — sin duplicar filas ni mutar inventario. Bloquea inventario con FOR UPDATE; debe llamarse vía RPC desde n8n/Backend.';
 
 comment on function fn_expirar_reserva is
 'Libera stock de una reserva vencida de forma transaccional.';
@@ -2691,4 +2948,211 @@ comment on table tbl_variantes is 'SKU v2: 6 caracteres [3 tienda][3 producto] b
 comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y Meta (política §17).';
 comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
 
+-- (D14/migración 27) Consume 1 crédito por venta confirmada — SD-1: saldo puede quedar
+-- negativo (la venta NUNCA se bloquea); atribuye usuario_id del cajero vía JWT (D13).
+create or replace function fn_consumir_credito_venta(
+  p_id_comercio uuid,
+  p_id_pedido uuid
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_cuenta tbl_cuentas_creditos%rowtype;
+  v_anterior bigint;
+  v_nuevo bigint;
+begin
+  select * into v_cuenta
+  from tbl_cuentas_creditos
+  where id_comercio=p_id_comercio
+  for update;
+
+  if not found then
+    insert into tbl_cuentas_creditos(id_comercio,saldo_actual)
+    values(p_id_comercio,0)
+    returning * into v_cuenta;
+  end if;
+
+  v_anterior := v_cuenta.saldo_actual;
+  v_nuevo := v_anterior - 1;
+
+  update tbl_cuentas_creditos
+  set saldo_actual=v_nuevo
+  where id_cuenta_creditos=v_cuenta.id_cuenta_creditos;
+
+  insert into tbl_movimientos_creditos(
+    id_comercio,id_cuenta_creditos,tipo,cantidad,
+    saldo_anterior,saldo_posterior,concepto,referencia_tipo,referencia_id,usuario_id
+  )
+  values(
+    p_id_comercio,v_cuenta.id_cuenta_creditos,
+    'CONSUMO_VENTA',-1,
+    v_anterior,v_nuevo,
+    'Consumo de crédito por venta confirmada (D14)',
+    'PEDIDO',p_id_pedido,
+    fn_current_usuario_id()
+  );
+
+  return 1;
+end;
+$$;
+
 commit;
+-- Migración 30 (2026-09-02) [monolito]: F5 — logística de entrega event-driven (D13/D14)
+--   1. fn_registrar_entrega(p_id_pedido, p_datos jsonb): valida PAGADO, actualiza el
+--      nombre del cliente, crea el envío vía fn_crear_envio (pedido -> PREPARANDO).
+--      Datos: nombre/direccion/referencia/telefono (json, del formato WhatsApp
+--      NOMBRE:/DIRECCIÓN:/REFERENCIA:/TELÉFONO:).
+--   2. Triggers event-driven (patrón pg_net probado en lista de espera):
+--      * tbl_pedidos estado -> PAGADO → webhook 'webhook/entrega/request'
+--        → n8n pide los datos de entrega al comprador
+--      * tbl_envios estado (transición) → webhook 'webhook/entrega/estado'
+--        → n8n notifica al comprador (PREPARANDO/ASIGNADO/EN_RUTA/ENTREGADO/NO_ENTREGADO)
+--   El token lo verifican los workflows n8n contra $vars.ENTREGA_TOKEN
+--   (RSU_entrega_notif_7Qk2mXwP). Requiere pg_net (migración 26).
+
+-- ========== 1. Registrar entrega (wrapper para n8n) ==========
+CREATE OR REPLACE FUNCTION rsuelvo.fn_registrar_entrega(p_id_pedido uuid, p_datos jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_pedido tbl_pedidos%rowtype;
+  v_nombre text;
+  v_direccion text;
+  v_referencia text;
+  v_telefono text;
+  v_id_envio uuid;
+BEGIN
+  SELECT * INTO v_pedido
+  FROM tbl_pedidos
+  WHERE id_pedido=p_id_pedido
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Pedido inexistente';
+  END IF;
+
+  IF v_pedido.estado <> 'PAGADO' THEN
+    RAISE EXCEPTION 'El pedido % no está PAGADO (estado: %)', p_id_pedido, v_pedido.estado;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM tbl_envios WHERE id_pedido=p_id_pedido) THEN
+    RAISE EXCEPTION 'El pedido ya tiene envío registrado';
+  END IF;
+
+  v_nombre     := NULLIF(trim(COALESCE(p_datos->>'nombre','')), '');
+  v_direccion  := NULLIF(trim(COALESCE(p_datos->>'direccion','')), '');
+  v_referencia := NULLIF(trim(COALESCE(p_datos->>'referencia','')), '');
+  v_telefono   := NULLIF(trim(COALESCE(p_datos->>'telefono','')), '');
+
+  IF v_direccion IS NULL OR v_telefono IS NULL THEN
+    RAISE EXCEPTION 'Faltan datos de entrega obligatorios (direccion, telefono)';
+  END IF;
+
+  IF v_nombre IS NOT NULL THEN
+    UPDATE tbl_clientes SET nombre=v_nombre WHERE id_cliente=v_pedido.id_cliente;
+  END IF;
+
+  v_id_envio := fn_crear_envio(p_id_pedido, v_direccion, v_referencia, v_telefono);
+
+  RETURN jsonb_build_object(
+    'resultado','ENTREGA_REGISTRADA',
+    'id_envio',v_id_envio,
+    'id_pedido',p_id_pedido,
+    'estado_envio','PENDIENTE'
+  );
+END;
+$function$;
+
+-- ========== 2. Trigger: pedido PAGADO → pedir datos de entrega ==========
+CREATE OR REPLACE FUNCTION rsuelvo.fn_notifica_pedido_pagado()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_phone text;
+BEGIN
+  IF NEW.estado = 'PAGADO' AND OLD.estado IS DISTINCT FROM 'PAGADO' THEN
+    SELECT COALESCE(telefono_whatsapp, telefono) INTO v_phone
+    FROM tbl_clientes
+    WHERE id_cliente = NEW.id_cliente;
+
+    PERFORM net.http_post(
+      url    => 'https://rsuelvo.app.n8n.cloud/webhook/entrega/request',
+      body   => jsonb_build_object(
+        'token', 'RSU_entrega_notif_7Qk2mXwP',
+        'id_pedido', NEW.id_pedido,
+        'id_comercio', NEW.id_comercio,
+        'id_cliente', NEW.id_cliente,
+        'phone', v_phone
+      ),
+      headers => jsonb_build_object('Content-Type', 'application/json')
+    );
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE TRIGGER trg_pedido_pagado_notifica
+AFTER UPDATE OF estado ON rsuelvo.tbl_pedidos
+FOR EACH ROW
+WHEN (NEW.estado = 'PAGADO' AND OLD.estado IS DISTINCT FROM 'PAGADO')
+EXECUTE FUNCTION rsuelvo.fn_notifica_pedido_pagado();
+
+-- ========== 3. Trigger: cambio de estado del envío → notificar al comprador ==========
+CREATE OR REPLACE FUNCTION rsuelvo.fn_notifica_envio_estado()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_phone text;
+  v_msg text;
+BEGIN
+  IF NEW.estado IS DISTINCT FROM OLD.estado THEN
+    SELECT COALESCE(telefono_whatsapp, telefono) INTO v_phone
+    FROM tbl_clientes
+    WHERE id_cliente = (SELECT id_cliente FROM tbl_pedidos WHERE id_pedido = NEW.id_pedido);
+
+    v_msg := CASE NEW.estado
+      WHEN 'PREPARANDO'   THEN '📦 Tu pedido está en preparación.'
+      WHEN 'ASIGNADO'     THEN '🛵 Tu pedido fue asignado al repartidor.'
+      WHEN 'EN_RUTA'      THEN '🚚 ¡Tu pedido está EN CAMINO!'
+      WHEN 'ENTREGADO'    THEN '✅ Tu pedido fue ENTREGADO. ¡Gracias por tu compra!'
+      WHEN 'NO_ENTREGADO' THEN '❌ No pudimos entregar tu pedido. Reintentaremos — contáctanos si necesitas coordinar.'
+      ELSE NULL
+    END CASE;
+
+    IF v_msg IS NOT NULL AND v_phone IS NOT NULL THEN
+      PERFORM net.http_post(
+        url    => 'https://rsuelvo.app.n8n.cloud/webhook/entrega/estado',
+        body   => jsonb_build_object(
+          'token', 'RSU_entrega_notif_7Qk2mXwP',
+          'id_envio', NEW.id_envio,
+          'id_pedido', NEW.id_pedido,
+          'id_comercio', NEW.id_comercio,
+          'estado', NEW.estado,
+          'phone', v_phone,
+          'numero_guia', NEW.numero_guia
+        ),
+        headers => jsonb_build_object('Content-Type', 'application/json')
+      );
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE TRIGGER trg_envio_estado_notifica
+AFTER UPDATE OF estado ON rsuelvo.tbl_envios
+FOR EACH ROW
+WHEN (NEW.estado IS DISTINCT FROM OLD.estado)
+EXECUTE FUNCTION rsuelvo.fn_notifica_envio_estado();
