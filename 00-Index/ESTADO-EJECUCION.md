@@ -28,12 +28,12 @@
 
 ## 3. Bloqueos que dependen del usuario
 
-| # | Bloqueo | Desbloquea |
-|---|---|---|
-| ~~U1~~ | ~~OAuth Supabase MCP~~ | ✅ RESUELTO (verificado 2026-08-26; F0 ejecutado vía MCP) |
-| U2 | OAuth meta-devtools MCP (cuenta Meta developer; acceso beta gradual) | F1 |
-| ~~U3~~ | ~~Credencial Supabase `service_role`~~ | ✅ CONFIGURADO (2026-08-27): `Supabase account` (RenGuIvjRTsRLP31) con service_role key para WF-10; `Postgres account` (sh8ch5BllRKXI1UB) apuntando a `iwfaktlxebxtocmswdvv` como rol bypassrls para WF-80. Verificar en runtime. |
-| ~~U4~~ | ~~Variable n8n `$vars.META_SYSTEM_TOKEN`~~ | ✅ CONFIGURADO (2026-08-27): token Meta System User en n8n. Verificar en runtime (envío WF-80 y descarga media WF-21). |
+| #      | Bloqueo                                                              | Desbloquea                                                                                                                                                                                                                       |
+| ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~U1~~ | ~~OAuth Supabase MCP~~                                               | ✅ RESUELTO (verificado 2026-08-26; F0 ejecutado vía MCP)                                                                                                                                                                         |
+| U2     | OAuth meta-devtools MCP (cuenta Meta developer; acceso beta gradual) | F1                                                                                                                                                                                                                               |
+| ~~U3~~ | ~~Credencial Supabase `service_role`~~                               | ✅ CONFIGURADO (2026-08-27): `Supabase account` (RenGuIvjRTsRLP31) con service_role key para WF-10; `Postgres account` (sh8ch5BllRKXI1UB) apuntando a `iwfaktlxebxtocmswdvv` como rol bypassrls para WF-80. Verificar en runtime. |
+| ~~U4~~ | ~~Variable n8n `$vars.META_SYSTEM_TOKEN`~~                           | ✅ CONFIGURADO (2026-08-27): token Meta System User en n8n. Verificar en runtime (envío WF-80 y descarga media WF-21).                                                                                                            |
 
 ## 4. Bitácora
 
