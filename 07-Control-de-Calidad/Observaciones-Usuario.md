@@ -125,6 +125,8 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
 
 **BD:** sin cambios estructurales (enum ya tiene `RECHAZADO`/`VENCIDO`/`CANCELADO`; `fn_notificar_siguiente_lista_espera` usa `SKIP LOCKED`).
 
+> **Estado implementación (2026-09-07):** **Momento 2 ✅ implementado y publicado** (WF-13 ya traía SI/NO en el mensaje; WF-04 dispatcha SI/NO a WF-14 con `text`; WF-14 clasifica ACEPTAR/RECHAZAR → `fn_rechazar_lista_espera` m31 + notifica siguiente). **Momento 1 ⬜ pendiente** (WF-10 rama `SIN_STOCK` → pregunta SI/NO; WF-12 solo si responde "SI"). **Pruebas T-A/T-B pendientes del dueño** (requieren WhatsApp reales desde 2 números).
+
 ---
 
 ## 📊 Resumen de Estado
@@ -159,3 +161,4 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
 | 2026-09-06 | — | Archivo creado |
 | 2026-09-06 | OBS-001 | Registrada — pregunta confirmación lista de espera |
 | 2026-09-06 | OBS-001 | Opción C seleccionada — preguntar al entrar + opción de salir al notificar (registrada como sugerencia) |
+| 2026-09-07 | OBS-001 | Momento 2 implementado en n8n (WF-04 `qLyBczowLOcnNXe5` y WF-14 `MLgnwfXbg7HnWVHC` publicados; usa `fn_rechazar_lista_espera` m31). Pendiente: Momento 1 (WF-10/WF-12) + tests T-A/T-B |
