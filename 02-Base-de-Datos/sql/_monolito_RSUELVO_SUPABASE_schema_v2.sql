@@ -1574,7 +1574,7 @@ end;
 $$;
 
 
--- Notificar siguiente de la lista
+-- Notificar siguiente de la lista (m32: salta clientes con oferta NOTIFICADO vigente en cualquier grupo — H-17)
 create or replace function fn_notificar_siguiente_lista_espera(
   p_id_sucursal uuid,
   p_id_variante uuid
@@ -1589,11 +1589,17 @@ declare
   v_cfg tbl_comercio_config%rowtype;
 begin
   select * into v_item
-  from tbl_lista_espera
-  where id_sucursal=p_id_sucursal
-    and id_variante=p_id_variante
-    and estado='ESPERANDO'
-  order by posicion
+  from tbl_lista_espera cand
+  where cand.id_sucursal=p_id_sucursal
+    and cand.id_variante=p_id_variante
+    and cand.estado='ESPERANDO'
+    and not exists (
+      select 1 from tbl_lista_espera act
+      where act.id_cliente = cand.id_cliente
+        and act.estado='NOTIFICADO'
+        and act.fecha_expiracion > now()
+    )
+  order by cand.posicion
   limit 1
   for update skip locked;
 
@@ -3156,3 +3162,76 @@ AFTER UPDATE OF estado ON rsuelvo.tbl_envios
 FOR EACH ROW
 WHEN (NEW.estado IS DISTINCT FROM OLD.estado)
 EXECUTE FUNCTION rsuelvo.fn_notifica_envio_estado();
+
+-- ============================================================
+-- MIGRACIÓN 26/32 (2026-08-31 / 2026-09-07): CRON EVENT-DRIVEN + TURNO ÚNICO
+-- (m26 instaló pg_net y fn_cron_expirar_y_notificar; m32 añade guardas H-16/17/18)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_cron_expirar_y_notificar()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_expiradas integer;
+  v_turnos_vencidos integer;
+  v_notificables boolean;
+  v_http bigint;
+BEGIN
+  -- 0) Vence turnos NOTIFICADO expirados (H-18)
+  WITH vencidos AS (
+    UPDATE tbl_lista_espera
+    SET estado='VENCIDO'
+    WHERE estado='NOTIFICADO'
+      AND fecha_expiracion <= now()
+    RETURNING 1
+  )
+  SELECT count(*) INTO v_turnos_vencidos FROM vencidos;
+
+  -- 1) Expira reservas vencidas (libera stock, registra movimientos)
+  v_expiradas := rsuelvo.fn_procesar_reservas_vencidas(200);
+
+  -- 2) ¿Hay grupos con stock disponible y SIN turno en vuelo? (H-16)
+  SELECT EXISTS (
+    SELECT 1
+    FROM tbl_lista_espera le
+    JOIN tbl_inventario i
+      ON i.id_sucursal = le.id_sucursal
+     AND i.id_variante = le.id_variante
+    WHERE le.estado = 'ESPERANDO'
+      AND (i.stock_actual - i.stock_reservado) >= 1
+      AND NOT EXISTS (
+        SELECT 1
+        FROM tbl_lista_espera act
+        WHERE act.id_sucursal = le.id_sucursal
+          AND act.id_variante = le.id_variante
+          AND act.estado = 'NOTIFICADO'
+          AND act.fecha_expiracion > now()
+      )
+  ) INTO v_notificables;
+
+  -- 3) Si hay trabajo, despierta a WF-13 (event-driven, no polling)
+  IF v_notificables THEN
+    SELECT net.http_post(
+      url    => 'https://rsuelvo.app.n8n.cloud/webhook/webhooks/lista-espera/notify',
+      body   => jsonb_build_object(
+        'token', 'RSU_lst_notify_9f3Kz71XqW',
+        'motivo', 'waitlist_stock_disponible',
+        'fecha', to_char(now() AT TIME ZONE 'America/La_Paz', 'YYYY-MM-DD HH24:MI:SS')
+      ),
+      headers => jsonb_build_object('Content-Type', 'application/json')
+    ) INTO v_http;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'expiradas', v_expiradas,
+    'turnos_vencidos', v_turnos_vencidos,
+    'notificables', v_notificables,
+    'http_request_id', v_http
+  );
+END;
+$function$;
+
+SELECT cron.alter_job(1, command => 'select rsuelvo.fn_cron_expirar_y_notificar();');

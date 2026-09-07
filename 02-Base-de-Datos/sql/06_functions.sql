@@ -874,7 +874,7 @@ end;
 $$;
 
 
--- Notificar siguiente de la lista
+-- Notificar siguiente de la lista (m32: salta clientes con oferta NOTIFICADO vigente en cualquier grupo — H-17)
 create or replace function fn_notificar_siguiente_lista_espera(
   p_id_sucursal uuid,
   p_id_variante uuid
@@ -889,11 +889,17 @@ declare
   v_cfg tbl_comercio_config%rowtype;
 begin
   select * into v_item
-  from tbl_lista_espera
-  where id_sucursal=p_id_sucursal
-    and id_variante=p_id_variante
-    and estado='ESPERANDO'
-  order by posicion
+  from tbl_lista_espera cand
+  where cand.id_sucursal=p_id_sucursal
+    and cand.id_variante=p_id_variante
+    and cand.estado='ESPERANDO'
+    and not exists (
+      select 1 from tbl_lista_espera act
+      where act.id_cliente = cand.id_cliente
+        and act.estado='NOTIFICADO'
+        and act.fecha_expiracion > now()
+    )
+  order by cand.posicion
   limit 1
   for update skip locked;
 
