@@ -129,12 +129,133 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
 
 ---
 
+### OBS-002: Formato y redacción de los mensajes de reserva y lista de espera
+- **Categoría:** UX
+- **Sección afectada:** WF-10 (mensaje reserva creada) · WF-12/13 (mensajes lista de espera) · §22/§26-28 de `workflows.md`
+- **Descripción:** El comprador recibe mensajes que pueden mejorarse en formato y claridad. Hay 3 puntos:
+  1. **Mensaje de reserva creada (cuando envía SKU con stock):** debe tener un formato claro con: aviso de reserva confirmada, SKU, descripción de la variante del producto, monto, vigencia y mención del envío de comprobante para verificación.
+  2. **Mensaje de lista de espera (Momento 2):** actualmente llega un texto ambiguo tipo *"ese producto ya está reservado o sin stock"*. Solo se debería mostrar la opción de "producto reservado" (no la de "sin stock"). Formato propuesto: *"Producto ya reservado, estás en lista de espera, posición #N, te avisaremos cuando esté disponible."*
+  3. **Mensaje de oportunidad disponible (cuando se notifica al siguiente comprador):** formato propuesto: *"SKU, descripción de la variante del producto, monto, tienes 10 minutos para aceptar la reserva, responde SI para aceptar y NO para liberar la oportunidad."* (Nota: el tiempo debe venir de `tiempo_aceptacion_lista_espera_minutos`, no hardcodeado — Regla de Oro 10).
+- **Propuesta de solución:**
+  1. Reformatear el "Build Output" de WF-10 para el mensaje de reserva creada (aviso + SKU + variante + monto + vigencia + aviso de envío de comprobante).
+  2. Corregir el texto de WF-12 (lista de espera) para que diga "producto ya reservado, posición #N" y quite la mención ambigua a "sin stock".
+  3. Reformatear el mensaje de WF-13 (notificación de oportunidad) con SKU + variante + monto + tiempo configurable + instrucción SI/NO explícita.
+- **Impacto:** 🟢 Bajo (cambio de texto/UX, no de lógica de negocio)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En evaluación
+- **Resolución:** *(pendiente)*
+
+#### Detalle de mensajes propuestos
+
+**1. Mensaje de reserva creada (WF-10):**
+```
+✅ Reserva confirmada
+
+Producto: [Descripción de la variante]
+SKU: [SKU]
+Monto: Bs [precio]
+
+Tu reserva tiene vigencia hasta: [HH:MM].
+Envía el comprobante de tu pago por este chat para verificarlo y confirmar tu
+reserva.
+```
+
+**2. Mensaje de lista de espera (WF-12) — Momento 1/2:**
+```
+📋 Producto ya reservado
+
+Estás en lista de espera.
+Posición: #N
+
+Te avisaremos cuando esté disponible.
+```
+
+**3. Mensaje de oportunidad disponible (WF-13) — notificación al siguiente:**
+```
+🎯 ¡Ya está disponible!
+
+Producto: [Descripción de la variante]
+SKU: [SKU]
+Monto: Bs [precio]
+
+Tienes [tiempo_aceptacion_lista_espera_minutos] minutos para aceptar la reserva.
+Responde SI para aceptar y NO para liberar la oportunidad.
+```
+
+> Los tiempos (`[HH:MM]`, `[minutos]`) deben venir de `tbl_comercio_config` (`tiempo_reserva_minutos`, `tiempo_aceptacion_lista_espera_minutos`), no hardcodeados (Regla de Oro 10).
+
+---
+
+### OBS-003: Puntos de entrega/envío configurables por sucursal y selección guiada por el comprador
+- **Categoría:** Funcional / Logística
+- **Sección afectada:** `tbl_sucursales` · `tbl_puntos_entrega` (nueva) · `tbl_transportadoras` (nueva) · `tbl_envios` · WF-25-A/B (solicitud y registro de datos de entrega) · Pantalla envíos
+- **Descripción:** Las tiendas con las que trabajaremos tienen **puntos de entrega y envío establecidos por ciudad**. El comprador **siempre elige un punto** al entrar al flujo de envío; **no existe entrega a domicilio ni dirección libre**. Los envíos a otras ciudades se hacen mediante **empresas de transporte ajenas**, cuyas **sucursales en cada ciudad** son el punto de entrega.
+- **Aclaraciones del usuario (2026-09-07):**
+  1. El comprador **siempre elige un punto** de entrega/envío (no hay dirección libre ni envío a domicilio).
+  2. El envío es **por cobrar (contra entrega)**: los costos de envío son **ajenos a RSUELVO** y pasan directamente a las transportadoras. RSUELVO **no cobra ni muestra el costo** de envío — la transportadora gestiona su propia tarifa al entregar.
+  3. Los puntos de entrega están **asociados a una sucursal** (cada sucursal tiene su propio catálogo de puntos).
+  4. Consecuencia de (2): no hay cobro de envío ni comprobante adicional dentro de RSUELVO.
+- **Flujo actual (WF-25-A/B):**
+  ```
+  Pedido PAGADO → WF-25-A pide NOMBRE:/DIRECCIÓN:/REFERENCIA:/TELÉFONO:
+  → comprador responde texto libre → fn_registrar_entrega
+  ```
+- **Flujo propuesto (reemplaza el actual):**
+  ```
+  Pedido PAGADO → WF-25-A pregunta nombre
+  → WF-25-B muestra las OPCIONES de la sucursal (catálogo configurado):
+       1. Retiro en tienda/sucursal (misma ciudad)
+       2. Punto de entrega local de la ciudad [nombre del punto]
+       3. Envío a otra ciudad vía [transportadora] → [sucursal/ciudad destino]
+  → comprador elige opción (número)
+  → [si ENVIO_TRANSPORTE] se confirma la ciudad/sucursal destino
+  → se crea el envío (RSUELVO registra el punto elegido, sin costo de envío)
+  → la transportadora cobra al destinatario por fuera de RSUELVO
+  ```
+- **Diseño de datos (propuesta):**
+  1. **Tabla `tbl_puntos_entrega`** (catálogo POR SUCURSAL):
+     | Campo | Descripción |
+     |-------|-------------|
+     | `id_punto_entrega` | PK |
+     | `id_sucursal` | FK → `tbl_sucursales` (obligatorio — puntos por sucursal) |
+     | `tipo` | `RETIRO_EN_TIENDA` \| `PUNTO_LOCAL` \| `ENVIO_TRANSPORTE` |
+     | `nombre` | Nombre visible del punto (ej: "Oficina Central" / "Envío Cbba") |
+     | `ciudad` | Ciudad del punto (destino si es transporte) |
+     | `direccion` | Dirección del punto |
+     | `referencia` | Referencia / horarios |
+     | `id_transportadora` | FK → `tbl_transportadoras` (solo si `ENVIO_TRANSPORTE`) |
+     | `activo` | Visible para el comprador |
+     | `orden` | Para mostrar las opciones ordenadas |
+     > **Sin `costo`**: el envío es por cobrar y el costo pertenece a la transportadora, no a RSUELVO.
+  2. **Tabla `tbl_transportadoras`** (empresas de envío externas):
+     | Campo | Descripción |
+     |-------|-------------|
+     | `id_transportadora` | PK |
+     | `nombre` | Nombre de la empresa (ej: "Expreso Bolívar") |
+     | `ciudades` | Ciudades donde opera |
+     | `activo` | — |
+  3. **`tbl_envios`** — agregar FK `id_punto_entrega` y enlazar el envío al punto elegido:
+     - `direccion`/`referencia` pasan a registrarse desde el punto seleccionado (se pueden conservar como denormalización para la hoja de ruta del repartidor)
+     - Para `ENVIO_TRANSPORTE`, `numero_guia` documenta el seguimiento externo (ya soportado por la máquina de estados `EN_RUTA`/`ENTREGADO`)
+
+- **Impacto:** 🔴 Alto (requiere esquema BD nuevo + rediseño de WF-25-A/B)
+- **Bloquea construcción:** Parcialmente (afecta F5/F4 envíos; no bloquea flujo de reserva/pago)
+- **Estado:** 🔄 En evaluación
+- **Resolución:** *(pendiente)*
+
+#### Notas
+- La selección de puntos debe respetar la Regla de Oro 3 (n8n orquesta, BD decide): el catálogo de puntos vive en BD y se expone vía `fn_*`/RPC (ej. `fn_listar_puntos_entrega(id_sucursal)`); n8n solo muestra las opciones y captura la elección.
+- Este cambio **elimina** la captura de dirección libre de WF-25-B y la reemplaza por selección guiada (respuesta numérica → se resuelve el punto en BD).
+- No se cobra envío: el comprador paga solo el producto vía QR (RSUELVO); la transportadora cobra aparte al destinatario.
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
 |--------|----------|
 | ⬜ Pendientes | 0 |
-| 🔄 En evaluación | 1 |
+| 🔄 En evaluación | 3 |
 | ✅ Aceptadas | 0 |
 | ❌ Rechazadas | 0 |
 | 📦 P2 (futuro) | 0 |
@@ -163,3 +284,6 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
 | 2026-09-06 | OBS-001 | Opción C seleccionada — preguntar al entrar + opción de salir al notificar (registrada como sugerencia) |
 | 2026-09-07 | OBS-001 | Momento 2 implementado en n8n (WF-04 `qLyBczowLOcnNXe5` y WF-14 `MLgnwfXbg7HnWVHC` publicados; usa `fn_rechazar_lista_espera` m31). Pendiente: Momento 1 (WF-10/WF-12) + tests T-A/T-B |
 | 2026-09-07 | OBS-001 | **T-A/T-B VALIDADOS E2E** (NO→RECHAZADO+desplazamiento / SI→reserva→QR→PAGADO). Hallazgos H-16/H-17/H-18 → resueltos con migración 32 (turno único por cliente) |
+| 2026-09-07 | OBS-002 | Registrada — formato y redacción de mensajes de reserva y lista de espera (reserva creada / lista espera / oportunidad disponible) |
+| 2026-09-07 | OBS-003 | Registrada — puntos de entrega/envío configurables por tienda y selección por el comprador (reemplaza captura de dirección libre; requiere tabla nueva) |
+| 2026-09-07 | OBS-003 | Reformulada con respuestas del usuario: puntos por sucursal, comprador siempre elige, envío por cobrar (costo ajeno a RSUELVO, sin cobro ni comprobante adicional) |
