@@ -272,3 +272,40 @@ $$;
 comment on table rsuelvo.tbl_puntos_entrega is 'Catálogo de puntos de entrega por sucursal (OBS-003): retiro en tienda, punto local y envío por transportadora. Sin costo: la transportadora cobra aparte (contra entrega).';
 comment on table rsuelvo.tbl_transportadoras is 'Empresas de transporte externas (OBS-003). Envío por cobrar: RSUELVO no cobra ni muestra costo de envío.';
 comment on function rsuelvo.fn_listar_puntos_entrega(uuid) is 'Catálogo activo y ordenado de puntos de entrega de una sucursal para la selección guiada del comprador (WF-25-B, OBS-003).';
+
+-- ============================================================
+-- MIGRACIÓN 33b (2026-09-07): ESTADO CONVERSACIONAL DE ENTREGA
+-- ============================================================
+create or replace function fn_pedido_entrega_pendiente(p_telefono text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+DECLARE
+  v_pedido RECORD;
+BEGIN
+  SELECT p.id_pedido, p.numero_pedido, p.id_sucursal
+  INTO v_pedido
+  FROM tbl_pedidos p
+  JOIN tbl_clientes c ON c.id_cliente = p.id_cliente
+  WHERE COALESCE(c.telefono_whatsapp, c.telefono) = p_telefono
+    AND p.estado = 'PAGADO'
+    AND NOT EXISTS (SELECT 1 FROM tbl_envios e WHERE e.id_pedido = p.id_pedido)
+  ORDER BY p.created_at DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('pendiente', false);
+  END IF;
+
+  RETURN jsonb_build_object(
+    'pendiente', true,
+    'id_pedido', v_pedido.id_pedido,
+    'numero_pedido', v_pedido.numero_pedido,
+    'id_sucursal', v_pedido.id_sucursal
+  );
+END;
+$$;
+
+comment on function fn_pedido_entrega_pendiente(text) is 'Resuelve si el comprador tiene un pedido PAGADO sin envío (pregunta de entrega pendiente — OBS-003). Retorna pendiente/id_pedido/numero_pedido/id_sucursal.';
