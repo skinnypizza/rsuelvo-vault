@@ -9,20 +9,23 @@
 
 | WF | Nombre | ID real (cuenta activa) | Estado |
 |----|--------|------------------------|--------|
-| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kWGXKtmjdsL2Nrkc` | ⚠️ H-02 cableado (ver §6) |
+| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `NpZymtlm0CAaHWfW` | ✅ (H-02 corregido; fix eventos stuck 2026-09-08) |
 | WF-03 | RSU \| 03 \| WhatsApp Normalizer | `UTRbn1CpqifIQEkx` | ✅ |
 | WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `qLyBczowLOcnNXe5` | ✅ |
-| WF-10 | RSU \| 10 \| Sales \| SKU Reservation | `ACKpE0cfySCJ7D3F` | ✅ |
-| WF-12 | RSU\|12\|Lista de Espera | `By4Vj2e8aonsdnOP` | ✅ |
+| WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `ACKpE0cfySCJ7D3F` | ✅ |
+| WF-12 | RSU \| 12 \| Lista de Espera | `By4Vj2e8aonsdnOP` | ✅ |
 | WF-13 | RSU \| 13 \| Notificar Lista Espera | `SHE66obsbreFcTiT` | ✅ |
-| WF-14 | RSU\|14\|Aceptar Oportunidad | `MLgnwfXbg7HnWVHC` | ✅ |
+| WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `MLgnwfXbg7HnWVHC` | ✅ (Momentos 1 y 2) |
 | WF-20 | RSU \| 20 \| Pago \| Generar QR | `4rBWeSKraB7pRj2U` | ✅ |
-| WF-21 | RSU \| 21 \| Payments \| Receipt Intake | `kLwQeDISpfCysgmx` | ✅ |
-| WF-22 | RSU \| 22 \| Pago \| GPT-4o Vision | `NmPlyIjvdvytzDRc` | ✅ |
+| WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `kLwQeDISpfCysgmx` | ✅ (H-20 corregido) |
+| WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `NmPlyIjvdvytzDRc` | ✅ |
 | WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `qQK5wdjYX26Q41Vo` | ✅ |
 | WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `T3OLjA60aR3TD3xz` | ✅ |
-| WF-30 | RSU\|30\|Expirar Reservas | `CF7FO9bxV1n9qoKD` | ⚠️ H-03/H-04 (ver §6) |
-| WF-80 | RSU\|80\|WhatsApp Gateway | `CDizafXZQCL5SjOz` | ⚠️ H-05/H-06 (ver §6) |
+| WF-25-A | RSU \| 25 \| Entrega \| A: Solicitar Datos | `8lXZxNcywbuNaG2p` | ✅ |
+| WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `ESVUUxhjEdpK9SkX` | ✅ (reconstruido 2026-09-08) |
+| WF-25-C | RSU \| 25 \| Entrega \| C: Notificar Estado | `pwXuXy3AW3fCM5fG` | ✅ (dedup Regla 7) |
+| WF-30 | RSU \| 30 \| Expirar Reservas | `CF7FO9bxV1n9qoKD` | 🗄️ ARCHIVADO (superseded por pg_cron m26) — NO exportar |
+| WF-80 | RSU \| 80 \| WhatsApp Gateway | `CDizafXZQCL5SjOz` | ✅ |
 
 ## 1. Matriz principal
 
