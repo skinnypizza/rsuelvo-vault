@@ -142,8 +142,18 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
   3. Reformatear el mensaje de WF-13 (notificación de oportunidad) con SKU + variante + monto + tiempo configurable + instrucción SI/NO explícita.
 - **Impacto:** 🟢 Bajo (cambio de texto/UX, no de lógica de negocio)
 - **Bloquea construcción:** No
-- **Estado:** ✅ Implementada (2026-09-07 — Claude/n8n: WF-10 v`332bd37d`, WF-12 v`eb06f845`, WF-13 v`5632aa56`); validación en producción pendiente (próximo E2E)
-- **Resolución:** reformateados los 3 mensajes según propuesta. Fix adicional hallado en producción: bloques jsCode duplicados en WF-10 ocultaban el cálculo de `hora_expiracion` (placeholder `[HH:MM]` salía vacío) — corregido con `DateTime.fromISO(...).setZone('America/La_Paz')`; misma corrupción (parameters anidados duplicados) reparada en WF-12/WF-13. WF-13 ya traía el lookup de variante + config (`tiempo_aceptacion_lista_espera_minutos`), sin hardcodeo (Regla 10).
+- **Estado:** 🟡 En validación (test 2026-09-08) — WF-12 ✅ y WF-13 ✅ validados; **WF-10 con hallazgo pendiente: persiste el campo "Referencia" en la respuesta al SKU**
+- **Resolución:** reformateados los 3 mensajes según propuesta (Claude/n8n: WF-10 v`332bd37d`, WF-12 v`eb06f845`, WF-13 v`5632aa56`). Fix adicional hallado en producción: bloques jsCode duplicados en WF-10 ocultaban el cálculo de `hora_expiracion` (placeholder `[HH:MM]` salía vacío) — corregido con `DateTime.fromISO(...).setZone('America/La_Paz')`; misma corrupción (parameters anidados duplicados) reparada en WF-12/WF-13. WF-13 ya traía el lookup de variante + config (`tiempo_aceptacion_lista_espera_minutos`), sin hardcodeo (Regla 10).
+
+#### Resultado del test de validación (2026-09-08)
+
+| Mensaje | Estado |
+|---------|--------|
+| **WF-10** — Respuesta al SKU (reserva confirmada) | ⚠️ **Persiste campo "Referencia"** — no estaba en la propuesta OBS-002 (origen probable: caption del QR en WF-20 o línea residual en WF-10). Requiere quitarse. |
+| **WF-12** — Primer mensaje lista de espera | ✅ **CUMPLE** — "📋 Producto ya reservado / Posición: #N", sin ambigüedad |
+| **WF-13** — Notificación al primero de la lista | ✅ **CUMPLE** — "🎯 ¡Ya está disponible!" con sku/variante/monto/minutos + SI/NO |
+
+**Acción pendiente:** localizar y eliminar el campo `Referencia` del texto que recibe el comprador al enviar SKU (revisar WF-10 "Build Mensaje Reserva Confirmada" y WF-20 "Preparar WF-80 Input" / caption del QR). La propuesta OBS-002 para este mensaje sólo contempla: aviso ✅, Producto, SKU, Monto, Vigencia y mención del comprobante.
 
 #### Detalle de mensajes propuestos
 
@@ -293,3 +303,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-07 | OBS-002 | Registrada — formato y redacción de mensajes de reserva y lista de espera (reserva creada / lista espera / oportunidad disponible) |
 | 2026-09-07 | OBS-003 | Registrada — puntos de entrega/envío configurables por tienda y selección por el comprador (reemplaza captura de dirección libre; requiere tabla nueva) |
 | 2026-09-07 | OBS-003 | Reformulada con respuestas del usuario: puntos por sucursal, comprador siempre elige, envío por cobrar (costo ajeno a RSUELVO, sin cobro ni comprobante adicional) |
+| 2026-09-08 | OBS-002 | Test de validación en producción: **WF-12 ✅ y WF-13 ✅ cumplen**; **persiste campo "Referencia" en la respuesta al SKU (WF-10/WF-20)** — hallazgo pendiente de corrección |
