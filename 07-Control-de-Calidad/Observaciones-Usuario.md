@@ -142,7 +142,7 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
   3. Reformatear el mensaje de WF-13 (notificación de oportunidad) con SKU + variante + monto + tiempo configurable + instrucción SI/NO explícita.
 - **Impacto:** 🟢 Bajo (cambio de texto/UX, no de lógica de negocio)
 - **Bloquea construcción:** No
-- **Estado:** 🔄 En evaluación
+- **Estado:** 🔄 En implementación (2026-09-07 — encargo n8n a Claude: WF-10/12/13)
 - **Resolución:** *(pendiente)*
 
 #### Detalle de mensajes propuestos
@@ -247,6 +247,12 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 - La selección de puntos debe respetar la Regla de Oro 3 (n8n orquesta, BD decide): el catálogo de puntos vive en BD y se expone vía `fn_*`/RPC (ej. `fn_listar_puntos_entrega(id_sucursal)`); n8n solo muestra las opciones y captura la elección.
 - Este cambio **elimina** la captura de dirección libre de WF-25-B y la reemplaza por selección guiada (respuesta numérica → se resuelve el punto en BD).
 - No se cobra envío: el comprador paga solo el producto vía QR (RSUELVO); la transportadora cobra aparte al destinatario.
+
+#### Decisiones de diseño cerradas (2026-09-07)
+1. **El repartidor (ROLE_LOGISTICS_AGENT) sobrevive**: es quien lleva los productos a los puntos de entrega (incl. despachar a la transportadora).
+2. **Saltos de estado permitidos**: la máquina de `fn_actualizar_estado_envio` se amplía para permitir transiciones directas (ej. `PREPARANDO→ENTREGADO` en retiro/punto, sin ASIGNADO/EN_RUTA).
+3. **ENVIO_TRANSPORTE**: la tienda despacha el paquete a la transportadora y **registra `numero_guia` al entregarlo** (la transportadora lo recoge/despacha y cobra al destinatario por fuera de RSUELVO).
+4. **Wireframes**: se rediseñan gradualmente (pantalla de envío + app repartidor; no bloquea la migración 33).
 
 ---
 
