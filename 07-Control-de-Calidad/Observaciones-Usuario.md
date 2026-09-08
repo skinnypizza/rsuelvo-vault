@@ -125,7 +125,9 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
 
 **BD:** sin cambios estructurales (enum ya tiene `RECHAZADO`/`VENCIDO`/`CANCELADO`; `fn_notificar_siguiente_lista_espera` usa `SKIP LOCKED`).
 
-> **Estado implementación (2026-09-07):** **Momento 2 ✅ implementado, publicado y VALIDADO E2E** (T-A: NO → RECHAZADO + desplazamiento automático; T-B: SI → RESERVA_CREADA → QR → PAGADO, con D14 en vivo). **Momento 1 ⬜ pendiente** (WF-10 rama `SIN_STOCK` → pregunta SI/NO; WF-12 solo si responde "SI"). **Hallazgos del test → H-16/H-17/H-18 resueltos por migración 32** (turno único por cliente: imposible acumular 2 ofertas; turnos expirados pasan a VENCIDO; el cron no re-notifica grupos con turno en vuelo). Hardening pendiente en WF-14: `ORDER BY fecha_notificacion DESC`.
+> **Estado implementación (2026-09-08):** **Momento 1 ✅ y Momento 2 ✅ implementados, publicados y validados E2E.**
+> - **Momento 2** (turno notificado): SI→reserva+QR / NO→turno liberado+siguiente sube (WF-04 or-dispatch + WF-14 Parse Decision, m31/m32).
+> - **Momento 1** (SIN_STOCK, m35): WF-10 pregunta *"¿te avisamos cuando haya stock? SI/NO"* (estado en `tbl_lista_pendiente`, `fn_pendiente_lista`) → SI→WF-12 agrega vía `fn_aceptar_pendiente_lista` (guarda `YA_EN_LISTA` evita duplicados) → NO→`fn_rechazar_pendiente_lista`. Desambiguación SI/NO automática en WF-14: oportunidad primero, pendiente después.
 
 ---
 
