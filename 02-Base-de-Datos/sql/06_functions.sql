@@ -1551,12 +1551,13 @@ end;
 $$;
 
 -- (v2/A5/HU-092-094) Transición de estado logístico validada.
+-- Máquina de estados v2 (m33): saltos hacia adelante permitidos (OBS-003 decisión 2)
 create or replace function fn_actualizar_estado_envio(
   p_id_envio uuid,
-  p_nuevo_estado estado_envio,
-  p_observacion text default null,
-  p_latitud numeric(9,6) default null,
-  p_longitud numeric(9,6) default null
+  p_nuevo_estado rsuelvo.estado_envio,
+  p_observacion text DEFAULT NULL,
+  p_latitud numeric DEFAULT NULL,
+  p_longitud numeric DEFAULT NULL
 )
 returns jsonb
 language plpgsql
@@ -1565,6 +1566,8 @@ set search_path = rsuelvo, public
 as $$
 declare
   v_env tbl_envios%rowtype;
+  v_rank_actual integer;
+  v_rank_nuevo integer;
 begin
   select * into v_env from tbl_envios
   where id_envio=p_id_envio for update;
@@ -1573,18 +1576,29 @@ begin
     raise exception 'Envío inexistente';
   end if;
 
-  if not (
-    (v_env.estado='PENDIENTE'   and p_nuevo_estado in ('PREPARANDO','CANCELADO'))
- or (v_env.estado='PREPARANDO' and p_nuevo_estado in ('ASIGNADO','CANCELADO'))
- or (v_env.estado='ASIGNADO'   and p_nuevo_estado in ('EN_RUTA','CANCELADO'))
- or (v_env.estado='EN_RUTA'    and p_nuevo_estado in ('ENTREGADO','NO_ENTREGADO'))
- or (v_env.estado='NO_ENTREGADO' and p_nuevo_estado in ('EN_RUTA'))
-  ) then
-    raise exception 'Transición inválida: % -> %',v_env.estado,p_nuevo_estado;
-  end if;
+  v_rank_actual := case v_env.estado
+    when 'PENDIENTE' then 1 when 'PREPARANDO' then 2 when 'ASIGNADO' then 3
+    when 'EN_RUTA' then 4 when 'ENTREGADO' then 5 else null end;
+  v_rank_nuevo := case p_nuevo_estado
+    when 'PENDIENTE' then 1 when 'PREPARANDO' then 2 when 'ASIGNADO' then 3
+    when 'EN_RUTA' then 4 when 'ENTREGADO' then 5 else null end;
 
-  if p_nuevo_estado='NO_ENTREGADO' and coalesce(p_observacion,'')='' then
-    raise exception 'NO_ENTREGADO requiere observación';
+  if p_nuevo_estado = 'CANCELADO' then
+    if v_env.estado in ('ENTREGADO','CANCELADO') then
+      raise exception 'Transición inválida: % -> %', v_env.estado, p_nuevo_estado;
+    end if;
+  elsif p_nuevo_estado = 'NO_ENTREGADO' then
+    if v_env.estado not in ('ASIGNADO','EN_RUTA') then
+      raise exception 'Transición inválida: % -> %', v_env.estado, p_nuevo_estado;
+    end if;
+    if coalesce(p_observacion,'') = '' then
+      raise exception 'NO_ENTREGADO requiere observación';
+    end if;
+  elsif p_nuevo_estado = 'EN_RUTA' and v_env.estado = 'NO_ENTREGADO' then
+    null; -- reintento tras no-entrega (patrón previo preservado)
+  elsif v_rank_actual is null or v_rank_nuevo is null
+     or v_rank_nuevo <= v_rank_actual then
+    raise exception 'Transición inválida: % -> %', v_env.estado, p_nuevo_estado;
   end if;
 
   update tbl_envios
@@ -1921,3 +1935,110 @@ $$;
 -- 30_logistica_entrega_eventos.sql (idéntico en cloud).
 -- fn_notifica_pedido_pagado / fn_notifica_envio_estado: triggers pg_net (07_triggers.sql).
 
+-- Catálogo de puntos de entrega para selección guiada (m33 / OBS-003)
+create or replace function fn_listar_puntos_entrega(p_id_sucursal uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+declare
+  v_opciones jsonb := '[]'::jsonb;
+  r RECORD;
+  v_n integer := 0;
+begin
+  for r in
+    select p.*, t.nombre as transportadora
+    from tbl_puntos_entrega p
+    left join tbl_transportadoras t on t.id_transportadora = p.id_transportadora
+    where p.id_sucursal = p_id_sucursal and p.activo
+    order by p.orden, p.nombre
+  loop
+    v_n := v_n + 1;
+    v_opciones := v_opciones || jsonb_build_object(
+      'opcion', v_n,
+      'id_punto_entrega', r.id_punto_entrega,
+      'tipo', r.tipo,
+      'nombre', r.nombre,
+      'ciudad', r.ciudad,
+      'direccion', r.direccion,
+      'referencia', r.referencia,
+      'transportadora', r.transportadora
+    );
+  end loop;
+  return jsonb_build_object('puntos', v_opciones);
+end;
+$$;
+
+-- Registro de entrega v2 (m33 / OBS-003): selección guiada por punto; elimina dirección libre
+create or replace function fn_registrar_entrega(p_id_pedido uuid, p_datos jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = rsuelvo, public
+as $$
+DECLARE
+  v_pedido tbl_pedidos%rowtype;
+  v_punto tbl_puntos_entrega%rowtype;
+  v_nombre text;
+  v_telefono text;
+  v_id_envio uuid;
+BEGIN
+  SELECT * INTO v_pedido
+  FROM tbl_pedidos
+  WHERE id_pedido=p_id_pedido
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Pedido inexistente';
+  END IF;
+
+  IF v_pedido.estado <> 'PAGADO' THEN
+    RAISE EXCEPTION 'El pedido % no está PAGADO (estado: %)', p_id_pedido, v_pedido.estado;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM tbl_envios WHERE id_pedido=p_id_pedido) THEN
+    RAISE EXCEPTION 'El pedido ya tiene envío registrado';
+  END IF;
+
+  v_telefono := NULLIF(trim(COALESCE(p_datos->>'telefono','')), '');
+  IF v_telefono IS NULL THEN
+    RAISE EXCEPTION 'Faltan datos de entrega obligatorios (telefono)';
+  END IF;
+
+  SELECT * INTO v_punto
+  FROM tbl_puntos_entrega
+  WHERE id_punto_entrega = (p_datos->>'id_punto_entrega')::uuid
+    AND activo;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Punto de entrega inexistente o inactivo';
+  END IF;
+  IF v_punto.id_sucursal <> v_pedido.id_sucursal THEN
+    RAISE EXCEPTION 'El punto no pertenece a la sucursal del pedido';
+  END IF;
+
+  -- El nombre actualiza el perfil del cliente (tbl_clientes.nombre)
+  v_nombre := NULLIF(trim(COALESCE(p_datos->>'nombre','')), '');
+  IF v_nombre IS NOT NULL THEN
+    UPDATE tbl_clientes SET nombre=v_nombre WHERE id_cliente=v_pedido.id_cliente;
+  END IF;
+
+  -- Denormalización para la hoja de ruta del repartidor
+  v_id_envio := fn_crear_envio(
+    p_id_pedido,
+    v_punto.nombre || ' - ' || v_punto.ciudad || '. ' || v_punto.direccion,
+    v_punto.referencia,
+    v_telefono
+  );
+  UPDATE tbl_envios SET id_punto_entrega=v_punto.id_punto_entrega WHERE id_envio=v_id_envio;
+
+  RETURN jsonb_build_object(
+    'resultado','ENTREGA_REGISTRADA',
+    'id_envio',v_id_envio,
+    'id_pedido',p_id_pedido,
+    'id_punto_entrega',v_punto.id_punto_entrega,
+    'tipo_punto',v_punto.tipo,
+    'estado_envio','PENDIENTE'
+  );
+END;
+$$;

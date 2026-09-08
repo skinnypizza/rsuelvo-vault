@@ -476,3 +476,85 @@ create table if not exists tbl_contact_preferences (
   updated_at timestamptz not null default now(),
   unique(id_comercio, telefono_whatsapp)
 );
+
+-- ============================================================
+-- MIGRACIÓN 33 (2026-09-07): PUNTOS DE ENTREGA + TRANSPORTADORAS (OBS-003)
+-- Envío POR COBRAR: RSUELVO no cobra ni muestra costo de envío.
+-- Decisiones: repartidor lleva productos a los puntos; saltos de estado;
+-- la tienda despacha a la transportadora y registra numero_guia al entregar.
+-- ============================================================
+
+create table if not exists tbl_transportadoras (
+  id_transportadora uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  ciudades text,
+  activo boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists tbl_puntos_entrega (
+  id_punto_entrega uuid primary key default gen_random_uuid(),
+  id_sucursal uuid not null references tbl_sucursales(id_sucursal),
+  tipo text not null check (tipo in ('RETIRO_EN_TIENDA','PUNTO_LOCAL','ENVIO_TRANSPORTE')),
+  nombre text not null,
+  ciudad text not null,
+  direccion text not null,
+  referencia text,
+  id_transportadora uuid references tbl_transportadoras(id_transportadora),
+  activo boolean not null default true,
+  orden integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint chk_punto_transportadora check (
+    (tipo = 'ENVIO_TRANSPORTE' and id_transportadora is not null)
+    or (tipo <> 'ENVIO_TRANSPORTE' and id_transportadora is null)
+  )
+);
+create index if not exists idx_puntos_entrega_sucursal on tbl_puntos_entrega(id_sucursal) where activo;
+
+-- tbl_envios enlazado al punto elegido (denormalización direccion/referencia se conserva para la hoja de ruta)
+alter table tbl_envios add column if not exists id_punto_entrega uuid references tbl_puntos_entrega(id_punto_entrega);
+
+alter table tbl_transportadoras enable row level security;
+alter table tbl_puntos_entrega enable row level security;
+
+drop policy if exists transportadoras_read on tbl_transportadoras;
+create policy transportadoras_read on tbl_transportadoras
+  for select to authenticated using (true);
+
+drop policy if exists puntos_entrega_all on tbl_puntos_entrega;
+create policy puntos_entrega_all on tbl_puntos_entrega
+  for all to authenticated
+  using (exists (
+    select 1 from tbl_sucursales s
+    where s.id_sucursal = tbl_puntos_entrega.id_sucursal
+      and fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)
+  ))
+  with check (exists (
+    select 1 from tbl_sucursales s
+    where s.id_sucursal = tbl_puntos_entrega.id_sucursal
+      and fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)
+  ));
+
+drop trigger if exists trg_tbl_transportadoras_updated_at on tbl_transportadoras;
+create trigger trg_tbl_transportadoras_updated_at before update on tbl_transportadoras
+  for each row execute function fn_set_updated_at();
+drop trigger if exists trg_audit_tbl_transportadoras on tbl_transportadoras;
+create trigger trg_audit_tbl_transportadoras after insert or delete or update on tbl_transportadoras
+  for each row execute function fn_auditar_cambio();
+drop trigger if exists trg_tbl_puntos_entrega_updated_at on tbl_puntos_entrega;
+create trigger trg_tbl_puntos_entrega_updated_at before update on tbl_puntos_entrega
+  for each row execute function fn_set_updated_at();
+drop trigger if exists trg_audit_tbl_puntos_entrega on tbl_puntos_entrega;
+create trigger trg_audit_tbl_puntos_entrega after insert or delete or update on tbl_puntos_entrega
+  for each row execute function fn_auditar_cambio();
+
+grant select on tbl_transportadoras to authenticated;
+grant select on tbl_puntos_entrega to authenticated;
+grant all on tbl_transportadoras to service_role;
+grant all on tbl_puntos_entrega to service_role;
+
+comment on table tbl_puntos_entrega is 'Catálogo de puntos de entrega por sucursal (OBS-003): retiro en tienda, punto local y envío por transportadora. Sin costo: la transportadora cobra aparte (contra entrega).';
+comment on table tbl_transportadoras is 'Empresas de transporte externas (OBS-003). Envío por cobrar: RSUELVO no cobra ni muestra costo de envío.';
+comment on function fn_listar_puntos_entrega(uuid) is 'Catálogo activo y ordenado de puntos de entrega de una sucursal para la selección guiada del comprador (WF-25-B, OBS-003).';

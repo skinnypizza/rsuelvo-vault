@@ -240,8 +240,8 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 - **Impacto:** 🔴 Alto (requiere esquema BD nuevo + rediseño de WF-25-A/B)
 - **Bloquea construcción:** Parcialmente (afecta F5/F4 envíos; no bloquea flujo de reserva/pago)
-- **Estado:** 🔄 En evaluación
-- **Resolución:** *(pendiente)*
+- **Estado:** 🔄 En implementación — **BD ✅ migración 33 aplicada 2026-09-07** (tablas + RLS + `fn_listar_puntos_entrega` + `fn_actualizar_estado_envio` v3 saltos + `fn_registrar_entrega` v2 por punto) + seed de prueba (3 puntos en sucursal FER). **n8n 🟡 pendiente** (rewrite WF-25-A/B + reglas WF-04). **Wireframes ⬜ gradual.**
+- **Resolución:** *(en curso)*
 
 #### Notas
 - La selección de puntos debe respetar la Regla de Oro 3 (n8n orquesta, BD decide): el catálogo de puntos vive en BD y se expone vía `fn_*`/RPC (ej. `fn_listar_puntos_entrega(id_sucursal)`); n8n solo muestra las opciones y captura la elección.
