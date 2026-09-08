@@ -142,8 +142,8 @@ WF-13 notifica "¡Ya hay stock! Tienes 2 minutos. Responde SI/NO"
   3. Reformatear el mensaje de WF-13 (notificación de oportunidad) con SKU + variante + monto + tiempo configurable + instrucción SI/NO explícita.
 - **Impacto:** 🟢 Bajo (cambio de texto/UX, no de lógica de negocio)
 - **Bloquea construcción:** No
-- **Estado:** 🔄 En implementación (2026-09-07 — encargo n8n a Claude: WF-10/12/13)
-- **Resolución:** *(pendiente)*
+- **Estado:** ✅ Implementada (2026-09-07 — Claude/n8n: WF-10 v`332bd37d`, WF-12 v`eb06f845`, WF-13 v`5632aa56`); validación en producción pendiente (próximo E2E)
+- **Resolución:** reformateados los 3 mensajes según propuesta. Fix adicional hallado en producción: bloques jsCode duplicados en WF-10 ocultaban el cálculo de `hora_expiracion` (placeholder `[HH:MM]` salía vacío) — corregido con `DateTime.fromISO(...).setZone('America/La_Paz')`; misma corrupción (parameters anidados duplicados) reparada en WF-12/WF-13. WF-13 ya traía el lookup de variante + config (`tiempo_aceptacion_lista_espera_minutos`), sin hardcodeo (Regla 10).
 
 #### Detalle de mensajes propuestos
 
