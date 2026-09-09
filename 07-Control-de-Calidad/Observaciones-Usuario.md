@@ -288,12 +288,27 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 ---
 
+### OBS-005: Ciudad y Zona de destino en UN SOLO mensaje del comprador
+- **Categoría:** Funcional / Logística (UX conversacional)
+- **Sección afectada:** WF-25-B (Msg Pide Ciudad/Zona + IF) · `fn_procesar_captura_destino` · `fn_entrega_captura_estado` · `tbl_entrega_captura`
+- **Descripción:** en el flujo de envío por transportadora, la captura de **ciudad** y **zona** hoy exige 2 mensajes ida y vuelta. El comprador debe poder responder **ciudad y zona en un solo mensaje** con el formato `CIUDAD: <ciudad>, ZONA: <zona>` (ej: `CIUDAD: Santa Cruz, ZONA: Equipetrol`).
+- **Requisitos:**
+  1. WF-25-B tras elegir punto transporte: UNA pregunta que muestre el formato con ejemplo.
+  2. `fn_procesar_captura_destino` parsea ambos campos de un solo texto (tolerante a mayúsculas/tildes) → si falta formato → `FORMATO_INVALIDO` y n8n re-explica con ejemplo.
+  3. `fn_entrega_captura_estado` → paso único `DESTINO`.
+- **Impacto:** 🟢 Bajo (1 migración + 2 textos/1 IF en WF-25-B)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En implementación (2026-09-09)
+- **Resolución:** *(en curso)*
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
 |--------|----------|
 | ⬜ Pendientes | 0 |
-| 🔄 En evaluación | 4 |
+| 🔄 En evaluación | 5 |
 | ✅ Aceptadas | 0 |
 | ❌ Rechazadas | 0 |
 | 📦 P2 (futuro) | 0 |
@@ -327,3 +342,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-07 | OBS-003 | Reformulada con respuestas del usuario: puntos por sucursal, comprador siempre elige, envío por cobrar (costo ajeno a RSUELVO, sin cobro ni comprobante adicional) |
 | 2026-09-08 | OBS-002 | Test de validación en producción: **WF-12 ✅ y WF-13 ✅ cumplen**; **persiste campo "Referencia" en la respuesta al SKU (WF-10/WF-20)** — hallazgo pendiente de corrección |
 | 2026-09-08 | OBS-004 | Registrada — foto de guía/código de retiro enviada al comprador por WhatsApp (app logística Flutter, Storage, extensión fn_set_numero_guia)
+| 2026-09-09 | OBS-005 | Implementada (m37 + WF-25-B): destino ciudad+zona en UN solo mensaje con formato CIUDAD: X, ZONA: Y; FB: FORMATO_INVALIDO con ejemplo
