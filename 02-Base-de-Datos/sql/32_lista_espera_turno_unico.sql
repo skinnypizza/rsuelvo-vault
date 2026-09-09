@@ -118,7 +118,7 @@ BEGIN
   -- 3) Si hay trabajo, despierta a WF-13 (event-driven, no polling)
   IF v_notificables THEN
     SELECT net.http_post(
-      url    => 'https://rsuelvo.app.n8n.cloud/webhook/webhooks/lista-espera/notify',
+      url    => 'https://rsuelvotest.app.n8n.cloud/webhook/webhooks/lista-espera/notify',
       body   => jsonb_build_object(
         'token', 'RSU_lst_notify_9f3Kz71XqW',
         'motivo', 'waitlist_stock_disponible',

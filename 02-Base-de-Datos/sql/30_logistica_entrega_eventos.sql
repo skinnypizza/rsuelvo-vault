@@ -83,7 +83,7 @@ BEGIN
     WHERE id_cliente = NEW.id_cliente;
 
     PERFORM net.http_post(
-      url    => 'https://rsuelvo.app.n8n.cloud/webhook/entrega/request',
+      url    => 'https://rsuelvotest.app.n8n.cloud/webhook/entrega/request',
       body   => jsonb_build_object(
         'token', 'RSU_entrega_notif_7Qk2mXwP',
         'id_pedido', NEW.id_pedido,
@@ -131,7 +131,7 @@ BEGIN
 
     IF v_msg IS NOT NULL AND v_phone IS NOT NULL THEN
       PERFORM net.http_post(
-        url    => 'https://rsuelvo.app.n8n.cloud/webhook/entrega/estado',
+        url    => 'https://rsuelvotest.app.n8n.cloud/webhook/entrega/estado',
         body   => jsonb_build_object(
           'token', 'RSU_entrega_notif_7Qk2mXwP',
           'id_envio', NEW.id_envio,
