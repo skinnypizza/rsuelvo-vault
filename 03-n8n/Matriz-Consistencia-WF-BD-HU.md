@@ -3,29 +3,33 @@
 > **Fecha:** 2026-08-24 · **Base:** [[workflows]] v1.0 × schema SQL **v2** × [[01-Backlog-Historias-de-Usuario]] (148 HU) × diagramas de flujo (ERD §13, workflows §69-83) × wireframes.
 > **Regla de oro verificada:** n8n orquesta; PostgreSQL decide. Cada WF crítico llama exactamente a una RPC transaccional.
 
-## 0. IDs reales en la cuenta n8n ACTIVA (re-import 2026-08-29)
+## 0. IDs reales en la cuenta n8n ACTIVA (migración rsuelvotest 2026-09-09)
+
+> ⚙️ **Migración 2026-09-09:** cuenta activa = `rsuelvotest.app.n8n.cloud` — los IDs de §0 son los nuevos (`kXui…`, `xFcZ…`, etc.). Los IDs `NpZym…/ACKpE…/…` (cuenta anterior) subsisten como histórico en las filas de §1.
+
+
 
 > ⚠️ **H-08 (Auditoría 2026-08-29):** tras la migración a la cuenta trial nueva `rsuelvo.app.n8n.cloud` (ivanluiscardenas), los workflows fueron re-importados y **obtuvieron IDs nuevos**. Los IDs antiguos (`Kem88sByaFk6bUNO`, `TSC1otHnDCr0ADiW`, …) pertenecen a la cuenta agotada `rsuelvo2026.app.n8n.cloud` y se citan en esta matriz solo como histórico de builds. **Los IDs válidos para depuración son los de la tabla siguiente:**
 
 | WF | Nombre | ID real (cuenta activa) | Estado |
 |----|--------|------------------------|--------|
-| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `NpZymtlm0CAaHWfW` | ✅ (H-02 corregido; fix eventos stuck 2026-09-08) |
-| WF-03 | RSU \| 03 \| WhatsApp Normalizer | `UTRbn1CpqifIQEkx` | ✅ |
-| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `qLyBczowLOcnNXe5` | ✅ |
-| WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `ACKpE0cfySCJ7D3F` | ✅ |
-| WF-12 | RSU \| 12 \| Lista de Espera | `By4Vj2e8aonsdnOP` | ✅ |
-| WF-13 | RSU \| 13 \| Notificar Lista Espera | `SHE66obsbreFcTiT` | ✅ |
-| WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `MLgnwfXbg7HnWVHC` | ✅ (Momentos 1 y 2) |
-| WF-20 | RSU \| 20 \| Pago \| Generar QR | `4rBWeSKraB7pRj2U` | ✅ |
-| WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `kLwQeDISpfCysgmx` | ✅ (H-20 corregido) |
-| WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `NmPlyIjvdvytzDRc` | ✅ |
-| WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `qQK5wdjYX26Q41Vo` | ✅ |
-| WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `T3OLjA60aR3TD3xz` | ✅ |
-| WF-25-A | RSU \| 25 \| Entrega \| A: Solicitar Datos | `8lXZxNcywbuNaG2p` | ✅ |
-| WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `ESVUUxhjEdpK9SkX` | ✅ (reconstruido 2026-09-08) |
-| WF-25-C | RSU \| 25 \| Entrega \| C: Notificar Estado | `pwXuXy3AW3fCM5fG` | ✅ (dedup Regla 7) |
+| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (H-02 corregido; fix eventos stuck 2026-09-08) |
+| WF-03 | RSU \| 03 \| WhatsApp Normalizer | `sxmtEb1j2BlwoYXf` | ✅ |
+| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ |
+| WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `xFcZMG8Hip0Z6aH5` | ✅ |
+| WF-12 | RSU \| 12 \| Lista de Espera | `n9VUH43N8i7s9Rn2` | ✅ |
+| WF-13 | RSU \| 13 \| Notificar Lista Espera | `Qnr8SYR8sKGnzYKL` | ✅ |
+| WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `JOT4yRctEcogiYzV` | ✅ (Momentos 1 y 2) |
+| WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ |
+| WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `nJCQI6MfFSjUhywB` | ✅ (H-20 corregido) |
+| WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `53xUuvoriN3fqvHD` | ✅ |
+| WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `okF8Ayhp5CicRpVU` | ✅ |
+| WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `JU4QtP0vkAC7m3n1` | ✅ |
+| WF-25-A | RSU \| 25 \| Entrega \| A: Solicitar Datos | `gVmvGYVPMlQKWk6z` | ✅ |
+| WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `9doLr3FSewZofRoN` | ✅ (reconstruido 2026-09-08) |
+| WF-25-C | RSU \| 25 \| Entrega \| C: Notificar Estado | `2DzqPBe4xtHIuvHA` | ✅ (dedup Regla 7) |
 | WF-30 | RSU \| 30 \| Expirar Reservas | `CF7FO9bxV1n9qoKD` | 🗄️ ARCHIVADO (superseded por pg_cron m26) — NO exportar |
-| WF-80 | RSU \| 80 \| WhatsApp Gateway | `CDizafXZQCL5SjOz` | ✅ |
+| WF-80 | RSU \| 80 \| WhatsApp Gateway | `7V6MIPuGbdx9s0lT` | ✅ |
 
 ## 1. Matriz principal
 
