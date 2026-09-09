@@ -55,6 +55,13 @@ RSUELVO es un SaaS multitenant de gestión comercial, cobranza por WhatsApp y ve
 
 **RLS:** la app usa el JWT del usuario (políticas via `fn_tiene_acceso_sucursal`). **Prohibido service_role/anon con privilegios.** Si una query devuelve 0 filas sin error, es RLS — no forzar.
 
+### 2.4 Herramientas MCP disponibles (Antigravity)
+
+| MCP | Uso permitido | Prohibido |
+|---|---|---|
+| **Stitch MCP** | **Consultar los wireframes** para la capa visual: proyecto `1852486780525167950` (pantallas A–F del dueño, H del repartidor, I de envíos). La **funcionalidad la define §3**; los wireframes son la referencia de layout/estilo. Verlos, no regenerarlos ni editarlos | Editar/crear wireframes, generaciones nuevas |
+| **Supabase MCP** | **SOLO LECTURA**: inspeccionar schema/tablas y hacer SELECT de verificación (p. ej. confirmar que la reserva pasó a CONFIRMADA tras el botón del cajero) | **Cualquier escritura**: DDL, migraciones, INSERT/UPDATE/DELETE de datos, storage admin. La app escribe SOLO vía `fn_*` desde el código Flutter |
+
 ## 3. Alcance v1 (pantallas + criterios de aceptación)
 
 | # | Pantalla | Contenido | Criterios de aceptación |
@@ -143,13 +150,14 @@ Al terminar TODAS las fases, el operador ejecutará este checklist con los datos
 
 ## 9. Prohibiciones explícitas
 
-1. **NO aplicar migraciones ni DDL** — la BD está lista y es de solo-lectura-estructura para ti. Si falta algo, DETENTE y reporta
+1. **NO aplicar migraciones ni DDL** — la BD está lista y es de solo-lectura-estructura para ti. El MCP de Supabase es **SOLO LECTURA** (ver §2.4). Si falta algo, DETENTE y reporta
 2. **NO usar service_role ni la service key** — solo anon/publishable + RLS
 3. **NO enviar WhatsApp desde la app** (solo el deep-link wa.me del §5)
 4. **NO inventar tablas/columnas/funciones/estados** fuera de §2 — los nombres son exactos
 5. **NO hardcodear claves ni URLs** — todo por `--dart-define`
 6. **NO agregar dependencias** fuera de las listadas en §6 sin justificar
 7. NO uses `public` como schema — siempre `rsuelvo`
+8. **NO modificar wireframes en Stitch** — solo consulta (ver §2.4)
 
 ## 10. Datos de prueba disponibles (tenant FER)
 
