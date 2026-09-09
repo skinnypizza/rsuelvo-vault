@@ -252,7 +252,7 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 - **Impacto:** 🔴 Alto (requiere esquema BD nuevo + rediseño de WF-25-A/B)
 - **Bloquea construcción:** Parcialmente (afecta F5/F4 envíos; no bloquea flujo de reserva/pago)
-- **Estado:** 🔄 En implementación — **BD ✅ migración 33 aplicada 2026-09-07** (tablas + RLS + `fn_listar_puntos_entrega` + `fn_actualizar_estado_envio` v3 saltos + `fn_registrar_entrega` v2 por punto) + seed de prueba (3 puntos en sucursal FER). **n8n 🟡 pendiente** (rewrite WF-25-A/B + reglas WF-04). **Wireframes ⬜ gradual.**
+- **Estado:** ✅ Implementada — **BD ✅ m33** · **n8n ✅ 2026-09-08** (WF-25-A/B guiado por puntos + reglas WF-04, validado E2E: menú con horarios, ciudad/zona, envío Beni) · **Wireframes ⬜ gradual** · **App Flutter ⬜ (F4/Antigravity)**
 - **Resolución:** *(en curso)*
 
 #### Notas
@@ -266,6 +266,26 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 3. **ENVIO_TRANSPORTE**: la tienda despacha el paquete a la transportadora y **registra `numero_guia` al entregarlo** (la transportadora lo recoge/despacha y cobra al destinatario por fuera de RSUELVO).
 4. **Wireframes**: se rediseñan gradualmente (pantalla de envío + app repartidor; no bloquea la migración 33).
 
+> **Actualización 2026-09-08:** rewrite n8n ✅ completado (WF-25-A/B guiado por puntos + reglas WF-04, ver bitácora) — queda wireframe gradual y app Flutter.
+
+---
+
+### OBS-004: Foto de guía (transportadora) o código de retiro (paquetería) enviada al comprador
+- **Categoría:** Funcional / Logística + App móvil
+- **Sección afectada:** App Flutter (pantalla logística del repartidor) · `tbl_envios` · Storage (bucket nuevo) · `fn_set_numero_guia` (extensión) · WF-25-C + WF-80 (notificación imagen)
+- **Origen:** observación de campo (2026-09-08, compras reales por TikTok): los negocios de paquetería que reciben paquetes de vendedores entregan un **código de retiro**, y las transportadoras emiten una **guía** — en ambos casos el documento se comunica al comprador **como FOTO** (imagen completa con todo el detalle), no como texto.
+- **Descripción:** RSUELVO hoy registra `numero_guia` (texto) y notifica el texto por WhatsApp — insuficiente. El repartidor debe poder **capturar/subir una foto** desde la app (cámara o galería) y el comprador debe recibirla por WhatsApp.
+- **Requisitos:**
+  1. **App Flutter (logística):** en la ficha del envío, captura de foto al entregar el paquete: (a) en **paquetería/punto local** → foto del **código de retiro**; (b) en **transportadora** → foto de la **guía**.
+  2. **Storage:** bucket `guias-envios` (privado, patrón `comprobantes-pago`) — ruta `{id_comercio}/{id_envio}.jpg`.
+  3. **BD:** columna nueva `tbl_envios.guia_foto_url text`.
+  4. **fn:** extender `fn_set_numero_guia` (o nueva `fn_registrar_guia`): aceptar **PUNTO_LOCAL** (código de retiro) además de `ENVIO_TRANSPORTE`; guardar texto opcional + `guia_foto_url`; disparar notificación pg_net.
+  5. **WhatsApp:** envío al comprador vía WF-80 como **imagen** (`type:'image'` + `media_url` + caption con punto/transportadora) — mismo patrón que el QR de pago.
+- **Impacto:** 🔴 Alto (app móvil + BD + Storage + n8n)
+- **Bloquea construcción:** F4 (app Flutter) — depende de la app
+- **Estado:** 📦 Registrada 2026-09-08 — implementación con Antigravity (el prompt F4 incluirá este flujo)
+- **Resolución:** *(pendiente)*
+
 ---
 
 ## 📊 Resumen de Estado
@@ -273,7 +293,7 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | Estado | Cantidad |
 |--------|----------|
 | ⬜ Pendientes | 0 |
-| 🔄 En evaluación | 3 |
+| 🔄 En evaluación | 4 |
 | ✅ Aceptadas | 0 |
 | ❌ Rechazadas | 0 |
 | 📦 P2 (futuro) | 0 |
@@ -306,3 +326,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-07 | OBS-003 | Registrada — puntos de entrega/envío configurables por tienda y selección por el comprador (reemplaza captura de dirección libre; requiere tabla nueva) |
 | 2026-09-07 | OBS-003 | Reformulada con respuestas del usuario: puntos por sucursal, comprador siempre elige, envío por cobrar (costo ajeno a RSUELVO, sin cobro ni comprobante adicional) |
 | 2026-09-08 | OBS-002 | Test de validación en producción: **WF-12 ✅ y WF-13 ✅ cumplen**; **persiste campo "Referencia" en la respuesta al SKU (WF-10/WF-20)** — hallazgo pendiente de corrección |
+| 2026-09-08 | OBS-004 | Registrada — foto de guía/código de retiro enviada al comprador por WhatsApp (app logística Flutter, Storage, extensión fn_set_numero_guia)
