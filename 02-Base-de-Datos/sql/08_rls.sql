@@ -155,3 +155,16 @@ grant select, insert, update, delete on all tables in schema rsuelvo to authenti
 grant execute on all functions in schema rsuelvo to authenticated;
 
 -- service_role mantiene bypass de RLS en Supabase.
+
+-- ==== MIGRACIÓN 40 (2026-09-10): catálogo por sucursal ====
+DROP POLICY IF EXISTS variante_sucursal_select ON rsuelvo.tbl_variante_sucursal;
+CREATE POLICY variante_sucursal_select ON rsuelvo.tbl_variante_sucursal FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s WHERE s.id_sucursal=tbl_variante_sucursal.id_sucursal AND rsuelvo.fn_tiene_acceso_comercio(s.id_comercio)));
+DROP POLICY IF EXISTS variante_sucursal_manage ON rsuelvo.tbl_variante_sucursal;
+CREATE POLICY variante_sucursal_manage ON rsuelvo.tbl_variante_sucursal FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s WHERE s.id_sucursal=tbl_variante_sucursal.id_sucursal AND rsuelvo.fn_puede_gestionar_catalogo(s.id_comercio, s.id_sucursal)))
+  WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s WHERE s.id_sucursal=tbl_variante_sucursal.id_sucursal AND rsuelvo.fn_puede_gestionar_catalogo(s.id_comercio, s.id_sucursal)));
+DROP POLICY IF EXISTS products_manage ON rsuelvo.tbl_productos;
+CREATE POLICY products_manage ON rsuelvo.tbl_productos FOR ALL TO authenticated
+  USING (rsuelvo.fn_es_admin_o_cajero_comercio(id_comercio))
+  WITH CHECK (rsuelvo.fn_es_admin_o_cajero_comercio(id_comercio));

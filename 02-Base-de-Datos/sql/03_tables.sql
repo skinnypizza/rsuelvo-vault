@@ -558,3 +558,24 @@ grant all on tbl_puntos_entrega to service_role;
 comment on table tbl_puntos_entrega is 'Catálogo de puntos de entrega por sucursal (OBS-003): retiro en tienda, punto local y envío por transportadora. Sin costo: la transportadora cobra aparte (contra entrega).';
 comment on table tbl_transportadoras is 'Empresas de transporte externas (OBS-003). Envío por cobrar: RSUELVO no cobra ni muestra costo de envío.';
 comment on function fn_listar_puntos_entrega(uuid) is 'Catálogo activo y ordenado de puntos de entrega de una sucursal para la selección guiada del comprador (WF-25-B, OBS-003).';
+
+-- ==== MIGRACIÓN 40 (2026-09-10): catálogo por sucursal ====
+CREATE TABLE IF NOT EXISTS rsuelvo.tbl_variante_sucursal (
+  id_variante uuid NOT NULL REFERENCES rsuelvo.tbl_variantes(id_variante) ON DELETE CASCADE,
+  id_sucursal uuid NOT NULL REFERENCES rsuelvo.tbl_sucursales(id_sucursal) ON DELETE CASCADE,
+  nombre text,
+  precio numeric(14,2),
+  activo boolean,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT tbl_variante_sucursal_pkey PRIMARY KEY (id_variante, id_sucursal),
+  CONSTRAINT chk_vs_precio CHECK (precio IS NULL OR precio > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_variante_sucursal_suc ON rsuelvo.tbl_variante_sucursal(id_sucursal);
+ALTER TABLE rsuelvo.tbl_variante_sucursal ENABLE ROW LEVEL SECURITY;
+CREATE TRIGGER trg_tbl_variante_sucursal_updated_at BEFORE UPDATE ON rsuelvo.tbl_variante_sucursal
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
+CREATE TRIGGER trg_audit_tbl_variante_sucursal AFTER INSERT OR DELETE OR UPDATE ON rsuelvo.tbl_variante_sucursal
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
+GRANT ALL ON rsuelvo.tbl_variante_sucursal TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_variante_sucursal TO authenticated;

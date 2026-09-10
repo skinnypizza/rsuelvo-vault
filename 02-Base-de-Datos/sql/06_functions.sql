@@ -2106,3 +2106,120 @@ END;
 $$;
 
 comment on function fn_pedido_entrega_pendiente(text) is 'Resuelve si el comprador tiene un pedido PAGADO sin envío (pregunta de entrega pendiente — OBS-003). Retorna pendiente/id_pedido/numero_pedido/id_sucursal.';
+
+-- ==== MIGRACIÓN 40 (2026-09-10): catálogo por sucursal ====
+CREATE OR REPLACE FUNCTION rsuelvo.fn_es_admin_o_cajero_comercio(p_id_comercio uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+  select fn_es_service_role() or fn_es_superadmin() or exists (
+    select 1 from tbl_usuario_comercio uc
+    join tbl_usuarios u on u.id_usuario=uc.id_usuario
+    join tbl_roles r on r.id_rol=uc.id_rol
+    where u.auth_user_id=auth.uid() and u.activo and uc.activo
+      and uc.id_comercio=p_id_comercio
+      and r.codigo in ('ROLE_TENANT_ADMIN','ROLE_TENANT_CASHIER')
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_puede_gestionar_catalogo(p_id_comercio uuid, p_id_sucursal uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+  select fn_es_service_role() or fn_es_superadmin() or exists (
+    select 1 from tbl_usuario_comercio uc
+    join tbl_usuarios u on u.id_usuario=uc.id_usuario
+    join tbl_roles r on r.id_rol=uc.id_rol
+    where u.auth_user_id=auth.uid() and u.activo and uc.activo
+      and uc.id_comercio=p_id_comercio
+      and (r.codigo='ROLE_TENANT_ADMIN' or (r.codigo='ROLE_TENANT_CASHIER' and uc.id_sucursal=p_id_sucursal))
+  );
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_variante_efectiva(p_id_variante uuid, p_id_sucursal uuid)
+RETURNS TABLE(nombre text, precio numeric, activo boolean)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+  select coalesce(vs.nombre, v.nombre), coalesce(vs.precio, v.precio), coalesce(vs.activo, v.activo)
+  from tbl_variantes v
+  left join tbl_variante_sucursal vs on vs.id_variante=v.id_variante and vs.id_sucursal=p_id_sucursal
+  where v.id_variante=p_id_variante;
+$function$;
+
+-- fn_resolver_variante_por_sku v2 (con sucursal; se elimina la firma vieja de 2 args)
+CREATE OR REPLACE FUNCTION rsuelvo.fn_resolver_variante_por_sku(p_id_comercio uuid, p_sku text, p_id_sucursal uuid DEFAULT NULL)
+RETURNS TABLE(id_variante uuid, nombre text, precio numeric, id_producto uuid)
+LANGUAGE plpgsql STABLE SET search_path TO 'rsuelvo', 'pg_catalog'
+AS $function$
+begin
+  if p_sku is null or p_sku !~ '^[A-Z0-9]{6}$' then
+    raise exception 'SKU inválido. Formato requerido: exactamente 6 caracteres [A-Z0-9]' using errcode = '22023';
+  end if;
+  return query
+  select v.id_variante, e.nombre, e.precio, v.id_producto
+  from tbl_variantes v
+  cross join lateral fn_variante_efectiva(v.id_variante, p_id_sucursal) e
+  where v.id_comercio=p_id_comercio and v.sku=p_sku and e.activo;
+end;
+$function$;
+DROP FUNCTION IF EXISTS rsuelvo.fn_resolver_variante_por_sku(uuid, text);
+
+-- Listado por sucursal (efectivo + override flag + stock)
+CREATE OR REPLACE FUNCTION rsuelvo.fn_listar_variantes_sucursal(p_id_sucursal uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_comercio uuid;
+  v_out jsonb;
+BEGIN
+  SELECT s.id_comercio INTO v_comercio FROM tbl_sucursales s WHERE s.id_sucursal=p_id_sucursal;
+  IF v_comercio IS NULL THEN RAISE EXCEPTION 'Sucursal inexistente'; END IF;
+  SELECT coalesce(jsonb_agg(x ORDER BY x->>'sku'),'[]'::jsonb) INTO v_out FROM (
+    SELECT jsonb_build_object(
+      'id_variante',v.id_variante,'sku',v.sku,'id_producto',v.id_producto,
+      'nombre_global',v.nombre,'precio_global',v.precio,'activo_global',v.activo,
+      'nombre',e.nombre,'precio',e.precio,'activo',e.activo,
+      'tiene_override',(vs.id_variante IS NOT NULL),
+      'stock_actual',coalesce(i.stock_actual,0),'stock_reservado',coalesce(i.stock_reservado,0)
+    ) AS x
+    FROM tbl_variantes v
+    CROSS JOIN LATERAL fn_variante_efectiva(v.id_variante,p_id_sucursal) e
+    LEFT JOIN tbl_variante_sucursal vs ON vs.id_variante=v.id_variante AND vs.id_sucursal=p_id_sucursal
+    LEFT JOIN tbl_inventario i ON i.id_variante=v.id_variante AND i.id_sucursal=p_id_sucursal
+    WHERE v.id_comercio=v_comercio
+  ) t;
+  RETURN jsonb_build_object('variantes',v_out);
+END;
+$function$;
+
+-- m40: snapshot de venta con precio EFECTIVO de la sucursal
+create or replace function fn_crear_pedido_desde_reserva(p_id_reserva uuid)
+returns uuid language plpgsql security definer set search_path = rsuelvo, public
+as $$
+declare
+  v_res tbl_reservas%rowtype; v_var tbl_variantes%rowtype; v_prod tbl_productos%rowtype;
+  v_pedido uuid; v_subtotal numeric(14,2); v_ef_nombre text; v_ef_precio numeric(14,2);
+begin
+  select * into v_res from tbl_reservas where id_reserva=p_id_reserva for update;
+  if not found then raise exception 'Reserva inexistente'; end if;
+  if v_res.estado not in ('ACTIVA','PAGO_VALIDANDO') then raise exception 'La reserva no puede generar pedido'; end if;
+  if v_res.id_pedido is not null then return v_res.id_pedido; end if;
+
+  select v.* into v_var from tbl_variantes v where v.id_variante=v_res.id_variante;
+  select p.* into v_prod from tbl_productos p where p.id_producto=v_var.id_producto;
+
+  select e.nombre, e.precio into v_ef_nombre, v_ef_precio
+  from fn_variante_efectiva(v_res.id_variante, v_res.id_sucursal) e;
+  v_ef_nombre := coalesce(v_ef_nombre, v_var.nombre);
+  v_ef_precio := coalesce(v_ef_precio, v_var.precio);
+  v_subtotal := v_ef_precio * v_res.cantidad;
+
+  insert into tbl_pedidos(id_comercio,id_sucursal,id_cliente,estado,subtotal,descuento,id_reserva)
+  values(v_res.id_comercio,v_res.id_sucursal,v_res.id_cliente,'ESPERANDO_PAGO',v_subtotal,0,p_id_reserva)
+  returning id_pedido into v_pedido;
+
+  insert into tbl_pedido_detalles(id_pedido,id_variante,sku_snapshot,nombre_snapshot,precio_unitario,cantidad)
+  values(v_pedido,v_var.id_variante,v_var.sku,v_prod.nombre || ' - ' || v_ef_nombre,v_ef_precio,v_res.cantidad);
+
+  update tbl_reservas set id_pedido=v_pedido where id_reserva=p_id_reserva;
+  return v_pedido;
+end;
+$$;
