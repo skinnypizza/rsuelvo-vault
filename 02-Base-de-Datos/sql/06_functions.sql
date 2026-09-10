@@ -2223,3 +2223,382 @@ begin
   return v_pedido;
 end;
 $$;
+
+-- -- 34_entrega_captura_destino.sql [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_iniciar_captura_destino(p_id_pedido uuid, p_id_punto_entrega uuid)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_pedido tbl_pedidos%rowtype;
+  v_punto tbl_puntos_entrega%rowtype;
+  v_transportadora text;
+BEGIN
+  SELECT * INTO v_pedido FROM tbl_pedidos WHERE id_pedido=p_id_pedido FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Pedido inexistente'; END IF;
+  IF v_pedido.estado <> 'PAGADO' THEN
+    RAISE EXCEPTION 'El pedido % no está PAGADO (estado: %)', p_id_pedido, v_pedido.estado;
+  END IF;
+  IF EXISTS (SELECT 1 FROM tbl_envios WHERE id_pedido=p_id_pedido) THEN
+    RAISE EXCEPTION 'El pedido ya tiene envío registrado';
+  END IF;
+  IF EXISTS (SELECT 1 FROM tbl_entrega_captura WHERE id_pedido=p_id_pedido) THEN
+    RAISE EXCEPTION 'Ya existe una captura de destino en curso para este pedido';
+  END IF;
+  SELECT * INTO v_punto FROM tbl_puntos_entrega WHERE id_punto_entrega=p_id_punto_entrega AND activo;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Punto de entrega inexistente o inactivo'; END IF;
+  IF v_punto.tipo <> 'ENVIO_TRANSPORTE' THEN
+    RAISE EXCEPTION 'La captura de destino aplica solo a ENVIO_TRANSPORTE';
+  END IF;
+  IF v_punto.id_sucursal <> v_pedido.id_sucursal THEN
+    RAISE EXCEPTION 'El punto no pertenece a la sucursal del pedido';
+  END IF;
+  SELECT t.nombre INTO v_transportadora FROM tbl_transportadoras t WHERE t.id_transportadora=v_punto.id_transportadora;
+  INSERT INTO tbl_entrega_captura (id_pedido, id_comercio, id_punto_entrega)
+  VALUES (p_id_pedido, v_pedido.id_comercio, p_id_punto_entrega);
+  RETURN jsonb_build_object(
+    'resultado','CAPTURA_INICIADA',
+    'id_pedido',p_id_pedido,
+    'id_punto_entrega',p_id_punto_entrega,
+    'transportadora',v_transportadora
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_entrega_captura_estado(p_telefono text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_row RECORD;
+BEGIN
+  SELECT c.id_pedido, c.destino_ciudad, c.destino_zona, pe.nombre AS punto, t.nombre AS transportadora
+  INTO v_row
+  FROM tbl_entrega_captura c
+  JOIN tbl_pedidos p ON p.id_pedido = c.id_pedido
+  JOIN tbl_clientes cl ON cl.id_cliente = p.id_cliente
+  JOIN tbl_puntos_entrega pe ON pe.id_punto_entrega = c.id_punto_entrega
+  LEFT JOIN tbl_transportadoras t ON t.id_transportadora = pe.id_transportadora
+  WHERE COALESCE(cl.telefono_whatsapp, cl.telefono) = p_telefono
+    AND p.estado = 'PAGADO'
+    AND NOT EXISTS (SELECT 1 FROM tbl_envios e WHERE e.id_pedido = c.id_pedido)
+    AND c.id_pedido = (SELECT p2.id_pedido FROM tbl_pedidos p2
+                       WHERE p2.id_cliente = p.id_cliente
+                         AND p2.estado = 'PAGADO'
+                         AND NOT EXISTS (SELECT 1 FROM tbl_envios e2 WHERE e2.id_pedido = p2.id_pedido)
+                       ORDER BY p2.created_at DESC LIMIT 1)
+  LIMIT 1;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('captura', false);
+  END IF;
+  RETURN jsonb_build_object(
+    'captura', true,
+    'paso', 'DESTINO',
+    'id_pedido', v_row.id_pedido,
+    'punto', v_row.punto,
+    'transportadora', v_row.transportadora
+  );
+END;
+$function$;
+
+-- Cuerpo final vigente (incluye refinamientos 37/38: dígito = re-selección,
+-- texto = solo ciudad, zona eliminada del flujo).
+CREATE OR REPLACE FUNCTION rsuelvo.fn_procesar_captura_destino(p_telefono text, p_texto text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_row RECORD;
+  v_punto RECORD;
+  v_texto text;
+  v_result jsonb;
+BEGIN
+  v_texto := NULLIF(trim(COALESCE(p_texto,'')), '');
+  IF v_texto IS NULL THEN
+    RAISE EXCEPTION 'Texto vacío';
+  END IF;
+  SELECT c.id_pedido, c.id_comercio, c.id_punto_entrega, c.destino_ciudad, c.destino_zona
+  INTO v_row
+  FROM tbl_entrega_captura c
+  JOIN tbl_pedidos p ON p.id_pedido = c.id_pedido
+  JOIN tbl_clientes cl ON cl.id_cliente = p.id_cliente
+  WHERE COALESCE(cl.telefono_whatsapp, cl.telefono) = p_telefono
+  LIMIT 1
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('resultado','SIN_CAPTURA');
+  END IF;
+  -- Si responde un NÚMERO: es re-selección del punto de la lista (no una ciudad)
+  IF v_texto ~ '^[0-9]+$' THEN
+    SELECT pe.id_punto_entrega, pe.nombre, pe.tipo, pe.ciudad, pe.dias_atencion,
+           pe.referencia, pe.horario_inicio, pe.horario_fin, t.nombre AS transportadora
+    INTO v_punto
+    FROM (
+      SELECT pe2.*, row_number() OVER (ORDER BY pe2.orden, pe2.nombre) AS opcion
+      FROM tbl_puntos_entrega pe2
+      WHERE pe2.id_sucursal = (SELECT p3.id_sucursal FROM tbl_pedidos p3 WHERE p3.id_pedido = v_row.id_pedido)
+        AND pe2.activo
+    ) pe
+    LEFT JOIN tbl_transportadoras t ON t.id_transportadora = pe.id_transportadora
+    WHERE pe.opcion = v_texto::integer;
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('resultado','OPCION_INVALIDA');
+    END IF;
+    IF v_punto.tipo = 'ENVIO_TRANSPORTE' THEN
+      UPDATE tbl_entrega_captura
+      SET id_punto_entrega = v_punto.id_punto_entrega,
+          destino_ciudad = NULL,
+          destino_zona = NULL
+      WHERE id_pedido = v_row.id_pedido;
+      RETURN jsonb_build_object(
+        'resultado','CAPTURA_REINICIADA',
+        'transportadora', v_punto.transportadora
+      );
+    END IF;
+    -- Re-selección a punto no-transporte: registra la entrega directo
+    v_result := fn_registrar_entrega(
+      v_row.id_pedido,
+      jsonb_build_object(
+        'id_punto_entrega', v_punto.id_punto_entrega,
+        'telefono', p_telefono
+      )
+    );
+    DELETE FROM tbl_entrega_captura WHERE id_pedido = v_row.id_pedido;
+    RETURN v_result;
+  END IF;
+  -- Texto normal = la ciudad
+  v_texto := left(v_texto, 120);
+  UPDATE tbl_entrega_captura
+  SET destino_ciudad = v_texto, destino_zona = NULL
+  WHERE id_pedido = v_row.id_pedido;
+  v_result := fn_registrar_entrega(
+    v_row.id_pedido,
+    jsonb_build_object(
+      'id_punto_entrega', v_row.id_punto_entrega,
+      'telefono', p_telefono,
+      'destino_ciudad', v_texto
+    )
+  );
+  DELETE FROM tbl_entrega_captura WHERE id_pedido = v_row.id_pedido;
+  RETURN v_result;
+END;
+$function$;
+
+-- -- 35_lista_pendiente_momento1.sql [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_pendiente_lista(p_id_comercio uuid, p_id_sucursal uuid, p_id_variante uuid, p_id_cliente uuid)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+BEGIN
+  INSERT INTO tbl_lista_pendiente (id_cliente, id_comercio, id_sucursal, id_variante)
+  VALUES (p_id_cliente, p_id_comercio, p_id_sucursal, p_id_variante)
+  ON CONFLICT (id_cliente) DO UPDATE
+    SET id_comercio = EXCLUDED.id_comercio,
+        id_sucursal = EXCLUDED.id_sucursal,
+        id_variante = EXCLUDED.id_variante;
+  RETURN jsonb_build_object('resultado','PENDIENTE_LISTA');
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_aceptar_pendiente_lista(p_telefono text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_pend RECORD;
+  v_sku text;
+  v_nombre text;
+  v_precio numeric;
+  v_pos_existente integer;
+BEGIN
+  SELECT * INTO v_pend
+  FROM tbl_lista_pendiente
+  WHERE id_cliente = (SELECT id_cliente FROM tbl_clientes WHERE COALESCE(telefono_whatsapp, telefono) = p_telefono LIMIT 1)
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('resultado','SIN_PENDIENTE');
+  END IF;
+  -- Guarda: si ya está en la lista para esta variante, no duplicar
+  SELECT posicion INTO v_pos_existente
+  FROM tbl_lista_espera
+  WHERE id_cliente = v_pend.id_cliente
+    AND id_variante = v_pend.id_variante
+    AND estado IN ('ESPERANDO','NOTIFICADO')
+  LIMIT 1;
+  DELETE FROM tbl_lista_pendiente WHERE id_cliente = v_pend.id_cliente;
+  SELECT sku, nombre, precio INTO v_sku, v_nombre, v_precio
+  FROM tbl_variantes WHERE id_variante = v_pend.id_variante;
+  IF v_pos_existente IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'resultado','YA_EN_LISTA',
+      'posicion', v_pos_existente,
+      'id_comercio', v_pend.id_comercio,
+      'sku', v_sku,
+      'nombre', v_nombre,
+      'precio', v_precio
+    );
+  END IF;
+  RETURN jsonb_build_object(
+    'resultado','PENDIENTE_OK',
+    'id_comercio', v_pend.id_comercio,
+    'id_sucursal', v_pend.id_sucursal,
+    'id_variante', v_pend.id_variante,
+    'id_cliente', v_pend.id_cliente,
+    'sku', v_sku,
+    'nombre', v_nombre,
+    'precio', v_precio
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_rechazar_pendiente_lista(p_telefono text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_count integer;
+BEGIN
+  DELETE FROM tbl_lista_pendiente
+  WHERE id_cliente = (SELECT id_cliente FROM tbl_clientes WHERE COALESCE(telefono_whatsapp, telefono) = p_telefono LIMIT 1);
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count = 0 THEN
+    RETURN jsonb_build_object('resultado','SIN_PENDIENTE');
+  END IF;
+  RETURN jsonb_build_object('resultado','LISTA_RECHAZADA');
+END;
+$function$;
+
+-- -- 36_guia_foto.sql [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_registrar_guia(p_id_envio uuid, p_numero_guia text DEFAULT NULL, p_guia_foto_url text DEFAULT NULL)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_env tbl_envios%rowtype;
+  v_tipo text;
+  v_transportadora text;
+  v_phone text;
+  v_nuevo_num text;
+  v_nueva_foto text;
+BEGIN
+  SELECT * INTO v_env FROM tbl_envios WHERE id_envio=p_id_envio FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Envío inexistente'; END IF;
+  SELECT pe.tipo, t.nombre INTO v_tipo, v_transportadora
+  FROM tbl_puntos_entrega pe
+  LEFT JOIN tbl_transportadoras t ON t.id_transportadora = pe.id_transportadora
+  WHERE pe.id_punto_entrega = v_env.id_punto_entrega;
+  IF v_tipo IS NULL OR v_tipo NOT IN ('ENVIO_TRANSPORTE','PUNTO_LOCAL') THEN
+    RAISE EXCEPTION 'La guía/código aplica solo a ENVIO_TRANSPORTE o PUNTO_LOCAL';
+  END IF;
+  IF v_env.estado NOT IN ('PREPARANDO','ASIGNADO','EN_RUTA') THEN
+    RAISE EXCEPTION 'El envío debe estar PREPARANDO, ASIGNADO o EN_RUTA (estado: %)', v_env.estado;
+  END IF;
+  v_nuevo_num  := NULLIF(trim(COALESCE(p_numero_guia,'')), '');
+  v_nueva_foto := NULLIF(trim(COALESCE(p_guia_foto_url,'')), '');
+  IF v_nuevo_num IS NULL AND v_nueva_foto IS NULL THEN
+    RAISE EXCEPTION 'Debe proporcionar numero_guia y/o guia_foto_url';
+  END IF;
+  UPDATE tbl_envios
+  SET numero_guia   = COALESCE(v_nuevo_num, numero_guia),
+      guia_foto_url = COALESCE(v_nueva_foto, guia_foto_url)
+  WHERE id_envio = p_id_envio
+  RETURNING numero_guia, guia_foto_url INTO v_nuevo_num, v_nueva_foto;
+  SELECT COALESCE(telefono_whatsapp, telefono) INTO v_phone
+  FROM tbl_clientes
+  WHERE id_cliente = (SELECT id_cliente FROM tbl_pedidos WHERE id_pedido = v_env.id_pedido);
+  PERFORM net.http_post(
+    url    => 'https://rsuelvotest.app.n8n.cloud/webhook/entrega/estado',
+    body   => jsonb_build_object(
+      'token', 'RSU_entrega_notif_7Qk2mXwP',
+      'motivo', 'guia_registrada',
+      'id_envio', v_env.id_envio,
+      'id_pedido', v_env.id_pedido,
+      'id_comercio', v_env.id_comercio,
+      'phone', v_phone,
+      'numero_guia', v_nuevo_num,
+      'guia_foto_url', v_nueva_foto,
+      'transportadora', v_transportadora,
+      'destino_ciudad', v_env.destino_ciudad,
+      'destino_zona', v_env.destino_zona
+    ),
+    headers => jsonb_build_object('Content-Type', 'application/json')
+  );
+  RETURN jsonb_build_object(
+    'resultado','GUIA_REGISTRADA',
+    'id_envio', p_id_envio,
+    'numero_guia', v_nuevo_num,
+    'guia_foto_url', v_nueva_foto,
+    'tipo_punto', v_tipo
+  );
+END;
+$function$;
+
+-- -- m31 fn_rechazar_lista_espera (espejo)
+CREATE OR REPLACE FUNCTION rsuelvo.fn_rechazar_lista_espera(p_id_lista_espera uuid)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v_item tbl_lista_espera%rowtype;
+  v_nuevo_estado estado_lista_espera;
+BEGIN
+  SELECT * INTO v_item FROM tbl_lista_espera WHERE id_lista_espera = p_id_lista_espera FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Entrada de lista inexistente'; END IF;
+  IF v_item.estado = 'NOTIFICADO' THEN
+    v_nuevo_estado := 'RECHAZADO';
+  ELSIF v_item.estado = 'ESPERANDO' THEN
+    v_nuevo_estado := 'CANCELADO';
+  ELSE
+    RAISE EXCEPTION 'Solo se pueden rechazar entradas NOTIFICADO o cancelar ESPERANDO (estado actual: %)', v_item.estado;
+  END IF;
+  UPDATE tbl_lista_espera SET estado = v_nuevo_estado, updated_at = now() WHERE id_lista_espera = p_id_lista_espera;
+  RETURN jsonb_build_object(
+    'resultado', 'OPORTUNIDAD_RECHAZADA',
+    'estado_anterior', v_item.estado,
+    'estado_nuevo', v_nuevo_estado,
+    'id_lista_espera', p_id_lista_espera,
+    'id_sucursal', v_item.id_sucursal,
+    'id_variante', v_item.id_variante
+  );
+END;
+$function$;
+
+-- -- m40 fn_notificar_siguiente_lista_espera (cuerpo exacto cloud)
+CREATE OR REPLACE FUNCTION rsuelvo.fn_notificar_siguiente_lista_espera(p_id_sucursal uuid, p_id_variante uuid)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  v_item tbl_lista_espera%rowtype;
+  v_cfg tbl_comercio_config%rowtype;
+  v_ef_nombre text;
+  v_ef_precio numeric(14,2);
+begin
+  select * into v_item
+  from tbl_lista_espera cand
+  where cand.id_sucursal=p_id_sucursal
+    and cand.id_variante=p_id_variante
+    and cand.estado='ESPERANDO'
+    and not exists (
+      select 1 from tbl_lista_espera act
+      where act.id_cliente = cand.id_cliente
+        and act.estado='NOTIFICADO'
+        and act.fecha_expiracion > now()
+    )
+  order by cand.posicion
+  limit 1
+  for update skip locked;
+  if not found then
+    return jsonb_build_object('resultado','LISTA_VACIA');
+  end if;
+  select * into v_cfg from tbl_comercio_config where id_comercio=v_item.id_comercio;
+  update tbl_lista_espera
+  set estado='NOTIFICADO',
+      fecha_notificacion=now(),
+      fecha_expiracion=now()+make_interval(mins=>v_cfg.tiempo_aceptacion_lista_espera_minutos)
+  where id_lista_espera=v_item.id_lista_espera;
+  -- m40: valores efectivos de la sucursal del grupo (para el mensaje de oportunidad)
+  select e.nombre, e.precio into v_ef_nombre, v_ef_precio
+  from fn_variante_efectiva(v_item.id_variante, v_item.id_sucursal) e;
+  return jsonb_build_object(
+    'resultado','CLIENTE_NOTIFICADO',
+    'id_lista_espera',v_item.id_lista_espera,
+    'id_cliente',v_item.id_cliente,
+    'fecha_expiracion',(select fecha_expiracion from tbl_lista_espera where id_lista_espera=v_item.id_lista_espera),
+    'nombre', v_ef_nombre,
+    'precio', v_ef_precio,
+    'tiempo_aceptacion_minutos', v_cfg.tiempo_aceptacion_lista_espera_minutos
+  );
+end;
+$function$;

@@ -579,3 +579,51 @@ CREATE TRIGGER trg_audit_tbl_variante_sucursal AFTER INSERT OR DELETE OR UPDATE 
   FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
 GRANT ALL ON rsuelvo.tbl_variante_sucursal TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_variante_sucursal TO authenticated;
+
+-- -- 34_entrega_captura_destino.sql [TABLAS]
+CREATE TABLE IF NOT EXISTS rsuelvo.tbl_entrega_captura (
+  id_pedido uuid NOT NULL PRIMARY KEY REFERENCES rsuelvo.tbl_pedidos(id_pedido),
+  id_comercio uuid NOT NULL REFERENCES rsuelvo.tbl_comercios(id_comercio),
+  id_punto_entrega uuid NOT NULL REFERENCES rsuelvo.tbl_puntos_entrega(id_punto_entrega),
+  destino_ciudad text,
+  destino_zona text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_entrega_captura_comercio ON rsuelvo.tbl_entrega_captura(id_comercio);
+ALTER TABLE rsuelvo.tbl_entrega_captura ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON rsuelvo.tbl_entrega_captura TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_entrega_captura TO authenticated;
+
+-- -- 34_entrega_captura_destino.sql [COLUMNAS_M34]
+ALTER TABLE rsuelvo.tbl_clientes ADD COLUMN IF NOT EXISTS apellido_paterno text;
+ALTER TABLE rsuelvo.tbl_clientes ADD COLUMN IF NOT EXISTS apellido_materno text;
+ALTER TABLE rsuelvo.tbl_envios ADD COLUMN IF NOT EXISTS destino_ciudad text;
+ALTER TABLE rsuelvo.tbl_envios ADD COLUMN IF NOT EXISTS destino_zona text;
+ALTER TABLE rsuelvo.tbl_envios ADD COLUMN IF NOT EXISTS numero_guia text;
+-- NOTA: tbl_puntos_entrega.ciudad (NOT NULL) y tipo (NOT NULL) se agregaron con
+-- backfill en la migración original; aquí queda el estado final:
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS ciudad text;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS tipo text;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS id_transportadora uuid REFERENCES rsuelvo.tbl_transportadoras(id_transportadora);
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS dias_atencion text;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS horario_inicio time;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS horario_fin time;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS referencia text;
+ALTER TABLE rsuelvo.tbl_puntos_entrega ADD COLUMN IF NOT EXISTS orden integer NOT NULL DEFAULT 0;
+
+-- -- 35_lista_pendiente_momento1.sql [TABLAS]
+CREATE TABLE IF NOT EXISTS rsuelvo.tbl_lista_pendiente (
+  id_cliente uuid NOT NULL PRIMARY KEY REFERENCES rsuelvo.tbl_clientes(id_cliente) ON DELETE CASCADE,
+  id_comercio uuid NOT NULL REFERENCES rsuelvo.tbl_comercios(id_comercio),
+  id_sucursal uuid NOT NULL REFERENCES rsuelvo.tbl_sucursales(id_sucursal),
+  id_variante uuid NOT NULL REFERENCES rsuelvo.tbl_variantes(id_variante),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE rsuelvo.tbl_lista_pendiente ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON rsuelvo.tbl_lista_pendiente TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_lista_pendiente TO authenticated;
+
+-- -- 36_guia_foto.sql [TABLAS]
+ALTER TABLE rsuelvo.tbl_envios ADD COLUMN IF NOT EXISTS guia_foto_url text;

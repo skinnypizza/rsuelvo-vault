@@ -1,3 +1,5 @@
+-- SUPERSEDED por migración 40 (40_variante_sucursal_overrides.sql): la firma ahora es
+-- fn_resolver_variante_por_sku(p_id_comercio, p_sku, p_id_sucursal). Este archivo se conserva solo como histórico.
 -- ============================================================
 -- RSUELVO v2 :: 13. FUNCIÓN DE RESOLUCIÓN SKU
 -- Migración: rsuelvo_v2_13_fn_resolver_variante_por_sku

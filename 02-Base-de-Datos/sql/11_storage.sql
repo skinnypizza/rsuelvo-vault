@@ -22,3 +22,16 @@ on conflict (id) do nothing;
 --     from rsuelvo.tbl_usuario_comercio uc
 --     join rsuelvo.tbl_usuarios u on u.id_usuario=uc.id_usuario
 --     where u.auth_user_id=auth.uid() and uc.activo));
+
+-- -- 36_guia_foto.sql [STORAGE]
+INSERT INTO storage.buckets (id, name, public) VALUES ('guias-envios','guias-envios', false)
+ON CONFLICT (id) DO NOTHING;
+DROP POLICY IF EXISTS guias_envios_insert ON storage.objects;
+CREATE POLICY guias_envios_insert ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'guias-envios');
+DROP POLICY IF EXISTS guias_envios_select ON storage.objects;
+CREATE POLICY guias_envios_select ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'guias-envios');
+DROP POLICY IF EXISTS guias_envios_update ON storage.objects;
+CREATE POLICY guias_envios_update ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'guias-envios') WITH CHECK (bucket_id = 'guias-envios');

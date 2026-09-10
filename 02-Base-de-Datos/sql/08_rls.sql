@@ -168,3 +168,19 @@ DROP POLICY IF EXISTS products_manage ON rsuelvo.tbl_productos;
 CREATE POLICY products_manage ON rsuelvo.tbl_productos FOR ALL TO authenticated
   USING (rsuelvo.fn_es_admin_o_cajero_comercio(id_comercio))
   WITH CHECK (rsuelvo.fn_es_admin_o_cajero_comercio(id_comercio));
+
+-- -- 34_entrega_captura_destino.sql [RLS]
+DROP POLICY IF EXISTS entrega_captura_all ON rsuelvo.tbl_entrega_captura;
+CREATE POLICY entrega_captura_all ON rsuelvo.tbl_entrega_captura FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_pedidos p JOIN rsuelvo.tbl_sucursales s ON s.id_sucursal=p.id_sucursal
+                 WHERE p.id_pedido=tbl_entrega_captura.id_pedido AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)))
+  WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_pedidos p JOIN rsuelvo.tbl_sucursales s ON s.id_sucursal=p.id_sucursal
+                 WHERE p.id_pedido=tbl_entrega_captura.id_pedido AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)));
+
+-- -- 35_lista_pendiente_momento1.sql [RLS]
+DROP POLICY IF EXISTS lista_pendiente_all ON rsuelvo.tbl_lista_pendiente;
+CREATE POLICY lista_pendiente_all ON rsuelvo.tbl_lista_pendiente FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s
+                 WHERE s.id_sucursal=tbl_lista_pendiente.id_sucursal AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)))
+  WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s
+                 WHERE s.id_sucursal=tbl_lista_pendiente.id_sucursal AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)));

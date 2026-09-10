@@ -91,3 +91,15 @@ end $$;
 -- FOR EACH ROW
 -- WHEN (NEW.estado IS DISTINCT FROM OLD.estado)
 -- EXECUTE FUNCTION rsuelvo.fn_notifica_envio_estado();
+
+-- -- 34_entrega_captura_destino.sql [TRIGGERS]
+CREATE TRIGGER trg_entrega_captura_updated_at BEFORE UPDATE ON rsuelvo.tbl_entrega_captura
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
+CREATE TRIGGER trg_audit_entrega_captura AFTER INSERT OR UPDATE OR DELETE ON rsuelvo.tbl_entrega_captura
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
+
+-- -- 35_lista_pendiente_momento1.sql [TRIGGERS]
+CREATE TRIGGER trg_lista_pendiente_updated_at BEFORE UPDATE ON rsuelvo.tbl_lista_pendiente
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
+CREATE TRIGGER trg_audit_lista_pendiente AFTER INSERT OR UPDATE OR DELETE ON rsuelvo.tbl_lista_pendiente
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
