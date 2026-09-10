@@ -48,6 +48,34 @@ $$;
 -- [3 tienda][3 producto] en base36 si viene nulo, valida formato y duplicados.
 -- (fix 16_fix_search_path_sku) SECURITY INVOKER + SET search_path = rsuelvo, public
 -- y tablas calificadas para no depender del search_path de sesión.
+-- Helper base36 → int (m39: el trigger calculaba el máximo como HEX y fallaba con G-Z)
+create or replace function fn_base36_a_int(p_texto text)
+returns integer
+language plpgsql
+immutable
+set search_path = rsuelvo, public
+as $$
+declare
+  v text := upper(coalesce(p_texto,''));
+  i int;
+  c text;
+  v_valor int := 0;
+begin
+  if v = '' then return null; end if;
+  for i in 1..length(v) loop
+    c := substr(v, i, 1);
+    if c ~ '[0-9]' then
+      v_valor := v_valor * 36 + (ascii(c) - 48);
+    elsif c ~ '[A-Z]' then
+      v_valor := v_valor * 36 + (ascii(c) - 55);
+    else
+      return null;
+    end if;
+  end loop;
+  return v_valor;
+end;
+$$;
+
 create or replace function fn_resolver_variante_tenant_sku()
 returns trigger
 language plpgsql
@@ -89,7 +117,7 @@ begin
     where id_comercio=v_comercio for update;
 
     select coalesce(max(
-      ('x'||substr(v.sku,4,3))::bit(12)::int
+      rsuelvo.fn_base36_a_int(substr(v.sku,4,3))
     ),0) into v_max
     from rsuelvo.tbl_variantes v
     where v.id_comercio=v_comercio
