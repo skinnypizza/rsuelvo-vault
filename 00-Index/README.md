@@ -25,15 +25,15 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 
 ## Rutas del Proyecto
 
-| Recurso                          | Ruta                                                  |
-| -------------------------------- | ----------------------------------------------------- |
-| **⭐ PROMPT MAESTRO (empezar aquí)** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md`            |
-| Código Flutter                   | `/home/nico/StudioProjects/rsuelvo/`                  |
-| Favicons y Recursos              | `/home/nico/rsuelvo/logotipo rsuelvo`                 |
-| Variables de entorno             | `/home/nico/StudioProjects/rsuelvo/.env`              |
-| OpenWA                           | `/home/nico/OpenWA/`                                  |
-| Vault                            | `/home/nico/obsidian/Rsuelvo/`                        |
-| Diseño UX / Wireframes app móvil    | `/home/nico/obsidian/Rsuelvo/05-Diseño-UX/`           |
-| Backlog HU + Auditoría consistencia | `/home/nico/obsidian/Rsuelvo/06-Backlog-HU/`          |
+| Recurso                             | Ruta                                                    |
+| ----------------------------------- | ------------------------------------------------------- |
+| **⭐ PROMPT MAESTRO (empezar aquí)** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md`                 |
+| Código Flutter                      | `/home/nico/StudioProjects/rsuelvo/`                    |
+| Favicons y Recursos                 | `/home/nico/rsuelvo/logotipo rsuelvo`                   |
+| Variables de entorno                | `/home/nico/StudioProjects/rsuelvo/.env`                |
+| OpenWA                              | `/home/nico/OpenWA/`                                    |
+| Vault                               | `/home/nico/obsidian/Rsuelvo/`                          |
+| Diseño UX / Wireframes app móvil    | `/home/nico/obsidian/Rsuelvo/05-Diseño-UX/`             |
+| Backlog HU + Auditoría consistencia | `/home/nico/obsidian/Rsuelvo/06-Backlog-HU/`            |
 | Schema SQL separado (12 archivos)   | `02-Base-de-Datos/sql/` · origen: `/home/nico/rsuelvo/` |
 
