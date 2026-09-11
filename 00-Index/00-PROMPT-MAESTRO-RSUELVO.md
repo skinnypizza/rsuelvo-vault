@@ -1,6 +1,7 @@
 # ⭐ PROMPT MAESTRO RSUELVO — Fuente Única de Verdad
 
-> **Versión:** 1.5 · **Fecha:** 2026-09-02 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Versión:** 1.6 · **Fecha:** 2026-09-11 · **Estado:** ✅ Consistencia 100% certificada entre módulos
+> **Changelog v1.6:** D15 — solo verificación MANUAL en el lanzamiento (ningún comercio en automático; WF-22/23/24 publicados pero inactivos; E2E pivota a confirmación por app)
 > **Changelog v1.5:** D13 — verificación híbrida (OCR-asistente + cajero confirma vía app, toggle por comercio `verificacion_automatica`) · D14 — créditos por VENTA (CONSUMO_VENTA, saldo negativo permitido) · Regla de Oro 4 reformulada · Propuesta completa en `01-Arquitectura/PROPUESTA-Verificacion-Hibrida-V1-V2.md`
 > **Changelog v1.4:** Ruta canónica del código Flutter = `/home/nico/StudioProjects/rsuelvo/` (proyecto creado por el usuario, reemplaza la referencia histórica a `/mnt/windows/...`; §6 y README actualizados) + sistema de agentes opencode instalado en `.opencode/` + bitácora `00-Index/ESTADO-EJECUCION.md`
 > **Changelog v1.3:** Meta Developer Tools MCP (oficial, beta) configurado para TOOLING de desarrollo — webhooks/salud API/docs (D12); mensajería sigue exclusivamente por WF-80 (D11 intacto)
@@ -97,6 +98,7 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | **D12** | **Meta Developer Tools MCP aprobado SOLO para tooling de desarrollo** (registrar/probar webhooks, salud API, compliance, docs). Prohibido para tráfico de mensajes: eso permanece exclusivo de WF-80 (D11) | auditoría MCP + guía Meta oficial |
 | **D13** | **Verificación híbrida por comercio** (toggle `verificacion_automatica`): modo manual → el comprobante queda RECIBIDO y el **cajero confirma/rechaza desde la app** (RPC directo, sin n8n); modo automático → OCR (WF-22) + decisión IA (WF-23) como hoy. La confirmación usa `fn_confirmar_pago` con guardas (migraciones 22/25) en ambos modos | propuesta 2026-09-02 · `PROPUESTA-Verificacion-Hibrida-V1-V2.md` |
 | **D14** | **Créditos por VENTA**: cada `PAGO_CONFIRMADO` consume 1 crédito (`CONSUMO_VENTA`, valor nuevo del enum) en la misma transacción; saldo puede quedar negativo (la venta NUNCA se bloquea — SD-1); rechazos no consumen; aplica también a ventas de lista de espera. `CONSUMO_VERIFICACION` se conserva para el modo automático (V2) | propuesta 2026-09-02 · `PROPUESTA-Verificacion-Hibrida-V1-V2.md` |
+| **D15** | **Solo verificación MANUAL en el lanzamiento**: ningún comercio opera en modo automático hasta nuevo aviso. WF-22/23/24 permanecen publicados pero inactivos (verificados a nivel estructura; su prueba viva queda pendiente a la activación del primer comercio automático). El E2E de pago es confirmación del cajero desde la app → `PAGADO` → aviso único vía WF-25-A | decisión del dueño 2026-09-11 · bitácora E2E |
 | **D11** | **Sin MCP de MENSAJERÍA de Meta**: Graph API se accede EXCLUSIVAMENTE vía n8n WF-80 (cola/rate-limit/breaker/opt-out). Un MCP directo saltaría los controles obligatorios de la política §4.3. Wrapper interno sobre WF-80 permitido a futuro. Stack local Supabase `54321` prohibido para proyecto | auditoría MCP 2026-08-24 |
 
 ## 6. Mapa de módulos (fuente canónica de cada dominio)
