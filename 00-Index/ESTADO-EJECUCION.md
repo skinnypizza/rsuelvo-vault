@@ -225,3 +225,5 @@
 - **2026-09-11 (bug login FCM diagnosticado)** — `requestPermission` concurrente: signIn directo + onAuthStateChange disparan `_loadUserProfile` a la vez; el throw además tumbaba la sesión (catch con clearUser). Prompt `PROMPT-CODEX-FIX-PUSH-RACE.md` listo (single-flight por usuario + flag/permiso-previo/try-catch en push). El dueño retestea login en dispositivo.
 
 - **2026-09-11 (fix carrera FCM verificado en código)** — Codex aplicó single-flight (`_loadingUserId` + `finally`) y endureció push (`_registering` en `finally`, permiso-previo, try/catch real). Verificado por orquestador línea por línea + analyze/APK reportados OK. App sin commit. El dueño retestea login en dispositivo.
+
+- **2026-09-11 (push E2E: foreground + background OK — Fase 2 cerrada)** — Token real registrado al login (race fix confirmado en dispositivo). Reserva sintética 1 → pg_net 200 `{enviados:1}` → toast en foreground; reserva 2 → 200 → push en bandeja con app en segundo plano. Limpieza total (fn_expirar rechaza no-vencidas con AUN_ACTIVA — guarda correcta; limpieza manual + stock restaurado). Fase 2 backend+app cerrada; resta commit de la app.
