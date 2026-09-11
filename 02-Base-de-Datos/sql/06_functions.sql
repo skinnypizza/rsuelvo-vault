@@ -3076,3 +3076,32 @@ BEGIN
   RETURN QUERY SELECT v_id_comprobante, v_id_pedido;
 END;
 $function$;
+
+
+-- -- 46 [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_notificar_reserva_push()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  v_secret text;
+begin
+  select decrypted_secret into v_secret
+  from vault.decrypted_secrets
+  where name='rsuelvo_push_webhook_secret'
+  limit 1;
+  if v_secret is null then
+    return new;
+  end if;
+  perform net.http_post(
+    url     => 'https://iwfaktlxebxtocmswdvv.supabase.co/functions/v1/notificar-reserva-sucursal',
+    body    => jsonb_build_object('id_reserva', NEW.id_reserva),
+    headers => jsonb_build_object('Content-Type', 'application/json', 'x-webhook-secret', v_secret)
+  );
+  return new;
+exception when others then
+  return new;
+end;
+$function$;

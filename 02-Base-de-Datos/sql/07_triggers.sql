@@ -110,3 +110,12 @@ CREATE TRIGGER trg_dispositivos_push_updated_at BEFORE UPDATE ON rsuelvo.tbl_dis
   FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
 CREATE TRIGGER trg_audit_dispositivos_push AFTER INSERT OR UPDATE OR DELETE ON rsuelvo.tbl_dispositivos_push
   FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
+
+
+-- -- 46 [TRIGGERS]
+DROP TRIGGER IF EXISTS trg_reserva_push ON rsuelvo.tbl_reservas;
+CREATE TRIGGER trg_reserva_push
+AFTER INSERT ON rsuelvo.tbl_reservas
+FOR EACH ROW
+WHEN (NEW.estado = 'ACTIVA')
+EXECUTE FUNCTION rsuelvo.fn_notificar_reserva_push();
