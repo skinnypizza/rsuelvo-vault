@@ -312,8 +312,8 @@ Responde SI para aceptar y NO para liberar la oportunidad.
   2. WF-10: rama directa con ese texto (sin pendiente, sin pregunta); la pregunta se mantiene si hay cupo; el atajo ya_en_lista tiene prioridad.
 - **Impacto:** 🟢 Bajo (1 migración + 1 IF/1 Build en WF-10)
 - **Bloquea construcción:** No
-- **Estado:** 🔄 En implementación (2026-09-11, migración lista, falta WF-10)
-- **Resolución:** *(en curso)*
+- **Estado:** ✅ Resuelta (2026-09-11)
+- **Resolución:** implementada y validada E2E — comprador 1 con cupo lleno recibe directo el mensaje (WF-80 #546 con id_comercio, Log Send); sin fila ni pendiente creados.
 
 ---
 
@@ -360,3 +360,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-09 | OBS-005 | **m38 (decisión del dueño): zona ELIMINADA — solo ciudad** (texto libre 1 mensaje; destino_zona=NULL); sección OBS-005 corregida en consecuencia |
 | 2026-09-11 | OBS-005 | Corrección documental: el informe de optimización P1 proponía reintroducir CIUDAD+ZONA (seguía texto m37) — **P1 invalidado**, se mantiene solo-ciudad |
 | 2026-09-11 | OBS-006 | Registrada — respuesta directa con lista llena (dueño); migración 43 aplicada y validada (buyer1→llena 1/1) |
+| 2026-09-11 | OBS-006 | Resuelta y validada E2E (WF-80 #546: mensaje directo a comprador 1, sin pregunta; cupo restaurado a 5) |
