@@ -303,6 +303,20 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 ---
 
+### OBS-006: Sin pregunta SI/NO cuando la lista de espera está llena
+- **Categoría:** Funcional / Conversacional (UX Momento 1)
+- **Sección afectada:** WF-10 (rama lista llena + IF) · `fn_solicitar_reserva` (m43)
+- **Descripción:** con la lista llena, un comprador nuevo hoy recibe la pregunta SI/NO de Momento 1 solo para que luego le digan que no hay lugar. Debe recibir directo en el primer mensaje: "Lo sentimos, el producto que busca no tiene stock y la lista de espera está llena".
+- **Requisitos:**
+  1. `fn_solicitar_reserva` (m43) devuelve `lista_llena/activos/maximo` en SIN_STOCK cuando no está en lista.
+  2. WF-10: rama directa con ese texto (sin pendiente, sin pregunta); la pregunta se mantiene si hay cupo; el atajo ya_en_lista tiene prioridad.
+- **Impacto:** 🟢 Bajo (1 migración + 1 IF/1 Build en WF-10)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En implementación (2026-09-11, migración lista, falta WF-10)
+- **Resolución:** *(en curso)*
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
@@ -345,3 +359,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-09 | OBS-005 | Implementada (m37 + WF-25-B): destino ciudad+zona en UN solo mensaje con formato CIUDAD: X, ZONA: Y; FB: FORMATO_INVALIDO con ejemplo
 | 2026-09-09 | OBS-005 | **m38 (decisión del dueño): zona ELIMINADA — solo ciudad** (texto libre 1 mensaje; destino_zona=NULL); sección OBS-005 corregida en consecuencia |
 | 2026-09-11 | OBS-005 | Corrección documental: el informe de optimización P1 proponía reintroducir CIUDAD+ZONA (seguía texto m37) — **P1 invalidado**, se mantiene solo-ciudad |
+| 2026-09-11 | OBS-006 | Registrada — respuesta directa con lista llena (dueño); migración 43 aplicada y validada (buyer1→llena 1/1) |
