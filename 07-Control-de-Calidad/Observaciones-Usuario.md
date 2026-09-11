@@ -317,6 +317,21 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 ---
 
+### OBS-007: Menos avisos logísticos + la guía cierra la entrega
+- **Categoría:** Funcional / Logística (UX WhatsApp + estados)
+- **Sección afectada:** WF-25-C (ramas silenciosas) · `fn_registrar_guia` (m48) · app envíos
+- **Descripción:** 3 avisos en 25 segundos por cambio de estado. Quedan: `PREPARANDO` avisa; `ASIGNADO`, `EN_RUTA` y `ENTREGADO` silenciosos (200 + dedup igual); el aviso de despacho con guía/número/foto se mantiene. Al registrar número y/o foto, envío→`ENTREGADO` y pedido→`ENTREGADO` (solo si estaba PAGADO/PREPARANDO/DESPACHADO; ESPERANDO_PAGO jamás se salta).
+- **Requisitos:**
+  1. Migración 48 con guarda de pago (validada: envío cierra, pedido impago intacto).
+  2. WF-25-C: ramas silenciosas sin romper dedup.
+  3. App: envío terminal tras la guía (sin más acciones).
+- **Impacto:** 🟢 Bajo-medio (1 migración + ramas n8n + UI)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En implementación (2026-09-11, migración lista, falta WF-25-C + app)
+- **Resolución:** *(en curso)*
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
@@ -361,3 +376,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-11 | OBS-005 | Corrección documental: el informe de optimización P1 proponía reintroducir CIUDAD+ZONA (seguía texto m37) — **P1 invalidado**, se mantiene solo-ciudad |
 | 2026-09-11 | OBS-006 | Registrada — respuesta directa con lista llena (dueño); migración 43 aplicada y validada (buyer1→llena 1/1) |
 | 2026-09-11 | OBS-006 | Resuelta y validada E2E (WF-80 #546: mensaje directo a comprador 1, sin pregunta; cupo restaurado a 5) |
+| 2026-09-11 | OBS-007 | Registrada — 3 avisos en 25s; silenciosos ASIGNADO/EN_RUTA/ENTREGADO; guía auto-cierra (m48 validada) |
