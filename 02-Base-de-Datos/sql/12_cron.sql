@@ -48,3 +48,10 @@ comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y 
 comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
 
 commit;
+
+-- Push v1 (migración 47): avisa reservas ACTIVA que vencen en 60-120s (banda ≈1 tick).
+select cron.schedule(
+  'rsuelvo_push_por_vencer',
+  '* * * * *',
+  $$select rsuelvo.fn_cron_notificar_por_vencer();$$
+);

@@ -3105,3 +3105,114 @@ exception when others then
   return new;
 end;
 $function$;
+
+
+-- -- 47 [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_push_evento(p_motivo text, p_payload jsonb)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  v_secret text;
+begin
+  select decrypted_secret into v_secret
+  from vault.decrypted_secrets
+  where name='rsuelvo_push_webhook_secret'
+  limit 1;
+  if v_secret is null then
+    return;
+  end if;
+  perform net.http_post(
+    url     => 'https://iwfaktlxebxtocmswdvv.supabase.co/functions/v1/notificar-reserva-sucursal',
+    body    => jsonb_build_object('motivo', p_motivo) || coalesce(p_payload, '{}'::jsonb),
+    headers => jsonb_build_object('Content-Type', 'application/json', 'x-webhook-secret', v_secret)
+  );
+exception when others then
+  return;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_notificar_reserva_push()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+begin
+  perform rsuelvo.fn_push_evento('reserva_nueva', jsonb_build_object('id_reserva', NEW.id_reserva));
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_push_comprobante()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+begin
+  perform rsuelvo.fn_push_evento('comprobante_recibido', jsonb_build_object('id_comprobante', NEW.id_comprobante));
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_push_envio()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+begin
+  if NEW.estado = 'ASIGNADO' then
+    perform rsuelvo.fn_push_evento('envio_asignado', jsonb_build_object('id_envio', NEW.id_envio));
+  elsif NEW.estado = 'ENTREGADO' then
+    perform rsuelvo.fn_push_evento('entrega_completada', jsonb_build_object('id_envio', NEW.id_envio));
+  end if;
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_push_pedido()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+begin
+  perform rsuelvo.fn_push_evento('pago_confirmado', jsonb_build_object('id_pedido', NEW.id_pedido));
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_push_stock()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+begin
+  perform rsuelvo.fn_push_evento('stock_bajo', jsonb_build_object(
+    'id_sucursal', NEW.id_sucursal,
+    'id_variante', NEW.id_variante,
+    'disponible', (NEW.stock_actual - NEW.stock_reservado)
+  ));
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION rsuelvo.fn_cron_notificar_por_vencer()
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  r record;
+  v_count integer := 0;
+begin
+  for r in
+    select id_reserva from tbl_reservas
+    where estado='ACTIVA'
+      and fecha_expiracion > now() + interval '60 seconds'
+      and fecha_expiracion <= now() + interval '120 seconds'
+    order by fecha_expiracion
+    limit 50
+    for update skip locked
+  loop
+    perform rsuelvo.fn_push_evento('reserva_por_vencer', jsonb_build_object('id_reserva', r.id_reserva));
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
+end;
+$function$;

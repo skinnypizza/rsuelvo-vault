@@ -119,3 +119,32 @@ AFTER INSERT ON rsuelvo.tbl_reservas
 FOR EACH ROW
 WHEN (NEW.estado = 'ACTIVA')
 EXECUTE FUNCTION rsuelvo.fn_notificar_reserva_push();
+
+
+-- -- 47 [TRIGGERS]
+DROP TRIGGER IF EXISTS trg_push_comprobante ON rsuelvo.tbl_comprobantes_pago;
+CREATE TRIGGER trg_push_comprobante
+AFTER INSERT ON rsuelvo.tbl_comprobantes_pago
+FOR EACH ROW
+EXECUTE FUNCTION rsuelvo.fn_push_comprobante();
+
+DROP TRIGGER IF EXISTS trg_push_envio ON rsuelvo.tbl_envios;
+CREATE TRIGGER trg_push_envio
+AFTER UPDATE ON rsuelvo.tbl_envios
+FOR EACH ROW
+WHEN (NEW.estado IN ('ASIGNADO','ENTREGADO') AND OLD.estado IS DISTINCT FROM NEW.estado)
+EXECUTE FUNCTION rsuelvo.fn_push_envio();
+
+DROP TRIGGER IF EXISTS trg_push_pedido ON rsuelvo.tbl_pedidos;
+CREATE TRIGGER trg_push_pedido
+AFTER UPDATE ON rsuelvo.tbl_pedidos
+FOR EACH ROW
+WHEN (NEW.estado = 'PAGADO' AND OLD.estado IS DISTINCT FROM 'PAGADO')
+EXECUTE FUNCTION rsuelvo.fn_push_pedido();
+
+DROP TRIGGER IF EXISTS trg_push_stock ON rsuelvo.tbl_inventario;
+CREATE TRIGGER trg_push_stock
+AFTER UPDATE ON rsuelvo.tbl_inventario
+FOR EACH ROW
+WHEN ((NEW.stock_actual - NEW.stock_reservado) <= 5 AND (OLD.stock_actual - OLD.stock_reservado) > 5)
+EXECUTE FUNCTION rsuelvo.fn_push_stock();
