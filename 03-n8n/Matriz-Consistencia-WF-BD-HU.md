@@ -20,11 +20,11 @@
 | WF-12 | RSU \| 12 \| Lista de Espera | `n9VUH43N8i7s9Rn2` | ✅ |
 | WF-13 | RSU \| 13 \| Notificar Lista Espera | `Qnr8SYR8sKGnzYKL` | ✅ |
 | WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `JOT4yRctEcogiYzV` | ✅ (Momentos 1 y 2) |
-| WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ |
+| WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ (F4 2026-09-11: `media_url` por comercio, ver. `c5eb50ca`) |
 | WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `nJCQI6MfFSjUhywB` | ✅ (H-20 corregido) |
 | WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `53xUuvoriN3fqvHD` | ✅ |
 | WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `okF8Ayhp5CicRpVU` | ✅ |
-| WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `JU4QtP0vkAC7m3n1` | ✅ |
+| WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `JU4QtP0vkAC7m3n1` | ✅ (F1+F2 2026-09-11, ver. `a03891a8`; F3 pendiente: 25-A único emisor) |
 | WF-25-A | RSU \| 25 \| Entrega \| A: Solicitar Datos | `gVmvGYVPMlQKWk6z` | ✅ |
 | WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `9doLr3FSewZofRoN` | ✅ (reconstruido 2026-09-08) |
 | WF-25-C | RSU \| 25 \| Entrega \| C: Notificar Estado | `2DzqPBe4xtHIuvHA` | ✅ (dedup Regla 7) |
