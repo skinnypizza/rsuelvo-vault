@@ -103,3 +103,10 @@ CREATE TRIGGER trg_lista_pendiente_updated_at BEFORE UPDATE ON rsuelvo.tbl_lista
   FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
 CREATE TRIGGER trg_audit_lista_pendiente AFTER INSERT OR UPDATE OR DELETE ON rsuelvo.tbl_lista_pendiente
   FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();
+
+
+-- -- 45 [TRIGGERS]
+CREATE TRIGGER trg_dispositivos_push_updated_at BEFORE UPDATE ON rsuelvo.tbl_dispositivos_push
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_set_updated_at();
+CREATE TRIGGER trg_audit_dispositivos_push AFTER INSERT OR UPDATE OR DELETE ON rsuelvo.tbl_dispositivos_push
+  FOR EACH ROW EXECUTE FUNCTION rsuelvo.fn_auditar_cambio();

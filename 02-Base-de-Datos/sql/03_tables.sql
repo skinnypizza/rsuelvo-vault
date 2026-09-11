@@ -627,3 +627,20 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_lista_pendiente TO authentic
 
 -- -- 36_guia_foto.sql [TABLAS]
 ALTER TABLE rsuelvo.tbl_envios ADD COLUMN IF NOT EXISTS guia_foto_url text;
+
+
+-- -- 45 [TABLAS]
+CREATE TABLE IF NOT EXISTS rsuelvo.tbl_dispositivos_push (
+  id_dispositivo uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_usuario uuid NOT NULL REFERENCES rsuelvo.tbl_usuarios(id_usuario) ON DELETE CASCADE,
+  token_fcm text NOT NULL UNIQUE,
+  plataforma text NOT NULL CHECK (plataforma IN ('ANDROID','IOS')),
+  activo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_dispositivos_push_usuario_activo
+  ON rsuelvo.tbl_dispositivos_push (id_usuario) WHERE activo;
+ALTER TABLE rsuelvo.tbl_dispositivos_push ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rsuelvo.tbl_dispositivos_push TO authenticated;
+GRANT ALL ON rsuelvo.tbl_dispositivos_push TO service_role;

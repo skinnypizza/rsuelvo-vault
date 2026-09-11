@@ -184,3 +184,19 @@ CREATE POLICY lista_pendiente_all ON rsuelvo.tbl_lista_pendiente FOR ALL TO auth
                  WHERE s.id_sucursal=tbl_lista_pendiente.id_sucursal AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)))
   WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_sucursales s
                  WHERE s.id_sucursal=tbl_lista_pendiente.id_sucursal AND rsuelvo.fn_tiene_acceso_sucursal(s.id_comercio, s.id_sucursal)));
+
+
+-- -- 45 [RLS]
+DROP POLICY IF EXISTS dispositivos_push_select_propios ON rsuelvo.tbl_dispositivos_push;
+CREATE POLICY dispositivos_push_select_propios ON rsuelvo.tbl_dispositivos_push FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_usuarios u WHERE u.id_usuario=tbl_dispositivos_push.id_usuario AND u.auth_user_id=auth.uid()));
+DROP POLICY IF EXISTS dispositivos_push_update_propios ON rsuelvo.tbl_dispositivos_push;
+CREATE POLICY dispositivos_push_update_propios ON rsuelvo.tbl_dispositivos_push FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_usuarios u WHERE u.id_usuario=tbl_dispositivos_push.id_usuario AND u.auth_user_id=auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_usuarios u WHERE u.id_usuario=tbl_dispositivos_push.id_usuario AND u.auth_user_id=auth.uid()));
+DROP POLICY IF EXISTS dispositivos_push_insert_propios ON rsuelvo.tbl_dispositivos_push;
+CREATE POLICY dispositivos_push_insert_propios ON rsuelvo.tbl_dispositivos_push FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM rsuelvo.tbl_usuarios u WHERE u.id_usuario=tbl_dispositivos_push.id_usuario AND u.auth_user_id=auth.uid()));
+DROP POLICY IF EXISTS dispositivos_push_delete_propios ON rsuelvo.tbl_dispositivos_push;
+CREATE POLICY dispositivos_push_delete_propios ON rsuelvo.tbl_dispositivos_push FOR DELETE TO authenticated
+  USING (EXISTS (SELECT 1 FROM rsuelvo.tbl_usuarios u WHERE u.id_usuario=tbl_dispositivos_push.id_usuario AND u.auth_user_id=auth.uid()));
