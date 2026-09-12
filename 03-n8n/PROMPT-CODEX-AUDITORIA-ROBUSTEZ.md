@@ -21,7 +21,7 @@ verificación.
 Crear `03-n8n/Auditoria-Robustez-Conversacional.md`: tabla punto→riesgo→propuesta
 (saludo/acuse sin romper estado, re-pregunta con contexto, validaciones estrictas donde
 corresponda), ordenadas por riesgo/beneficio, con IDs (`WF-xx`, `HU-xxx`, fn/tabla).
-Proponer sin implementar; እንደ sea posible distinguir quick-wins de rediseño. Único archivo creable.
+Proponer sin implementar; en lo posible distinguir quick-wins de rediseño. Único archivo creable.
 
 ## Reglas operativas
 Solo lectura (cero cambios n8n/BD). Español, sin capturas ni JSONs enteros, IDs citados.
