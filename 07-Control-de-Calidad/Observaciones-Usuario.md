@@ -332,6 +332,44 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 ---
 
+### OBS-008: Sin aviso WhatsApp en PREPARANDO
+- **Categoría:** Funcional / Logística (UX WhatsApp)
+- **Sección afectada:** WF-25-C (rama silenciosa)
+- **Descripción:** tras la prueba real con el dueño, también sobra el aviso de `PREPARANDO`. Quedan avisando solo el despacho con guía y los transaccionales (reserva/QR, ACK, rechazos, confirmación, lista).
+- **Requisitos:** WF-25-C: `PREPARANDO` → 200 + dedup igual, como ASIGNADO/EN_RUTA/ENTREGADO.
+- **Impacto:** 🟢 Bajo (1 rama n8n)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En implementación (2026-09-12, falta WF-25-C)
+- **Resolución:** *(en curso)*
+
+---
+
+### OBS-009: SKU en el aviso de guía (multi-comercio)
+- **Categoría:** Funcional / Logística (UX WhatsApp)
+- **Sección afectada:** `fn_registrar_guia` (m49) · WF-25-C (caption)
+- **Descripción:** el comprador puede comprar en varios comercios: el aviso de despacho debe identificar la compra con el SKU.
+- **Requisitos:**
+  1. Webhook con `sku` (m49 aplicada y validada live: #741 recibió `sku:FERC01`).
+  2. WF-25-C: caption con `SKU {sku}` (con fallback si falta).
+- **Impacto:** 🟢 Bajo (1 campo + caption)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En implementación (2026-09-12, falta caption)
+- **Resolución:** *(en curso)*
+
+---
+
+### OBS-010: Blindaje conversacional (textos fuera de flujo)
+- **Categoría:** Funcional / Conversacional (robustez)
+- **Sección afectada:** WF-02/04/10/14/21/25-B (puntos donde texto libre se consume como dato)
+- **Descripción:** en pruebas reales el comprador manda "rebajame", "gracias", etc. en medio del flujo (post-QR, verificación, captura). Se necesita política: qué se ignora con acuse amable, qué re-pregunta, y que ningún texto libre corrompa estado (ej. "gracias" como ciudad).
+- **Requisitos:** auditoría Codex (solo lectura) → propuesta priorizada → implementación aprobada.
+- **Impacto:** 🟡 Medio (diseño + cambios quirúrgicos n8n)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En evaluación (2026-09-12, auditoría pendiente)
+- **Resolución:** *(en curso)*
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
@@ -377,3 +415,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-11 | OBS-006 | Registrada — respuesta directa con lista llena (dueño); migración 43 aplicada y validada (buyer1→llena 1/1) |
 | 2026-09-11 | OBS-006 | Resuelta y validada E2E (WF-80 #546: mensaje directo a comprador 1, sin pregunta; cupo restaurado a 5) |
 | 2026-09-11 | OBS-007 | Registrada — 3 avisos en 25s; silenciosos ASIGNADO/EN_RUTA/ENTREGADO; guía auto-cierra (m48 validada) |
+| 2026-09-12 | OBS-008/009/010 | Registradas tras prueba real con el dueño (flujo perfecto): sin PREPARANDO, SKU en guía, blindaje conversacional |
