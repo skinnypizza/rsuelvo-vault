@@ -255,3 +255,5 @@
 - **2026-09-12 (fix ayuda duplicada verificado)** — WF-02 ver. `2acdd177`: `Prepare WF-80 Input1` suprime (`enviar:false`) solo sin payload + `RESERVA_CREADA/YA_EXISTENTE`; resto intacto (errores conservan ayuda). Verificado en código live. Retest: próximo SKU debe traer SOLO el QR.
 
 - **2026-09-12 (R5 falsó por zombi + push por-vencer correcto)** — `ya pagué` respondió "verificando" por verificación PROCESANDO zombi de corrida caída. Fix doble: zombi a ERROR (higiene) + **migración 52** (en_curso solo con contexto activo: pedido de reserva o ESPERANDO_PAGO). Validado: en_curso null + pedido correcto. El push "vence en 2 min" era CORRECTO (reserva expiraba de verdad; evento 3 validado live de rebote). Vault 52 espejado.
+
+- **2026-09-12 (R5 falsó por VALIDO viejo + migración 53)** — `ya pagué` respondió "pago confirmado" por comprobante VALIDO de otra compra (misma clase que el zombi). **Migración 53**: último comprobante solo del contexto activo. Validado: null + pedido ESPERANDO_PAGO 60. Vault espejado.
