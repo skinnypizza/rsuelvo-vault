@@ -13,7 +13,7 @@
 
 | WF | Nombre | ID real (cuenta activa) | Estado |
 |----|--------|------------------------|--------|
-| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (Q5 2026-09-12: ayuda genérica, ver. `f62e9638`) |
+| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (Q5 2026-09-12: ayuda genérica, ver. `2acdd177`) |
 | WF-03 | RSU \| 03 \| WhatsApp Normalizer | `sxmtEb1j2BlwoYXf` | ✅ |
 | WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ (Q3+Q5+R5 2026-09-12, ver. `8628cc7d`) |
 | WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `xFcZMG8Hip0Z6aH5` | ✅ |

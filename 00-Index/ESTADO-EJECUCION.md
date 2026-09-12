@@ -251,3 +251,5 @@
 - **2026-09-12 (Q8 cerrado; lección: re-leer ante disputa)** — Codex tenía razón: `p_origen_nombre:'CONFIRMADO'` SÍ está en `Guardar Nombre` (ver. `81fe4c93`). La primera lectura del orquestador devolvió snapshot viejo con el mismo versionId. Lección: ante lecturas en disputa, leer dos veces antes de flaggear. Matriz corregida. Quick-wins Q1/Q2/Q4/Q7/Q8 cerrados; Q3/Q5/Q6/R5 pendientes de verificación final.
 
 - **2026-09-12 (bug ayuda duplicada diagnosticado)** — SKU FERJ01 → QR (#749 vía WF-20) + ayuda espuria (#750, padre WF-02 #744): el fallback Q5 dispara en retornos legítimamente silenciosos. Fix: ayuda solo sin payload Y resultado fuera del conjunto manejado (RESERVA_CREADA/YA_EXISTENTE). Prompt `PROMPT-CODEX-FIX-AYUDA-DUPLICADA.md` listo. R5-test en pausa hasta el fix.
+
+- **2026-09-12 (fix ayuda duplicada verificado)** — WF-02 ver. `2acdd177`: `Prepare WF-80 Input1` suprime (`enviar:false`) solo sin payload + `RESERVA_CREADA/YA_EXISTENTE`; resto intacto (errores conservan ayuda). Verificado en código live. Retest: próximo SKU debe traer SOLO el QR.
