@@ -259,3 +259,5 @@
 - **2026-09-12 (R5 falsó por VALIDO viejo + migración 53)** — `ya pagué` respondió "pago confirmado" por comprobante VALIDO de otra compra (misma clase que el zombi). **Migración 53**: último comprobante solo del contexto activo. Validado: null + pedido ESPERANDO_PAGO 60. Vault espejado.
 
 - **2026-09-12 (tests Q3/Q5/R5 cerrados)** — Fix ayuda duplicada verificado (solo QR). R5 pedido-branch en vivo (`ya pagué` → pedido correcto). Q3 STOP completo: frase exacta → `CONSERVAR` (sin liberar turnos) → `opted_out:true` + motivo → silencio → rehabilitado por SQL → `hola` responde (R5 contextual), número recuperado. Q5-literal queda a código (R5-prioritario manda con contexto). Pendiente: commit app (varias tandas), drop v1, OBS-007 live, P2–P8, R-backlog.
+
+- **2026-09-12 (número universal aclarado + doc familiar)** — El dueño aclara: UN número RSUELVO para todos (cada sucursal con su live). Verificado: `codigo_tienda` globalmente único (llave de ruteo por SKU) + 1 solo canal activo. Creado `01-Arquitectura/Numero-Universal-WhatsApp.md` (parte familiar + parte técnica, decisiones pendientes, D16 propuesta). SKU global ratificado con más fuerza. Nada implementado.
