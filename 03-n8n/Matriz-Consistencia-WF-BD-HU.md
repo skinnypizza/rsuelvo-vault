@@ -13,20 +13,20 @@
 
 | WF | Nombre | ID real (cuenta activa) | Estado |
 |----|--------|------------------------|--------|
-| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (H-02 corregido; fix eventos stuck 2026-09-08) |
+| WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (Q5 2026-09-12: ayuda genérica, ver. `f62e9638`) |
 | WF-03 | RSU \| 03 \| WhatsApp Normalizer | `sxmtEb1j2BlwoYXf` | ✅ |
-| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ |
+| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ (Q3+Q5+R5 2026-09-12, ver. `8628cc7d`) |
 | WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `xFcZMG8Hip0Z6aH5` | ✅ |
 | WF-12 | RSU \| 12 \| Lista de Espera | `n9VUH43N8i7s9Rn2` | ✅ (F5 2026-09-11: alta atómica vía `fn_agregar_lista_espera_v2`, ver. `6d72176e`) |
 | WF-13 | RSU \| 13 \| Notificar Lista Espera | `Qnr8SYR8sKGnzYKL` | ✅ |
 | WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `JOT4yRctEcogiYzV` | ✅ (Momentos 1 y 2) |
 | WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ (F4 2026-09-11: `media_url` por comercio, ver. `c5eb50ca`) |
-| WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `nJCQI6MfFSjUhywB` | ✅ (H-20 corregido; F6 2026-09-11: contexto completo a WF-23, ver. `0eda5aed`) |
-| WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `53xUuvoriN3fqvHD` | ✅ |
+| WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `nJCQI6MfFSjUhywB` | ✅ (F6 + Q6 2026-09-12: parse_error a rama técnica, ver. `fcb8c235`) |
+| WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `53xUuvoriN3fqvHD` | ✅ (Q6 2026-09-12: schema OCR, ver. `35027f27`) |
 | WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `okF8Ayhp5CicRpVU` | ✅ (F6 2026-09-11: Reject/Manual con contenido, ver. `2feb8cd7`) |
 | WF-24 | RSU \| 24 \| Pago \| Confirmar Pedido | `JU4QtP0vkAC7m3n1` | ✅ (F1+F2+F3 2026-09-11, ver. `a7f28e6b`; 25-A único emisor) |
 | WF-25-A | RSU \| 25 \| Entrega \| A: Solicitar Datos | `gVmvGYVPMlQKWk6z` | ✅ |
-| WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `9doLr3FSewZofRoN` | ✅ (reconstruido 2026-09-08) |
+| WF-25-B | RSU \| 25 \| Entrega \| B: Registrar Datos | `9doLr3FSewZofRoN` | ✅ (Q1+Q4 2026-09-12, ver. `81fe4c93`; Q8-param pendiente) |
 | WF-25-C | RSU \| 25 \| Entrega \| C: Notificar Estado | `2DzqPBe4xtHIuvHA` | ✅ (dedup Regla 7) |
 | WF-30 | RSU \| 30 \| Expirar Reservas | `CF7FO9bxV1n9qoKD` | 🗄️ ARCHIVADO (superseded por pg_cron m26) — NO exportar |
 | WF-80 | RSU \| 80 \| WhatsApp Gateway | `7V6MIPuGbdx9s0lT` | ✅ |
