@@ -160,4 +160,18 @@ Orden por daño potencial y beneficio. **Quick-win** significa alcance pequeño,
 | Error OCR de formato vs imagen que no es comprobante | Error técnico y rechazo de contenido se comunican por ramas distintas; D5 permite reenvío cuando corresponda. |
 | Repetición de webhook de guía | Una sola notificación; ruta de envío condicionada efectivamente por dedup. |
 
-Antes de implementar, acordar el vocabulario afirmativo y la política de acuses. La secuencia recomendada es mitigar escritura de chitchat y rechazo implícito, preservar STOP, y luego resolver identidad/paso conversacional en BD. Ninguna propuesta de este informe está aplicada.
+Antes de implementar, acordar el vocabulario afirmativo y la política de acuses. La secuencia recomendada es mitigar escritura de chitchat y rechazo implícito, preservar STOP, y luego resolver identidad/paso conversacional en BD. El estado de implementación al momento de cerrar la auditoría se actualiza en el addendum siguiente.
+
+## Addendum — Quick-wins publicados 2026-09-12
+
+Se publicaron Q1/Q2/Q4/Q7 sin migraciones y sin cambios a STOP, opt-out ni WF-80.
+
+### Q2: sets finales de decisión de lista
+
+| Resultado | Texto canónico normalizado | Efecto |
+|---|---|---|
+| ACEPTAR | SI, SÍ, OK, DALE, YO | Conserva los flujos de aceptación existentes. |
+| RECHAZAR | Solo NO | Conserva las RPC existentes de rechazo/liberación. |
+| CONSERVAR | Cualquier otro texto o tipo no textual | No muta pendiente ni turno; re-pregunta el contexto vigente. |
+
+WF-04 expone list_decision, is_acceptance e is_rejection. WF-14 aplica las tres decisiones tanto a oportunidad NOTIFICADO como a pregunta de lista pendiente; las rutas de rechazo solo reciben RECHAZAR.
