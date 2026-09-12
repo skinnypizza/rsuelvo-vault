@@ -253,3 +253,5 @@
 - **2026-09-12 (bug ayuda duplicada diagnosticado)** — SKU FERJ01 → QR (#749 vía WF-20) + ayuda espuria (#750, padre WF-02 #744): el fallback Q5 dispara en retornos legítimamente silenciosos. Fix: ayuda solo sin payload Y resultado fuera del conjunto manejado (RESERVA_CREADA/YA_EXISTENTE). Prompt `PROMPT-CODEX-FIX-AYUDA-DUPLICADA.md` listo. R5-test en pausa hasta el fix.
 
 - **2026-09-12 (fix ayuda duplicada verificado)** — WF-02 ver. `2acdd177`: `Prepare WF-80 Input1` suprime (`enviar:false`) solo sin payload + `RESERVA_CREADA/YA_EXISTENTE`; resto intacto (errores conservan ayuda). Verificado en código live. Retest: próximo SKU debe traer SOLO el QR.
+
+- **2026-09-12 (R5 falsó por zombi + push por-vencer correcto)** — `ya pagué` respondió "verificando" por verificación PROCESANDO zombi de corrida caída. Fix doble: zombi a ERROR (higiene) + **migración 52** (en_curso solo con contexto activo: pedido de reserva o ESPERANDO_PAGO). Validado: en_curso null + pedido correcto. El push "vence en 2 min" era CORRECTO (reserva expiraba de verdad; evento 3 validado live de rebote). Vault 52 espejado.
