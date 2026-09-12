@@ -3366,3 +3366,142 @@ BEGIN
   );
 END;
 $function$;
+
+
+-- -- 50_upsert_origen_nombre.sql [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_upsert_cliente(p_id_comercio uuid, p_nombre text, p_telefono text DEFAULT NULL, p_telefono_whatsapp text DEFAULT NULL, p_email text DEFAULT NULL, p_apellido_paterno text DEFAULT NULL, p_apellido_materno text DEFAULT NULL, p_origen_nombre text DEFAULT 'PERFIL')
+ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  v_id uuid;
+  v_nombre_completo text;
+  v_origen text;
+  v_cur_nom text;
+  v_cur_pat text;
+  v_cur_mat text;
+  v_nuevo_nom text;
+  v_nuevo_pat text;
+  v_nuevo_mat text;
+begin
+  if not fn_tiene_acceso_comercio(p_id_comercio) then
+    raise exception 'Sin acceso al comercio';
+  end if;
+  v_origen := upper(coalesce(nullif(trim(p_origen_nombre),''), 'PERFIL'));
+  if v_origen not in ('CONFIRMADO','PERFIL') then
+    raise exception 'origen de nombre inválido (CONFIRMADO|PERFIL)';
+  end if;
+  v_nombre_completo := nullif(trim(concat_ws(' ',
+    nullif(trim(coalesce(p_nombre,'')), ''),
+    nullif(trim(coalesce(p_apellido_paterno,'')), ''),
+    nullif(trim(coalesce(p_apellido_materno,'')), '')
+  )), '');
+  if p_telefono_whatsapp is not null then
+    select id_cliente into v_id
+    from tbl_clientes
+    where id_comercio=p_id_comercio
+      and telefono_whatsapp=p_telefono_whatsapp
+    for update;
+    if v_id is not null then
+      select nombre, apellido_paterno, apellido_materno
+        into v_cur_nom, v_cur_pat, v_cur_mat
+      from tbl_clientes
+      where id_cliente = v_id;
+      if v_origen = 'CONFIRMADO' then
+        v_nuevo_nom := coalesce(v_nombre_completo, v_cur_nom);
+        v_nuevo_pat := coalesce(nullif(trim(p_apellido_paterno),''), v_cur_pat);
+        v_nuevo_mat := coalesce(nullif(trim(p_apellido_materno),''), v_cur_mat);
+      else
+        if coalesce(trim(v_cur_nom),'') in ('', 'Cliente WhatsApp') then
+          v_nuevo_nom := coalesce(v_nombre_completo, v_cur_nom);
+        else
+          v_nuevo_nom := v_cur_nom;
+        end if;
+        v_nuevo_pat := coalesce(nullif(trim(v_cur_pat),''), nullif(trim(p_apellido_paterno),''), v_cur_pat);
+        v_nuevo_mat := coalesce(nullif(trim(v_cur_mat),''), nullif(trim(p_apellido_materno),''), v_cur_mat);
+      end if;
+      update tbl_clientes
+      set nombre = v_nuevo_nom,
+          apellido_paterno = v_nuevo_pat,
+          apellido_materno = v_nuevo_mat,
+          telefono = coalesce(p_telefono, telefono),
+          email = coalesce(p_email, email)
+      where id_cliente = v_id;
+      return v_id;
+    end if;
+  end if;
+  insert into tbl_clientes(
+    id_comercio, nombre, apellido_paterno, apellido_materno, telefono, telefono_whatsapp, email
+  )
+  values(
+    p_id_comercio,
+    coalesce(v_nombre_completo, p_nombre),
+    nullif(trim(p_apellido_paterno),''),
+    nullif(trim(p_apellido_materno),''),
+    p_telefono, p_telefono_whatsapp, p_email
+  )
+  returning id_cliente into v_id;
+  return v_id;
+end;
+$function$;
+
+DROP FUNCTION IF EXISTS rsuelvo.fn_upsert_cliente(uuid, text, text, text, text, text, text);
+
+
+-- -- 51_estado_pago_cliente.sql [FUNCIONES]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_estado_pago_cliente(p_id_comercio uuid, p_id_cliente uuid)
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'rsuelvo', 'public'
+AS $function$
+declare
+  v_res record;
+  v_ped record;
+  v_ver record;
+  v_comp text;
+begin
+  if not fn_tiene_acceso_comercio(p_id_comercio) then
+    raise exception 'Sin acceso al comercio';
+  end if;
+  select id_reserva, estado, fecha_expiracion,
+         extract(epoch from (fecha_expiracion - now()))/60 as expira_min
+  into v_res
+  from tbl_reservas
+  where id_comercio=p_id_comercio
+    and id_cliente=p_id_cliente
+    and estado in ('ACTIVA','PAGO_VALIDANDO')
+  order by created_at desc
+  limit 1;
+  select id_pedido, estado, subtotal
+  into v_ped
+  from tbl_pedidos
+  where id_comercio=p_id_comercio
+    and id_cliente=p_id_cliente
+    and estado='ESPERANDO_PAGO'
+  order by created_at desc
+  limit 1;
+  select v.id_verificacion, v.estado
+  into v_ver
+  from tbl_verificaciones v
+  join tbl_comprobantes_pago c on c.id_comprobante = v.id_comprobante
+  where v.id_comercio=p_id_comercio
+    and c.id_cliente=p_id_cliente
+    and v.estado in ('PENDIENTE','PROCESANDO')
+  order by v.created_at desc
+  limit 1;
+  select estado into v_comp
+  from tbl_comprobantes_pago
+  where id_comercio=p_id_comercio
+    and id_cliente=p_id_cliente
+  order by created_at desc
+  limit 1;
+  return jsonb_build_object(
+    'tiene_reserva_activa', (v_res.id_reserva is not null),
+    'reserva_estado', v_res.estado,
+    'reserva_expira_min', case when v_res.expira_min is null then null
+      when v_res.expira_min < 0 then 0 else floor(v_res.expira_min)::integer end,
+    'pedido_esperando_pago', case when v_ped.id_pedido is null then null else jsonb_build_object(
+      'id_pedido', v_ped.id_pedido, 'estado', v_ped.estado, 'total', v_ped.subtotal) end,
+    'verificacion_en_curso', case when v_ver.id_verificacion is null then null else jsonb_build_object(
+      'id_verificacion', v_ver.id_verificacion, 'estado', v_ver.estado) end,
+    'ultimo_comprobante_estado', v_comp
+  );
+end;
+$function$;
