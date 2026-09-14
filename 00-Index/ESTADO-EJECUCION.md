@@ -279,3 +279,5 @@
 - **2026-09-15 (F8-stack en pausa + P2-P8 prioritario + auditoría v3)** — Dueño: stack web a acordar en familia (pausa); prioridad a P2–P8 con nueva auditoría (v1/v2 obsoletas tras ~15 cambios). Prompt `PROMPT-CODEX-AUDITORIA-OPTIMIZACION-V3.md` listo (re-baseline 16, disciplina T/Q, Usage fresco, estado P1–P8).
 
 - **2026-09-14 (auditoría v3 revisada + título QR verificado)** — V3 sólida: 12 versiones renovadas (todas coinciden con mis lecturas), Usage fresco 413T/220Q con 74% status+silenciosos como techo, cadenas recalculadas, P1–P8 con estado, disciplina T/Q intacta. Hallazgo lateral: Codex implementó el título QR sin reporte (WF-20 ver. `79184aa1`: lookup parametrizado + fallback, verificado en live). Matriz actualizada. Pendiente dueño: qué recortes (P3/V3-A) aprueba.
+
+- **2026-09-14 (V3-A validada en vivo)** — Migración 57: `fn_notifica_envio_estado` solo postea NO_ENTREGADO. Probado sintético: ASIGNADO → 0 roots + push-4 OK; NO_ENTREGADO → root #888 + mensaje #889. Limpieza total. Vault espejado.
