@@ -3565,3 +3565,33 @@ begin
   );
 end;
 $function$;
+
+
+-- -- 54 [fn_base36_a_int m54: O→0 tolerante]
+CREATE OR REPLACE FUNCTION rsuelvo.fn_base36_a_int(p_texto text)
+ RETURNS integer LANGUAGE plpgsql IMMUTABLE SET search_path TO 'rsuelvo', 'public'
+AS $function$
+DECLARE
+  v text := replace(upper(coalesce(p_texto,'')), 'O', '0');
+  i int;
+  c text;
+  v_valor int := 0;
+BEGIN
+  IF v = '' THEN RETURN NULL; END IF;
+  FOR i IN 1..length(v) LOOP
+    c := substr(v, i, 1);
+    IF c ~ '[0-9]' THEN
+      v_valor := v_valor * 36 + (ascii(c) - 48);
+    ELSIF c ~ '[A-Z]' THEN
+      v_valor := v_valor * 36 + (ascii(c) - 55);
+    ELSE
+      RETURN NULL;
+    END IF;
+  END LOOP;
+  RETURN v_valor;
+END;
+$function$;
+
+
+-- -- 54 [trigger m54: base35 sin O; cuerpo íntegro en 54_sku_sin_letra_o.sql]
+-- (ver archivo 54: encoder %35//35, alfabeto sin O, cap 46655)

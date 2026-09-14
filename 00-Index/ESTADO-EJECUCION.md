@@ -263,3 +263,5 @@
 - **2026-09-12 (número universal aclarado + doc familiar)** — El dueño aclara: UN número RSUELVO para todos (cada sucursal con su live). Verificado: `codigo_tienda` globalmente único (llave de ruteo por SKU) + 1 solo canal activo. Creado `01-Arquitectura/Numero-Universal-WhatsApp.md` (parte familiar + parte técnica, decisiones pendientes, D16 propuesta). SKU global ratificado con más fuerza. Nada implementado.
 
 - **2026-09-15 (drop v1 + diseño D16 v0.1)** — DROP `fn_agregar_lista_espera` v1 (sin dependientes; solo v2; maestros limpiados). Diseño D16 en `01-Arquitectura/DISENO-D16-Ruteo-Universal.md`: comercio por SKU-tienda global, sucursal por link→memoria→pregunta, `tbl_enlace_live` + memoria en clientes + flag cutover por tenant, riesgos Meta, 6 decisiones producto pendientes. Nada implementado.
+
+- **2026-09-15 (migración 54 SKU sin O + prompt título QR)** — Alfabeto base35 en trigger + decoder O→0 tolerante; validado (ABO=AB0, nueva FERL5R sin O, rollback). Validaciones de lectura intactas. Prompt `PROMPT-CODEX-QR-TITULO-TIENDA.md` listo (título con nombre de tienda en QR).

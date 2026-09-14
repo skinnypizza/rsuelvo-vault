@@ -1,0 +1,17 @@
+-- ============================================================
+-- RSUELVO v2 :: MIGRACIÓN 54 (2026-09-15)
+-- SKU sin la letra O (decisión del dueño)
+-- ============================================================
+-- El comprador lee códigos del live: O se confunde con 0. Generación en base35
+-- (alfabeto 0123456789A-N,P-Z, sin O); decoder tolera O→0 (estilo Crockford)
+-- por si el comprador la escribe. Ningún SKU existente contenía O (verificado),
+-- así que el corte es limpio. Seguridad anti-colisión con SKUs viejos base36:
+-- el decode-base36 de un SKU nuevo siempre supera al máximo previo (mismo ancho,
+-- dígitos P-Z valen más en base36); UNIQUE(id_comercio,sku) como red final.
+-- Capacidad: 35^3-1 = 42.874 por tienda. Validaciones de lectura intactas
+-- ([A-Z0-9], aceptan O histórica); solo la GENERACIÓN evita O.
+-- Validado: decoder ABO=AB0=13356; nueva variante → FERL5R (sin O, rollback).
+
+-- == FUNCIONES ==
+-- (cuerpos completos fn_base36_a_int + fn_resolver_variante_tenant_sku;
+--  espejo en 06_functions.sql)
