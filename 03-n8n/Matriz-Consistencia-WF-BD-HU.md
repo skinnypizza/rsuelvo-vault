@@ -15,7 +15,7 @@
 |----|--------|------------------------|--------|
 | WF-02 | RSU \| 02 \| WhatsApp Meta Incoming | `kXuiHOMTxgR1Lo1O` | ✅ (Q5 2026-09-12: ayuda genérica, ver. `2acdd177`) |
 | WF-03 | RSU \| 03 \| WhatsApp Normalizer | `sxmtEb1j2BlwoYXf` | ✅ |
-| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ (Q3+Q5+R5 2026-09-12, ver. `8628cc7d`) |
+| WF-04 | RSU \| 04 \| WhatsApp Conversational Router | `0fw2ymvAY1hHoV9M` | ✅ (Q3+Q5+R5 2026-09-12, ver. `e834ba1e`) |
 | WF-10 | RSU \| 10 \| Ventas \| Reserva SKU | `xFcZMG8Hip0Z6aH5` | ✅ |
 | WF-12 | RSU \| 12 \| Lista de Espera | `n9VUH43N8i7s9Rn2` | ✅ (F5 2026-09-11: alta atómica vía `fn_agregar_lista_espera_v2`, ver. `6d72176e`) |
 | WF-13 | RSU \| 13 \| Notificar Lista Espera | `Qnr8SYR8sKGnzYKL` | ✅ |
