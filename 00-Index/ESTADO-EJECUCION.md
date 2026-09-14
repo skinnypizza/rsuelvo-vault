@@ -287,3 +287,5 @@
 - **2026-09-14 (P3 validada en vivo + caso FERK02)** — Tráfico real fluye Meta→receptor→n8n→QR (WF-02 #893 success; única marca auditoría: mi test 401 esperado). FERK02 existe en las 3 sucursales (stock 0 c/u) porque se creó como ADMIN sin sucursal (= todas, por diseño EF). Pregunta al dueño: ¿solo Principal? → borro 2 filas. Propuesto: selección explícita de sucursales en UI admin.
 
 - **2026-09-14 (caso FERK02 cerrado)** — Dueño confirma: filas creadas antes de la separación por sucursales; se conservan. Sin cambios.
+
+- **2026-09-15 (F8: Refine+Pages + plan)** — Dueño fija stack web. Plan en `01-Arquitectura/PLAN-F8-Panel-Web.md` (MVP: login+gate, comercios, alta, suspender, QR, lecturas; backend orquestador + insumos dueño). Pendiente: email superadmin + luz verde backend.
