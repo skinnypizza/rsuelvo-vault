@@ -267,3 +267,5 @@
 - **2026-09-15 (migración 54 SKU sin O + prompt título QR)** — Alfabeto base35 en trigger + decoder O→0 tolerante; validado (ABO=AB0, nueva FERL5R sin O, rollback). Validaciones de lectura intactas. Prompt `PROMPT-CODEX-QR-TITULO-TIENDA.md` listo (título con nombre de tienda en QR).
 
 - **2026-09-15 (higiene: colisión 54→55)** — Dos espejos numerados 54 (drop + sku). Renumerado sku a 55 en archivos y referencias; cloud intacto (sin números ahí).
+
+- **2026-09-15 (migraciones 56 M1+M2 validadas + prompt WF-04)** — `fn_resolver_sku_universal` (SKU→comercio+sucursal+precio; SKU_UNICO/COMPARTIDO/NO_ENCONTRADO) y `fn_contexto_por_telefono` (7 orígenes) probadas en datos reales. Vault 56 + prompt `PROMPT-CODEX-WF04-RUTEO-UNIVERSAL.md` (con fallback total al camino por canal). 2º comercio: falta cableado + onboarding (código, QR, channel-row, bonus, E2E).
