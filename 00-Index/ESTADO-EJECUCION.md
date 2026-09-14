@@ -275,3 +275,5 @@
 - **2026-09-14 (ruteo universal validado E2E)** — Retest del dueño: SKU + hola con respuestas idénticas a antes (QR solo + contextual). M1/M2 transparentes en single-tenant. Ciclo D16-backend completo: diseño → migraciones 54-56 → cableado → validación.
 
 - **2026-09-15 (D16 cerrada)** — El dueño aclara que M1/M2+WF-04 ya eran la aprobación. D16 al Maestro v1.7 + diseño v1.0 (recorte documentado: sin links/memoria/remodelo). Nada nuevo por construir para D16.
+
+- **2026-09-15 (F8-stack en pausa + P2-P8 prioritario + auditoría v3)** — Dueño: stack web a acordar en familia (pausa); prioridad a P2–P8 con nueva auditoría (v1/v2 obsoletas tras ~15 cambios). Prompt `PROMPT-CODEX-AUDITORIA-OPTIMIZACION-V3.md` listo (re-baseline 16, disciplina T/Q, Usage fresco, estado P1–P8).
