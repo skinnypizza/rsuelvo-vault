@@ -281,3 +281,5 @@
 - **2026-09-14 (auditoría v3 revisada + título QR verificado)** — V3 sólida: 12 versiones renovadas (todas coinciden con mis lecturas), Usage fresco 413T/220Q con 74% status+silenciosos como techo, cadenas recalculadas, P1–P8 con estado, disciplina T/Q intacta. Hallazgo lateral: Codex implementó el título QR sin reporte (WF-20 ver. `79184aa1`: lookup parametrizado + fallback, verificado en live). Matriz actualizada. Pendiente dueño: qué recortes (P3/V3-A) aprueba.
 
 - **2026-09-14 (V3-A validada en vivo)** — Migración 57: `fn_notifica_envio_estado` solo postea NO_ENTREGADO. Probado sintético: ASIGNADO → 0 roots + push-4 OK; NO_ENTREGADO → root #888 + mensaje #889. Limpieza total. Vault espejado.
+
+- **2026-09-14 (P3 construida y probada sin cutover)** — EF `meta-ingress` v2 (v1 caída por sombrear `URL`, lección). Tests: GET 403, status→drop+auditoría, mensaje→forward+dedup sin efectos. Falta dueño: 2 secretos + cambio de URL en Meta. Rollback = volver URL (una línea).
