@@ -1,6 +1,6 @@
-# D16 — Ruteo con número universal RSUELVO (DISEÑO v0.1, pendiente aprobación)
+# D16 — Ruteo con número universal RSUELVO (CERRADO v1.0, 2026-09-15)
 
-> **Estado:** propuesta del orquestador 2026-09-15. Nada implementado.
+> **Estado:** APROBADO y construido 2026-09-15 (M1/M2 + WF-04 e834ba1e, E2E single-tenant). D16 en Maestro v1.7.
 > **Contexto:** `01-Arquitectura/Numero-Universal-WhatsApp.md` (parte familiar + técnica).
 > **Regla del paquete:** SKU global por comercio SE MANTIENE (veredicto 2026-09-12);
 > creación de variante por sucursal ya existe y no cambia.
@@ -81,6 +81,14 @@ codigo); globalmente recomendados distintos para mensajes sin SKU).
 - [ ] D8.4 Reglas anti-spam por comercio.
 - [ ] D8.5 Política de memoria (¿preguntar siempre o confiar?; ¿confirmar al cambiar?).
 - [ ] D8.6 Orden de cutover por comercio (FER primero como piloto).
+
+## 9. Recorte aprobado (lo NO construido, descartado por irrelevante)
+- Link-codes por live (`tbl_enlace_live`): descartado — el SKU ya trae sucursal.
+- Memoria persistente (`id_sucursal_ultima`): descartada — pendientes/recencia cubren.
+- Remodelo de `tbl_canal_whatsapp` + flag cutover: diferido al 2º comercio.
+- Decisiones producto D8.1–D8.6: display (CTO-no-CEO, park), plantillas genéricas ✅,
+  links irrelevantes, spam bajo (iniciado por comprador), memoria explicada, cutover
+  = nada que hacer con un comercio.
 
 ## 9. Secuencia (tras aprobación)
 

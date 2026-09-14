@@ -273,3 +273,5 @@
 - **2026-09-14 (ruteo universal WF-04 verificado)** — Codex publicó ver. `e834ba1e` (+7 nodos): M1 con fallback total al canal, M2 adjunto sin cambiar decisiones, STOP intacto, RPCs defensivas. Verificado en live nodo por nodo. Retest E2E pendiente (SKU + hola idénticos).
 
 - **2026-09-14 (ruteo universal validado E2E)** — Retest del dueño: SKU + hola con respuestas idénticas a antes (QR solo + contextual). M1/M2 transparentes en single-tenant. Ciclo D16-backend completo: diseño → migraciones 54-56 → cableado → validación.
+
+- **2026-09-15 (D16 cerrada)** — El dueño aclara que M1/M2+WF-04 ya eran la aprobación. D16 al Maestro v1.7 + diseño v1.0 (recorte documentado: sin links/memoria/remodelo). Nada nuevo por construir para D16.
