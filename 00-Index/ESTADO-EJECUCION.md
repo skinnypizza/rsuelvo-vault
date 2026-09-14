@@ -283,3 +283,5 @@
 - **2026-09-14 (V3-A validada en vivo)** — Migración 57: `fn_notifica_envio_estado` solo postea NO_ENTREGADO. Probado sintético: ASIGNADO → 0 roots + push-4 OK; NO_ENTREGADO → root #888 + mensaje #889. Limpieza total. Vault espejado.
 
 - **2026-09-14 (P3 construida y probada sin cutover)** — EF `meta-ingress` v2 (v1 caída por sombrear `URL`, lección). Tests: GET 403, status→drop+auditoría, mensaje→forward+dedup sin efectos. Falta dueño: 2 secretos + cambio de URL en Meta. Rollback = volver URL (una línea).
+
+- **2026-09-14 (P3 validada en vivo + caso FERK02)** — Tráfico real fluye Meta→receptor→n8n→QR (WF-02 #893 success; única marca auditoría: mi test 401 esperado). FERK02 existe en las 3 sucursales (stock 0 c/u) porque se creó como ADMIN sin sucursal (= todas, por diseño EF). Pregunta al dueño: ¿solo Principal? → borro 2 filas. Propuesto: selección explícita de sucursales en UI admin.
