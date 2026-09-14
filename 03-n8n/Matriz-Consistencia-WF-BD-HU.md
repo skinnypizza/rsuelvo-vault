@@ -20,7 +20,7 @@
 | WF-12 | RSU \| 12 \| Lista de Espera | `n9VUH43N8i7s9Rn2` | ✅ (F5 2026-09-11: alta atómica vía `fn_agregar_lista_espera_v2`, ver. `6d72176e`) |
 | WF-13 | RSU \| 13 \| Notificar Lista Espera | `Qnr8SYR8sKGnzYKL` | ✅ |
 | WF-14 | RSU \| 14 \| Lista \| Aceptar Oportunidad | `JOT4yRctEcogiYzV` | ✅ (Momentos 1 y 2) |
-| WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ (F4 2026-09-11: `media_url` por comercio, ver. `c5eb50ca`) |
+| WF-20 | RSU \| 20 \| Pago \| Generar QR | `1FYWXdVw2swlFYcg` | ✅ (F4 2026-09-11: `media_url` por comercio, ver. `79184aa1`) |
 | WF-21 | RSU \| 21 \| Pago \| Comprobante Entrante | `nJCQI6MfFSjUhywB` | ✅ (F6 + Q6 2026-09-12: parse_error a rama técnica, ver. `fcb8c235`) |
 | WF-22 | RSU \| 22 \| Pago \| OCR Comprobante (Gemini) | `53xUuvoriN3fqvHD` | ✅ (Q6 2026-09-12: schema OCR, ver. `35027f27`) |
 | WF-23 | RSU \| 23 \| Pago \| Verificar Comprobante | `okF8Ayhp5CicRpVU` | ✅ (F6 2026-09-11: Reject/Manual con contenido, ver. `2feb8cd7`) |

@@ -277,3 +277,5 @@
 - **2026-09-15 (D16 cerrada)** — El dueño aclara que M1/M2+WF-04 ya eran la aprobación. D16 al Maestro v1.7 + diseño v1.0 (recorte documentado: sin links/memoria/remodelo). Nada nuevo por construir para D16.
 
 - **2026-09-15 (F8-stack en pausa + P2-P8 prioritario + auditoría v3)** — Dueño: stack web a acordar en familia (pausa); prioridad a P2–P8 con nueva auditoría (v1/v2 obsoletas tras ~15 cambios). Prompt `PROMPT-CODEX-AUDITORIA-OPTIMIZACION-V3.md` listo (re-baseline 16, disciplina T/Q, Usage fresco, estado P1–P8).
+
+- **2026-09-14 (auditoría v3 revisada + título QR verificado)** — V3 sólida: 12 versiones renovadas (todas coinciden con mis lecturas), Usage fresco 413T/220Q con 74% status+silenciosos como techo, cadenas recalculadas, P1–P8 con estado, disciplina T/Q intacta. Hallazgo lateral: Codex implementó el título QR sin reporte (WF-20 ver. `79184aa1`: lookup parametrizado + fallback, verificado en live). Matriz actualizada. Pendiente dueño: qué recortes (P3/V3-A) aprueba.
