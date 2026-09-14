@@ -5308,4 +5308,4 @@ end;
 $function$;
 
 
--- ==== 54_sku_sin_letra_o.sql: trigger base35 + decoder O→0 (ver archivo) ====
+-- ==== 55_sku_sin_letra_o.sql: trigger base35 + decoder O→0 (ver archivo) ====

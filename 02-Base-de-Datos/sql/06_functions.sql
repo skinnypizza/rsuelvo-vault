@@ -3593,5 +3593,5 @@ END;
 $function$;
 
 
--- -- 54 [trigger m54: base35 sin O; cuerpo íntegro en 54_sku_sin_letra_o.sql]
+-- -- 54 [trigger m54: base35 sin O; cuerpo íntegro en 55_sku_sin_letra_o.sql]
 -- (ver archivo 54: encoder %35//35, alfabeto sin O, cap 46655)

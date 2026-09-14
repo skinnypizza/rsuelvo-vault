@@ -1,5 +1,5 @@
 -- ============================================================
--- RSUELVO v2 :: MIGRACIÓN 54 (2026-09-15)
+-- RSUELVO v2 :: MIGRACIÓN 55 (2026-09-15)
 -- SKU sin la letra O (decisión del dueño)
 -- ============================================================
 -- El comprador lee códigos del live: O se confunde con 0. Generación en base35
