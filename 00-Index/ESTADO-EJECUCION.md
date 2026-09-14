@@ -271,3 +271,5 @@
 - **2026-09-15 (migraciones 56 M1+M2 validadas + prompt WF-04)** — `fn_resolver_sku_universal` (SKU→comercio+sucursal+precio; SKU_UNICO/COMPARTIDO/NO_ENCONTRADO) y `fn_contexto_por_telefono` (7 orígenes) probadas en datos reales. Vault 56 + prompt `PROMPT-CODEX-WF04-RUTEO-UNIVERSAL.md` (con fallback total al camino por canal). 2º comercio: falta cableado + onboarding (código, QR, channel-row, bonus, E2E).
 
 - **2026-09-14 (ruteo universal WF-04 verificado)** — Codex publicó ver. `e834ba1e` (+7 nodos): M1 con fallback total al canal, M2 adjunto sin cambiar decisiones, STOP intacto, RPCs defensivas. Verificado en live nodo por nodo. Retest E2E pendiente (SKU + hola idénticos).
+
+- **2026-09-14 (ruteo universal validado E2E)** — Retest del dueño: SKU + hola con respuestas idénticas a antes (QR solo + contextual). M1/M2 transparentes en single-tenant. Ciclo D16-backend completo: diseño → migraciones 54-56 → cableado → validación.
