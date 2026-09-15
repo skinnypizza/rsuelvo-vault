@@ -10,8 +10,10 @@
 - Repo nuevo: `~/StudioProjects/rsuelvo-admin/` (git local; deploy por `wrangler pages deploy`).
 
 ## 2. Auth y roles (bloqueante: cuenta superadmin)
-- Registro normal (email/pass) → orquestador otorga `ROLE_SUPERADMIN` global (vínculo
-  sin comercio). Sin esto nadie entra al panel.
+- Registro normal (email/pass) → orquestador otorga `ROLE_SUPERADMIN` mediante vínculo
+  a un comercio cualquiera (`tbl_usuario_comercio.id_comercio` es NOT NULL: no existe
+  vínculo global; el poder cross-tenant viene del código de rol, verificado 2026-09-15).
+  Sin esto nadie entra al panel.
 - RLS cross-tenant SOLO lectura/escritura-admin vía `fn_es_superadmin()` (migración,
   aditiva): comercios, config, cuentas, movimientos, sucursales, usuarios, vínculos,
   plantillas, logs_auditoria. Tablas tenant intactas.
