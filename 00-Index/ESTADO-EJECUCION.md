@@ -291,3 +291,5 @@
 - **2026-09-15 (F8: Refine+Pages + plan)** — Dueño fija stack web. Plan en `01-Arquitectura/PLAN-F8-Panel-Web.md` (MVP: login+gate, comercios, alta, suspender, QR, lecturas; backend orquestador + insumos dueño). Pendiente: email superadmin + luz verde backend.
 
 - **2026-09-15 (INCIDENTE BD: proyecto inalcanzable)** — Pooler responde `ENOTFOUND tenant/user` (puertos 6543+5432) y REST no conecta (000). Internet local OK. Status Supabase: mantenimiento programado hoy 21:15-21:45 UTC (completado) + API Gateway degradado; incidente 11-sep "proyectos Nano no responden". Hipótesis: proyecto pausado/no responde post-mantenimiento. Acción dueño: dashboard → reanudar/reiniciar proyecto. Lote F8 pausado hasta recuperar conexión.
+
+- **2026-09-15 (incidente, hallazgo)** — Host del proyecto SIN registro DNS desde esta máquina (ni vía 1.1.1.1/8.8.8.8); pooler rechaza tenant. App en celular sí conecta → proyecto probablemente vivo, punto ciego entre esta red y Supabase (posible bloqueo/filtro regional). n8n sin ejecuciones hace 25h (sin señal independiente). Pendiente: estado en dashboard + frescura real en app.
