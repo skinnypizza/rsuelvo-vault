@@ -50,12 +50,12 @@
 
 | Rol                     | Código canónico        | Alcance             | Permisos clave                                                                                              |
 | ----------------------- | ---------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Super Admin RSUELVO     | `ROLE_SUPERADMIN`      | Global cross-tenant | Gestión de comercios, paquetes de créditos, costos de APIs (WhatsApp/IA), auditoría global                  |
-| SysAdmin                | `ROLE_SYSADMIN`        | Infraestructura     | Logs, monitoreo, parámetros globales. **Sin** acceso a saldos/cuentas/datos sensibles de tenants            |
-| Soporte                 | `ROLE_SUPPORT`         | Solo lectura        | Diagnóstico de operaciones del comercio; sin acceso financiero sensible                                     |
-| Admin Comercio (dueño)  | `ROLE_TENANT_ADMIN`    | Su `id_comercio`    | Subir QR de pago, sucursales, usuarios, catálogo/SKU/precios, compra de créditos, métricas                  |
+| Super Admin RSUELVO     | `ROLE_SUPERADMIN`      | Global cross-tenant | CRUD comercios + **autoriza altas de staff (web y móvil)**; CRUD usuarios **excepto SuperAdmin/Cajero/Repartidor**; paquetes de créditos, costos APIs, auditoría global; reportes: depósitos, créditos+consumo, estado comercios/usuarios/autorizaciones |
+| SysAdmin                | `ROLE_SYSADMIN`        | Operativa global    | **Crea comercios con dueño (pendiente aprobación SuperAdmin)**; **aprueba solicitudes de créditos contra comprobante de depósito (web y móvil)**; logs/monitoreo/parámetros; reportes: créditos+consumo, estado comercios. **Sin** datos financieros sensibles fuera de su función |
+| Soporte                 | `ROLE_SUPPORT`         | Operativa + asistencia | **Crea comercios con dueño (pendiente aprobación)**; **aprueba créditos contra comprobante**; asistencia a comercios (web y móvil); reportes: créditos+consumo, estado comercios |
+| Admin Comercio (dueño)  | `ROLE_TENANT_ADMIN`    | Su `id_comercio`    | **Configura QR del comercio**; sucursales, usuarios, catálogo/SKU/precios; **solicita créditos**; métricas                  |
 | Operador / Cajero       | `ROLE_TENANT_CASHIER`  | **Una** sucursal    | Cobros QR, consulta de comprobantes/cobros/historial, inventario en lectura                                 |
-| Agente Logístico        | `ROLE_LOGISTICS_AGENT` | Rutas asignadas     | Hoja de ruta, cambios de estado de envío (`EN_RUTA`/`ENTREGADO`/`NO_ENTREGADO`), firma/foto/GPS de entrega   |
+| Agente Logístico        | `ROLE_LOGISTICS_AGENT` | Rutas asignadas     | Hoja de ruta, cambios de estado de envío (`EN_RUTA`/`ENTREGADO`/`NO_ENTREGADO`), firma/foto/GPS de entrega; push **solo de pedidos confirmados→envíos (sin reserva-por-vencer)** |
 
 > El **comprador no tiene cuenta**: interactúa exclusivamente por WhatsApp.
 > El QR de pago es **estático y del dueño** (`val_ruta_qr_imagen` en comercio/sucursal);

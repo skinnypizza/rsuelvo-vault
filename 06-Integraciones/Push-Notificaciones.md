@@ -19,6 +19,8 @@
 **Payload `data`** (tap-to-screen): `{motivo, id_comercio, ...ids del caso}`.
 **Reenvío de comprobante** (UPDATE) no dispara evento 2 en v1 — seguimiento futuro.
 **Banda por-vencer** ≈1 tick normal de cron; doble aviso ocasional aceptado en v1.
+**Alcance repartidor (dueño 2026-09-15, ya cumplido)**: SOLO evento 4 (`envio_asignado`);
+ni `reserva_por_vencer` ni ningún otro evento llega a `ROLE_LOGISTICS_AGENT`.
 
 ## Arquitectura
 
