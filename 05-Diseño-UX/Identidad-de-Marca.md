@@ -22,3 +22,9 @@
 | Header web/app | Tagline seleccionado |
 | Ads (Meta/TikTok) | Slogan seleccionado |
 | Landing / pitch deck | Claim seleccionado |
+
+## Assets y paleta (fuente única)
+- **Logos/favicons:** `/home/nico/rsuelvo/LOGOTIPO RSUELVO/` (`Favicons WEB/` SVG,
+  `PNG Sin Fondo/`, `JPG/`). Los SVG son texto: de ahí salen colores y geometría.
+- **Paleta app (`brand.dart`):** oscuro `#202020` · claro `#EDEDED` ·
+  gradiente `#2FAC66 → #38E0CC`. La web REUTILIZA estos tokens (no los de ignova).

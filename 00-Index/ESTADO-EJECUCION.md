@@ -315,3 +315,5 @@
 - **2026-09-16 (WF-21/22 path verificado + Lina corregida)** — Codex: WF-22 ver f8c74491 (foto_path, exec #900 OK) + WF-21 ver 1c12510f (p_archivo_path); diffs verificados exactos; Matriz actualizada; WF-20 prompt superseded. Lina: materno->NULL (solo "Lina Cardenas"); real = 13-sep FERG01.
 
 - **2026-09-16 (Juan TEST + stale cancelado + prompt staff)** — Juan->'Juan (TEST)'; pedido 8-sep ESPERANDO_PAGO->CANCELADO (reserva ya VENCIDA, sin efectos). Marca confirmada en vault (b61fdce). Prompt vistas staff en `01-Arquitectura/PROMPT-APP-VISTAS-STAFF.md` (autorizaciones, creditos, solicitud dueño).
+
+- **2026-09-16 (marca: assets+paleta)** — Identidad-de-Marca suma assets (LOGOTIPO RSUELVO) y paleta brand.dart (dark #202020, gradiente #2FAC66->#38E0CC); favicons NO estaban en Maestro (solo en auditoria) -> ahora canonico en marca. Diseno prompt web en curso.
