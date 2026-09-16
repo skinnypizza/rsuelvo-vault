@@ -113,7 +113,7 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 | Base de datos | `02-Base-de-Datos/Rsuelvo_Documentacion_Base_de_Datos.md` (ERD) · `07-Control-de-Calidad/Auditoria-SQL-vs-ERD.md` (histórico, resuelto en v2) | **`02-Base-de-Datos/sql/01…12` (v2)** · monolito `_monolito_…_v2.sql` |
 | Workflows | `03-n8n/workflows.md` · `Matriz-Consistencia-WF-BD-HU.md` | n8n Cloud |
 | Canal WhatsApp | `04-OpenWA/Política Técnica…md` (normativa) · **Guia Meta WhatsApp Business.md** (integración oficial) · `07-Control-de-Calidad/Auditoria-Guia-Meta-Business.md` (histórico) | OpenWA 0.21 / Meta Cloud API |
-| UX/UI | `05-Diseño-UX/Wireframes App Móvil.md` · PDF 40 págs · PNGs | Stitch project `1852486780525167950` |
+| UX/UI | `05-Diseño-UX/Wireframes App Móvil.md` · PDF 40 págs · PNGs · **`05-Diseño-UX/Identidad-de-Marca.md` (tagline/slogan/claim obligatorios en app y web)** | Stitch project `1852486780525167950` |
 | Integraciones / MCPs | `06-Integraciones/MCP-Servers.md` (n8n ✅ · Supabase 🟡 OAuth · Meta=D11) | — |
 | Control de calidad | `07-Control-de-Calidad/` (auditorías históricas con banner) | — |
 | Requisitos | `06-Backlog-HU/01-Backlog…md` (148 HU) · `07-Control-de-Calidad/02-Auditoria-de-Consistencia.md` (histórico) · `03-Correlacion-Wireframes-HU.md` | — |
@@ -153,4 +153,4 @@ SKU por WhatsApp → reserva atómica (10 min config) ─┬─ SIN stock → li
 3. Los nombres válidos son los de §4.2 y las `fn_*`; sugerir nuevos requiere entrada en este documento.
 4. Cambiar cualquier artefacto exige actualizar su matriz (WF-BD-HU o Correlación) en el mismo commit.
 5. Definition of Done de una HU = criterios + prueba de concurrencia/idempotencia cuando aplique + auditoría generándose + wireframe respetado.
-6. Español en UI; moneda Bs; tiempos desde config; mensajes WhatsApp agrupados y mínimos (política §7-8).
+6. Español en UI; moneda Bs; voz de marca según `05-Diseño-UX/Identidad-de-Marca.md` (tagline en headers, claim en landing); tiempos desde config; mensajes WhatsApp agrupados y mínimos (política §7-8).
