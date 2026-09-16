@@ -301,3 +301,5 @@
 - **2026-09-15 (roles expandidos en vault)** — Matriz de permisos + RBAC arquitectura + push (alcance repartidor) + D17 (altas staff con aprobación; D4 intacto). Pendientes fuera de este commit: mecanismo de pendiente (enum/solicitudes), backend solicitudes de creditos + comprobantes de deposito, policies QR para dueño (tenant), secciones staff en app movil (Codex).
 
 - **2026-09-16 (diseño autorizaciones+creditos)** — Doc `01-Arquitectura/DISENO-Autorizaciones-Creditos.md` (pendiente via enum, compras extendida+bucket+fns, QR tenant, app staff, delta panel; orden 62->63->prompts). Push repartidor marcado EN REVISION (mala lectura otro agente, no cerrar). Red local igual (Mgmt API OK).
+
+- **2026-09-16 (backend 62 COMPLETO)** — Enum PENDIENTE_APROBACION + fn_alta p_estado (staff coaccionado a pendiente, superadmin libre) + cuarentena no-ACTIVO (identificar x2, resolver SKU->COMERCIO_NO_ACTIVO, contexto M2 loop+paso6) + policies QR dueño. E2E JWT: staff->pendiente, cuarentena, control FER OK, aprobar, fosil PND, grants 0. Prompt QR dueño en `01-Arquitectura/PROMPT-CODEX-QR-DUENO.md`. Nota: endpoint Mgmt aplica archivos grandes por partes.
