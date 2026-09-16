@@ -333,3 +333,5 @@
 - **2026-09-16 (fix panel blanco)** — Error muiName = maxSize partia MUI en varios chunks; fix chunk unico + rebuild con backend + redeploy (789011e2). Commit en repo web.
 
 - **2026-09-16 (panel fix real + superadmin)** — codeSplitting:false (bundle unico 1MB; los mui-*.js eran restos por emptyOutDir:false) + deploy 3c013c43 (HTML apunta al bundle unico). Superadmin otorgado a ivanluiscardenas@gmail.com.
+
+- **2026-09-16 (megaprompt web v1.2)** — `01-Arquitectura/PROMPT-WEB-V12-AUTH-LANDING.md` (auth: recovery+perfil+login UX+404; landing: 13 items con copy exacto + placeholders dueño). Casos olvidados incluidos: cambio pass, denegado, 404, solicitud (lead por WhatsApp, sin backend).
