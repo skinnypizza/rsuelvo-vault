@@ -35,12 +35,13 @@ economía de tokens. Placeholders del dueño abajo ([DUEÑO]).
 - **Servicios:** ancla `#servicios` en navbar y footer (contenido: gestión
   comercial por WhatsApp, verificación de pagos, logística con guías).
 - **Solicitud de contratación:** formulario (nombre, teléfono, nombre tienda,
-  mensaje) que abre WhatsApp de soporte con el texto precargado. Sin backend.
+  mensaje) que abre WhatsApp de soporte (wa.me/59171548644) con el texto precargado. Sin backend.
 - **Descargas app:** badges Google Play + App Store en estado «Próximamente»
-  (href `[DUEÑO: links o #]`).
-- **Footer:** redes `[DUEÑO: URLs TikTok/Facebook/Instagram/WhatsApp]`, Servicios,
-  contacto WhatsApp `[DUEÑO: número soporte]`, línea «© 2026 RSUELVO · BALETH - IGNOVA»,
-  tagline «Del stock a la entrega.»
+  SIN href (no clicables, solo visual).
+- **Footer:** redes TikTok/Facebook/Instagram/WhatsApp con hrefs `"#"` y
+  `TODO(redes)` en código (estructura lista, URLs pendientes de creación);
+  contacto WhatsApp `https://wa.me/59171548644` (soporte); Servicios;
+  línea «© 2026 RSUELVO · BALETH - IGNOVA», tagline «Del stock a la entrega.»
 - **UI:** wordmark ~25% más grande; botones verdes con letra NEGRA → blanca
   (contraste); resto intacto.
 - SEO: nuevas secciones con anchors, titles y JSON-LD actualizados si aplica.
