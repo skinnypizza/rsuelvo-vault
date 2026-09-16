@@ -329,3 +329,5 @@
 - **2026-09-16 (boton Aprobar verificado)** — Movil 8d31589 (aprobar+invite, analyze 0, 36/36). Siguiente: deploy web Pages -> email superadmin -> login E2E -> TODO backend usuarios.
 
 - **2026-09-16 (deploy Pages v1+v1.1)** — Proyecto rsuelvo-web creado (email verificado); deploy v1 (36 archivos) + v1.1 con backend cableado (VITE_ en build, anon viva); URLs bcdfe0e1/e5600526 .pages.dev (200/200). Falta: dominio rsuelvo.com + email superadmin (login E2E).
+
+- **2026-09-16 (fix panel blanco)** — Error muiName = maxSize partia MUI en varios chunks; fix chunk unico + rebuild con backend + redeploy (789011e2). Commit en repo web.
