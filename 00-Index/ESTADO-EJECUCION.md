@@ -311,3 +311,5 @@
 - **2026-09-16 (pedidos NO corruptos + fix comprobantes)** — Lina: 6 flujos distintos (SKU/fecha/total propios, c/u con VALIDO) = runs E2E sep 8-13 + real; app no duplica (embebidos anidados). URLs: bug real (firmadas 7 dias + lookaside). Mig 64 (archivo_path + policies + backfill 9 vivos, 3 irrecuperables). Prompts: viewer app + WF-20 path.
 
 - **2026-09-16 (trazabilidad apellidos + mig 65 + WF-21/22)** — WF-10 verificado: NO envia apellidos; app tampoco; filas Lina/Juan del 27-ago = datos inventados de pruebas de papa (Juan Perez Garcia ejemplo; numero de la tia usado en tests). Real de Lina = 13-sep FERG01/200/ENTREGADO. Mig 65 (p_archivo_path + DROP overload). Prompt corregido WF-21/WF-22 (WF-20 superseded). Movil aef308e verificado (26/26).
+
+- **2026-09-16 (WF-21/22 path verificado + Lina corregida)** — Codex: WF-22 ver f8c74491 (foto_path, exec #900 OK) + WF-21 ver 1c12510f (p_archivo_path); diffs verificados exactos; Matriz actualizada; WF-20 prompt superseded. Lina: materno->NULL (solo "Lina Cardenas"); real = 13-sep FERG01.
