@@ -331,3 +331,5 @@
 - **2026-09-16 (deploy Pages v1+v1.1)** — Proyecto rsuelvo-web creado (email verificado); deploy v1 (36 archivos) + v1.1 con backend cableado (VITE_ en build, anon viva); URLs bcdfe0e1/e5600526 .pages.dev (200/200). Falta: dominio rsuelvo.com + email superadmin (login E2E).
 
 - **2026-09-16 (fix panel blanco)** — Error muiName = maxSize partia MUI en varios chunks; fix chunk unico + rebuild con backend + redeploy (789011e2). Commit en repo web.
+
+- **2026-09-16 (panel fix real + superadmin)** — codeSplitting:false (bundle unico 1MB; los mui-*.js eran restos por emptyOutDir:false) + deploy 3c013c43 (HTML apunta al bundle unico). Superadmin otorgado a ivanluiscardenas@gmail.com.
