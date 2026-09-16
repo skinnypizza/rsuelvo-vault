@@ -323,3 +323,5 @@
 - **2026-09-16 (prompt web LISTO)** — Dominio rsuelvo.com insertado; prompt final en `01-Arquitectura/PROMPT-WEB-CLIENTE.md`, listo para Codex/Astra.
 
 - **2026-09-16 (EF invite v6-v7 + loop aprobar E2E)** — Movil 2b43bd6 verificado (32/32). EF reescrita (v1 preservado + path superadmin idempotente; fix schema rsuelvo) desplegada v7 via CLI. E2E: alta PND->ACTIVO->invite dueño->login OK; fosiles APB/APC; grants 0. Contrato en doc + fuente en vault.
+
+- **2026-09-16 (web v1 verificada)** — rsuelvo-web: 4 commits, dist completo (landing+app+redirects+headers noindex), marca/voz/SEO OK, sin service_role, RPCs existen, gates 5/5 re-corridos, sin escrituras prod. Login E2E pendiente (email dueño). TODO backend: CRUD usuarios staff (editar/desactivar/eliminar) + invitar sysadmin/support (deshabilitado en UI, documentado en su README).
