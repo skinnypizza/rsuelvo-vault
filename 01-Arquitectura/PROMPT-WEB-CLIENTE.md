@@ -8,7 +8,8 @@
   `dist/app/`; `_redirects` con `/app/* /app/index.html 200`.
 - Env por archivos `.env` NO commiteados: `PUBLIC_SUPABASE_URL`,
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (el dueño las provee; jamás
-  `service_role` en el cliente). Dominio canónico: **[DOMINIO — dueño indica]**.
+  `service_role` en el cliente). Dominio canónico: **https://rsuelvo.com**
+  (landing en raíz, dashboard en `https://rsuelvo.com/app`).
 
 ## 1. Marca (única fuente, no inventar)
 - Assets: `/home/nico/rsuelvo/LOGOTIPO RSUELVO/` (SVG en `Favicons WEB/` — leerlos
