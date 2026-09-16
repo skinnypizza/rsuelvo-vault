@@ -12,7 +12,7 @@ economía de tokens. Placeholders del dueño abajo ([DUEÑO]).
    cambio de pass con confirmación.
 3. **Login UX**: botón con estados (cargando/error), foco inicial en email,
    mensaje de rol-denegado dedicado (no un 404 genérico) + página 404 con
-   WhatsApp de soporte.
+   WhatsApp de soporte (`https://wa.me/59171548644`).
 4. Tests con mocks + build verde. Auto-registro público: EXCLUIDO a propósito
    (las altas las crea el staff, D17); el que quiera contratar usa el formulario
    de §B.
@@ -20,7 +20,8 @@ economía de tokens. Placeholders del dueño abajo ([DUEÑO]).
 ## B. Landing (copy EXACTO, no inventar)
 - **HERO:** titular «tus ventas, sin caos» (reemplaza «tu operación, resueltas»);
   subtítulo claim «Organiza tu stock, valida cada pago y despacha a tiempo.»;
-  CTA primario «Entrar al panel» → `/app`, secundario WhatsApp soporte.
+  CTA primario «Entrar al panel» → `/app`, secundario WhatsApp soporte
+  (`https://wa.me/59171548644`).
 - **Dolores** (sección, explicar que RSUELVO ordena): «Sin sobreventas: el stock
   se reserva atómicamente. Sin comprobantes perdidos: cada pago queda trazado.
   Sin envíos tardíos: cada pedido llega a ruta con guía. Menos caos en el chat,
