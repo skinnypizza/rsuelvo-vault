@@ -317,3 +317,5 @@
 - **2026-09-16 (Juan TEST + stale cancelado + prompt staff)** — Juan->'Juan (TEST)'; pedido 8-sep ESPERANDO_PAGO->CANCELADO (reserva ya VENCIDA, sin efectos). Marca confirmada en vault (b61fdce). Prompt vistas staff en `01-Arquitectura/PROMPT-APP-VISTAS-STAFF.md` (autorizaciones, creditos, solicitud dueño).
 
 - **2026-09-16 (marca: assets+paleta)** — Identidad-de-Marca suma assets (LOGOTIPO RSUELVO) y paleta brand.dart (dark #202020, gradiente #2FAC66->#38E0CC); favicons NO estaban en Maestro (solo en auditoria) -> ahora canonico en marca. Diseno prompt web en curso.
+
+- **2026-09-16 (prompt web disenado)** — `01-Arquitectura/PROMPT-WEB-CLIENTE.md` (scaffold rsuelvo-web, Astro+Refine/MUI, marca brand.dart+favicon, landing SEO, dashboard staff completo, contratos RPC, login E2E pendiente email). Decisiones: split, completo, dir; falta DOMINIO (dueño tiene uno, no dijo cual).
