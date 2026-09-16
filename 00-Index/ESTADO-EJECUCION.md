@@ -321,3 +321,5 @@
 - **2026-09-16 (prompt web disenado)** — `01-Arquitectura/PROMPT-WEB-CLIENTE.md` (scaffold rsuelvo-web, Astro+Refine/MUI, marca brand.dart+favicon, landing SEO, dashboard staff completo, contratos RPC, login E2E pendiente email). Decisiones: split, completo, dir; falta DOMINIO (dueño tiene uno, no dijo cual).
 
 - **2026-09-16 (prompt web LISTO)** — Dominio rsuelvo.com insertado; prompt final en `01-Arquitectura/PROMPT-WEB-CLIENTE.md`, listo para Codex/Astra.
+
+- **2026-09-16 (EF invite v6-v7 + loop aprobar E2E)** — Movil 2b43bd6 verificado (32/32). EF reescrita (v1 preservado + path superadmin idempotente; fix schema rsuelvo) desplegada v7 via CLI. E2E: alta PND->ACTIVO->invite dueño->login OK; fosiles APB/APC; grants 0. Contrato en doc + fuente en vault.
