@@ -327,3 +327,5 @@
 - **2026-09-16 (web v1 verificada)** — rsuelvo-web: 4 commits, dist completo (landing+app+redirects+headers noindex), marca/voz/SEO OK, sin service_role, RPCs existen, gates 5/5 re-corridos, sin escrituras prod. Login E2E pendiente (email dueño). TODO backend: CRUD usuarios staff (editar/desactivar/eliminar) + invitar sysadmin/support (deshabilitado en UI, documentado en su README).
 
 - **2026-09-16 (boton Aprobar verificado)** — Movil 8d31589 (aprobar+invite, analyze 0, 36/36). Siguiente: deploy web Pages -> email superadmin -> login E2E -> TODO backend usuarios.
+
+- **2026-09-16 (deploy Pages v1+v1.1)** — Proyecto rsuelvo-web creado (email verificado); deploy v1 (36 archivos) + v1.1 con backend cableado (VITE_ en build, anon viva); URLs bcdfe0e1/e5600526 .pages.dev (200/200). Falta: dominio rsuelvo.com + email superadmin (login E2E).
