@@ -370,6 +370,19 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 
 ---
 
+### OBS-011: 4 servicios canónicos RSUELVO (PROPUESTA de marca — no decisión)
+- **Categoría:** Marca / Comunicación (propuesta del dueño, pendiente revisión en familia)
+- **Sección afectada:** landing rsuelvo-web (ancla `#servicios`) · `05-Diseño-UX/Identidad-de-Marca.md` · PROMPT MAESTRO §1
+- **Descripción:** comunicar los servicios como **4, en orden de cadena comercial**: 1) **Organización de Inventario** (catálogo por sucursal, SKU automático, stock, overrides, movimientos trazados) · 2) **Gestión Comercial** (ventas por WhatsApp: reservas atómicas, vigencia, lista de espera) · 3) **Verificación de Pagos** (QR, comprobantes, OCR + confirmación del cajero) · 4) **Logística de Entrega** (puntos de entrega, transportadoras, guía con foto, seguimiento).
+- **Coherencia:** sigue la cadena PROMPT §4.3 (catálogo→reserva→pago→envío) y el tagline «Del stock a la entrega»; hace explícito el «Organiza tu stock» del claim (hoy la landing lista solo 3 servicios y el inventario queda implícito). No contradice terminología vigente (gestión comercial / verificación de pagos = §1 del MAESTRO).
+- **Si se aprueba, exige:** (1) landing `#servicios` a 4 ítems (repo rsuelvo-web); (2) registrar los 4 en `Identidad-de-Marca.md`; (3) ampliar PROMPT §1 + changelog (patrón D15/D16/D17).
+- **Impacto:** 🟢 Bajo (solo comunicación/marca, ningún cambio funcional)
+- **Bloquea construcción:** No
+- **Estado:** 🔄 En evaluación (propuesta 2026-09-17, pendiente revisión en familia)
+- **Resolución:** *(pendiente de aprobación)*
+
+---
+
 ## 📊 Resumen de Estado
 
 | Estado | Cantidad |
@@ -416,3 +429,4 @@ Responde SI para aceptar y NO para liberar la oportunidad.
 | 2026-09-11 | OBS-006 | Resuelta y validada E2E (WF-80 #546: mensaje directo a comprador 1, sin pregunta; cupo restaurado a 5) |
 | 2026-09-11 | OBS-007 | Registrada — 3 avisos en 25s; silenciosos ASIGNADO/EN_RUTA/ENTREGADO; guía auto-cierra (m48 validada) |
 | 2026-09-12 | OBS-008/009/010 | Registradas tras prueba real con el dueño (flujo perfecto): sin PREPARANDO, SKU en guía, blindaje conversacional |
+| 2026-09-17 | OBS-011 | Propuesta (no decisión): 4 servicios canónicos en orden de cadena (1.Organización de Inventario · 2.Gestión Comercial · 3.Verificación de Pagos · 4.Logística de Entrega); pendiente revisión en familia |
