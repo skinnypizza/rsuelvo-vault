@@ -67,19 +67,39 @@ H1. Trabajás por extensión y precisión quirúrgica. Español. Economía de to
     los prompts del ANEXO); si un archivo falta al buildear, la sección rinde sin
     imagen (sin romper layout ni build).
 
-## ANEXO — Prompts de generación (pegar en Gemini/GPT-imagen, uno por imagen)
-Bloqueo de estilo (incluir en los 4): «flat modern vector illustration, dark
-charcoal background #202020, emerald-to-teal gradient accents #2FAC66 to #38E0CC,
-soft glow, clean minimal, NO text, NO letters, NO watermark, 16:9».
-1. **hero-ventas.jpg:** «smartphone showing a WhatsApp-style chat with order
-   bubbles, floating mini cards (parcel box, QR code, checkmark badge) around it,
-   delivery scooter silhouette in background» + bloqueo.
-2. **servicio-inventario.jpg:** «tidy stock shelves with labeled parcel boxes and
-   small SKU tag cards, one box glowing in gradient» + bloqueo.
-3. **servicio-pagos.jpg:** «hand holding smartphone scanning a QR code, payment
-   checkmark shield glowing above» + bloqueo.
-4. **servicio-logistica.jpg:** «delivery scooter with parcel box, map pin and
-   dashed route line to a house door» + bloqueo.
+## ANEXO — Prompts de generación (pegar en GPT-imagen, UNO por imagen, inglés tal cual)
+Filosofía: ilustración SaaS premium (nivel Stripe/Linear), geométrica con
+profundidad suave — NADA de estética anuncio/póster/foto stock. Copiar el bloque
+STYLE en los 4 y agregar el SUBJECT de cada una. Aspecto 16:9. Si sale texto,
+letras, logos o marcas de agua: regenerar (nunca editar encima).
+
+STYLE (común, copiar literal):
+«Premium SaaS brand illustration, geometric flat design with soft depth and
+subtle gradients, dark charcoal background #202020 with vignette, emerald green
+#2FAC66 as primary light source with glow, teal #38E0CC only for small accents,
+thin luminous edge lines, faint grid texture, soft rim lighting, generous
+negative space, balanced minimal composition, crisp vector-like edges, high
+detail, 16:9» + «ABSOLUTELY NO text, NO letters, NO numbers, NO logos, NO
+badges with words, NO ad-poster layout, NO stock photo look, NO watermark».
+
+1. **hero-ventas.jpg** — SUBJECT: «Left third mostly empty dark space for headline
+   overlay. Right side: large smartphone at slight 3/4 angle showing an abstract
+   chat interface made of blank rounded message bubbles (some glowing green),
+   three floating cards around it: a parcel box, a QR-like geometric pattern
+   square (abstract, not a real QR), a circular checkmark seal; faint delivery
+   scooter silhouette far in background, small glowing map pin above it».
+2. **servicio-inventario.jpg** — SUBJECT: «Centered tidy warehouse shelf module in
+   perspective, parcel boxes in two sizes with small blank tag cards hanging,
+   exactly ONE box glowing emerald from within, soft teal underlight strip along
+   the shelf base, dark empty margins on both sides».
+3. **servicio-pagos.jpg** — SUBJECT: «Close-up of a hand holding a smartphone
+   displaying an abstract geometric QR-like pattern (not scannable, no real code),
+   above it a translucent shield with a glowing checkmark, tiny floating coins as
+   plain gradient discs (no symbols), dark background».
+4. **servicio-logistica.jpg** — SUBJECT: «Delivery scooter in side profile carrying
+   a parcel box with glowing green edges, dashed luminous route line rising from
+   the box to a glowing map pin near a minimalist house doorway on the right,
+   motion suggested with two speed lines, dark background».
 
 ## ENTREGABLES
 Builds Astro+Vite verdes; `astro check` + typecheck + tests sin regresiones;

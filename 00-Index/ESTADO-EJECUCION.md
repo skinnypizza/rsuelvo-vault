@@ -349,3 +349,5 @@
 - **2026-09-17 (reset a /app)** — Site URL -> rsuelvo-web.pages.dev/app/ (los links caian en la landing sin handler). Recovery cableado en AuthContext (verificado en fuente). Falta: reset real del dueño.
 
 - **2026-09-17 (causas recovery+404)** — Recovery: template usa /auth/confirm (sin ruta) -> micro-prompt `PROMPT-WEB-MICRO-RECOVERY-404.md` (ruta + 404.astro). Casos v1.2 router OK en fuente (/recuperar, catch-all).
+
+- **2026-09-17 (micro recovery+404 en vivo + prompts imagen v2)** — c4e6c1a verificado (ruta, 404.html, 26/26); deploy 429f096a (404 real en vivo). ANEXO reescrito: estilo SaaS premium + anti-anuncio + negativos + espacio para copy.
