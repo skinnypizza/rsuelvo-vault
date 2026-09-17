@@ -363,3 +363,5 @@
 - **2026-09-17 (sysadmin COMPLETO)** — Vinculo SYSADMIN recreado tras cascada (FK auth->usuarios CASCADE: borrar auth arrastra todo). Login+rol verificados.
 
 - **2026-09-17 (prompt paridad extendido)** — Regla anti-406 (roles multiples, sin .single) + contratos RLS staff verificados en diseño. Login sysadmin cambio de pass por dueño (ya no pruebo como el).
+
+- **2026-09-17 (lote 66 COMPLETO)** — SUPPORT fuera de admin_fn + staff_read x6 + audit sysadmin + EXECUTE restringido + maquina estados + bonus>=0 + p_motivo (+DROP overload alta-58 fantasma que dejaba via debil). E2E: support UPDATE denegado/SELECT ok, anon RPC 42501, transicion/bonus/motivo OK; grants 0.
