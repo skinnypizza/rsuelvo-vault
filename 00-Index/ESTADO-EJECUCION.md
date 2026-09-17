@@ -347,3 +347,5 @@
 - **2026-09-17 (web v1.3 en vivo)** — bb0640f verificado (tests 25/25, copy, placeholders); deploy f292547e (200/200). Pendiente micro: saludo login; punto 6 (/app) verificado OK en vivo; faltan JPGs dueño.
 
 - **2026-09-17 (reset a /app)** — Site URL -> rsuelvo-web.pages.dev/app/ (los links caian en la landing sin handler). Recovery cableado en AuthContext (verificado en fuente). Falta: reset real del dueño.
+
+- **2026-09-17 (causas recovery+404)** — Recovery: template usa /auth/confirm (sin ruta) -> micro-prompt `PROMPT-WEB-MICRO-RECOVERY-404.md` (ruta + 404.astro). Casos v1.2 router OK en fuente (/recuperar, catch-all).
