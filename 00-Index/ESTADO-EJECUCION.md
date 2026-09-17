@@ -341,3 +341,5 @@
 - **2026-09-16 (web v1.2 verificada+deploy)** — Commits d10fc82/545c982; tests 25/25 re-corridos; copy/placeholders OK; rebuild+deploy 450dc392 (200). Pendiente: recovery con correo real.
 
 - **2026-09-16 (landing revertida)** — v1.2 apagaba el diseño y cambiaba el H1 (mi prompt impreciso). Revert solo-landing a v1 + eyebrow correcto ("tus ventas, sin caos", H1 intacto). Deploy 014a9f37 verificado en vivo. Leccion: copy con selector exacto en prompts.
+
+- **2026-09-17 (prompt landing v1.3 final)** — `01-Arquitectura/PROMPT-WEB-V13-LANDING-FINAL.md` (rol UX-ventas, 9 tareas con selectores, SEO+, bug /app, prohibido tocar H1/diseno). Decisiones dueño 18 items (tabla unificada) + OBS-011 aprobado.
