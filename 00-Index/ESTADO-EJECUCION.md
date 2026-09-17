@@ -359,3 +359,5 @@
 - **2026-09-17 (cuenta sysadmin)** — en.cl@hotmail.com creado (auth sin pass + usuario + vinculo SYSADMIN en FER) para probar recovery E2E. Prompt paridad en pausa hasta probar roles staff.
 
 - **2026-09-17 (sysadmin login OK)** — en.cl@hotmail.com funcional (pass RsuelvoTest99). Leccion: jamas crear auth.users a mano (instance_id+identities+algo mas sutil; patron: signup API -> confirmar SQL -> vincular). Email quota bajo (rate 2) causa original del faltante.
+
+- **2026-09-17 (sysadmin COMPLETO)** — Vinculo SYSADMIN recreado tras cascada (FK auth->usuarios CASCADE: borrar auth arrastra todo). Login+rol verificados.
