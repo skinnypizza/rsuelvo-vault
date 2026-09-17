@@ -353,3 +353,5 @@
 - **2026-09-17 (micro recovery+404 en vivo + prompts imagen v2)** — c4e6c1a verificado (ruta, 404.html, 26/26); deploy 429f096a (404 real en vivo). ANEXO reescrito: estilo SaaS premium + anti-anuncio + negativos + espacio para copy.
 
 - **2026-09-17 (deploy con imagenes)** — Codex agrego 4 JPG + cambios sin commitear; rebuild+deploy 6adf2bac (landing+4 imagenes 200). Nota: arbol web con cambios sin commit.
+
+- **2026-09-17 (prompt paridad movil-web)** — Brechas: comercios CRUD, reportes staff (5), usuarios global, overview. Doc `01-Arquitectura/PROMPT-APP-PARIDAD-WEB.md`.
