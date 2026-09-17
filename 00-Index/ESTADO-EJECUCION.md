@@ -337,3 +337,5 @@
 - **2026-09-16 (megaprompt web v1.2)** — `01-Arquitectura/PROMPT-WEB-V12-AUTH-LANDING.md` (auth: recovery+perfil+login UX+404; landing: 13 items con copy exacto + placeholders dueño). Casos olvidados incluidos: cambio pass, denegado, 404, solicitud (lead por WhatsApp, sin backend).
 
 - **2026-09-16 (web v1.2 verificada+deploy)** — Commits d10fc82/545c982; tests 25/25 re-corridos; copy/placeholders OK; rebuild+deploy 450dc392 (200). Pendiente: recovery con correo real.
+
+- **2026-09-16 (landing revertida)** — v1.2 apagaba el diseño y cambiaba el H1 (mi prompt impreciso). Revert solo-landing a v1 + eyebrow correcto ("tus ventas, sin caos", H1 intacto). Deploy 014a9f37 verificado en vivo. Leccion: copy con selector exacto en prompts.
