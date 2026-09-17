@@ -343,3 +343,5 @@
 - **2026-09-16 (landing revertida)** — v1.2 apagaba el diseño y cambiaba el H1 (mi prompt impreciso). Revert solo-landing a v1 + eyebrow correcto ("tus ventas, sin caos", H1 intacto). Deploy 014a9f37 verificado en vivo. Leccion: copy con selector exacto en prompts.
 
 - **2026-09-17 (prompt landing v1.3 final)** — `01-Arquitectura/PROMPT-WEB-V13-LANDING-FINAL.md` (rol UX-ventas, 9 tareas con selectores, SEO+, bug /app, prohibido tocar H1/diseno). Decisiones dueño 18 items (tabla unificada) + OBS-011 aprobado.
+
+- **2026-09-17 (web v1.3 en vivo)** — bb0640f verificado (tests 25/25, copy, placeholders); deploy f292547e (200/200). Pendiente micro: saludo login; punto 6 (/app) verificado OK en vivo; faltan JPGs dueño.
