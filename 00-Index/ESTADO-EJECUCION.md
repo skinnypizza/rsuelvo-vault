@@ -335,3 +335,5 @@
 - **2026-09-16 (panel fix real + superadmin)** — codeSplitting:false (bundle unico 1MB; los mui-*.js eran restos por emptyOutDir:false) + deploy 3c013c43 (HTML apunta al bundle unico). Superadmin otorgado a ivanluiscardenas@gmail.com.
 
 - **2026-09-16 (megaprompt web v1.2)** — `01-Arquitectura/PROMPT-WEB-V12-AUTH-LANDING.md` (auth: recovery+perfil+login UX+404; landing: 13 items con copy exacto + placeholders dueño). Casos olvidados incluidos: cambio pass, denegado, 404, solicitud (lead por WhatsApp, sin backend).
+
+- **2026-09-16 (web v1.2 verificada+deploy)** — Commits d10fc82/545c982; tests 25/25 re-corridos; copy/placeholders OK; rebuild+deploy 450dc392 (200). Pendiente: recovery con correo real.
