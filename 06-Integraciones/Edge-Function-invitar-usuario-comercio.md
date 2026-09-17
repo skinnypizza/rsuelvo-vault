@@ -1,8 +1,9 @@
 # Edge Function — `invitar-usuario-comercio`
 
-> **Proyecto:** `iwfaktlxebxtocmswdvv` · **Slug:** `invitar-usuario-comercio` · **Versión 6 (2026-09-16)**
-> **Estado:** ✅ DESPLEGADA (`verify_jwt=true`) y **validada E2E** (loop aprobar: alta→ACTIVO→invite→login dueño OK)
-> **Autor:** orquestador de BD (fuente en `Edge-Function-invitar-usuario-comercio-v6.ts`, deploy vía CLI) · consumidor: app Flutter (ADMIN + SUPERADMIN)
+> **Proyecto:** `iwfaktlxebxtocmswdvv` · **Slug:** `invitar-usuario-comercio` · **Versión 8 (2026-09-17)**
+> **Estado:** ✅ DESPLEGADA (`verify_jwt=true`) y **validada E2E** (invite support→login→lectura global OK; fuente en `Edge-Function-invitar-usuario-comercio-v8.ts`)
+> **Autor:** orquestador de BD (deploy vía CLI) · consumidor: app Flutter (ADMIN + SUPERADMIN)
+> **Path SUPERADMIN (v6→v8):** `id_rol` ∈ {2 SYSADMIN, 3 SUPPORT, 4 dueño} con `id_comercio` explícito; `id_rol:1` (SUPERADMIN) siempre rechazado; idempotente (200 si mismo vínculo).
 
 ## Contrato para la app (Flutter)
 

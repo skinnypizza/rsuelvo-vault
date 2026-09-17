@@ -369,3 +369,5 @@
 - **2026-09-17 (lote 67 COMPLETO)** — Inventario: SELECT amplio + escritura solo admin (cajero denegado, dueño intacto) + fn_registrar_movimiento_inventario (tipos sistema bloqueados, stock>=0, AJUSTE con signo, usuario auditado). Guias por path comercio (logistica+admin escriben, sin staff global; sin legacy que migrar). Stock prueba restaurado 15. Pendiente: migrar app a RPC (prompt futuro).
 
 - **2026-09-17 (regresion OK)** — FER ACTIVO, resolver RESUELTO, login dueno OK, sin errores n8n nuevos. n8n usa service_role (flujos historicos lo prueban) + PG directo: EXECUTE intacto para ellos.
+
+- **2026-09-17 (lote 68 COMPLETO)** — fn_editar_usuario (protegido superadmin) + fn_gestionar_vinculo (cajero unico, logistica con sucursal, sin SUPERADMIN, reactivacion idempotente, comercio compatible) + EF v8 (invite 2/3/4). E2E 6 guards + invite support->login->lectura; trazas borradas; grants test 0.
