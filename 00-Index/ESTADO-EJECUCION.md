@@ -367,3 +367,5 @@
 - **2026-09-17 (lote 66 COMPLETO)** — SUPPORT fuera de admin_fn + staff_read x6 + audit sysadmin + EXECUTE restringido + maquina estados + bonus>=0 + p_motivo (+DROP overload alta-58 fantasma que dejaba via debil). E2E: support UPDATE denegado/SELECT ok, anon RPC 42501, transicion/bonus/motivo OK; grants 0.
 
 - **2026-09-17 (lote 67 COMPLETO)** — Inventario: SELECT amplio + escritura solo admin (cajero denegado, dueño intacto) + fn_registrar_movimiento_inventario (tipos sistema bloqueados, stock>=0, AJUSTE con signo, usuario auditado). Guias por path comercio (logistica+admin escriben, sin staff global; sin legacy que migrar). Stock prueba restaurado 15. Pendiente: migrar app a RPC (prompt futuro).
+
+- **2026-09-17 (regresion OK)** — FER ACTIVO, resolver RESUELTO, login dueno OK, sin errores n8n nuevos. n8n usa service_role (flujos historicos lo prueban) + PG directo: EXECUTE intacto para ellos.
