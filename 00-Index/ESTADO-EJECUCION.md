@@ -337,3 +337,7 @@
 - **2026-09-16 (megaprompt web v1.2)** — `01-Arquitectura/PROMPT-WEB-V12-AUTH-LANDING.md` (auth: recovery+perfil+login UX+404; landing: 13 items con copy exacto + placeholders dueño). Casos olvidados incluidos: cambio pass, denegado, 404, solicitud (lead por WhatsApp, sin backend).
 
 - **2026-09-09 (tabla de fases §1 sincronizada — v0.3)** — Checklist actualizada al estado real: **F2 ✅ COMPLETADA (2026-09-08)** (OBS-001 M1+M2 validados E2E; OBS-002; WF-30 archivado→pg_cron m26); **F3 ✅ COMPLETADA (2026-08-31)** (OCR Gemini real, D13/D14, URL firmada 7 días; resta menor: refs GPT-4o en docs); **F4 🔄 EN CONSTRUCCIÓN** (v1 construida 2026-09-09, DoD en dispositivo pendiente); **F5 ✅ COMPLETADA (2026-09-08)** (WF-25-A/B/C + OBS-003/004 + app S5/S6); **F7 🟡 parcial** (breaker+RL+dedup; cola física P2); **F1 🟡** (resta U2; +nota migración a `rsuelvotest`); **F6/F8 ⬜**. IDs/versiones viejas de n8n limpiados de las notas (la Matriz §0 es la fuente de IDs).
+
+- **2026-09-16 (web v1.2 verificada+deploy)** — Commits d10fc82/545c982; tests 25/25 re-corridos; copy/placeholders OK; rebuild+deploy 450dc392 (200). Pendiente: recovery con correo real.
+
+- **2026-09-16 (landing revertida)** — v1.2 apagaba el diseño y cambiaba el H1 (mi prompt impreciso). Revert solo-landing a v1 + eyebrow correcto ("tus ventas, sin caos", H1 intacto). Deploy 014a9f37 verificado en vivo. Leccion: copy con selector exacto en prompts.
