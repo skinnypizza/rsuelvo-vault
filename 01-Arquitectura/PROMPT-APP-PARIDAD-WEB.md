@@ -10,6 +10,12 @@ gate por rol, economía de tokens, sin capturas/APK, `flutter analyze` limpio + 
 con mocks (prohibido tocar datos/buckets reales).
 
 ## Brechas a cerrar (referencia web entre paréntesis)
+0. **Roles múltiples (bug real 406):** un usuario puede tener varios vínculos
+   (ej. Cajero + Superadmin) y la app reventaba con `.single()` (PostgREST 406:
+   "multiple rows returned"). PROHIBIDO `.single()` en resolución de rol/usuario:
+   traer lista y elegir el de mayor privilegio
+   (SUPERADMIN > SYSADMIN > SUPPORT > TENANT_ADMIN > CASHIER > LOGISTICS).
+   Verificado en web; igualar en móvil.
 1. **Comercios** (`CommercesPage.tsx`): lista global con estado+saldo, ficha
    (config, sucursales, canales), alta wizard (staff → PENDIENTE_APROBACION con
    dueño; el invite va al aprobar, flujo existente en Autorizaciones),
