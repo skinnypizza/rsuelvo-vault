@@ -58,6 +58,28 @@ H1. Trabajás por extensión y precisión quirúrgica. Español. Economía de to
    comprobantes perdidos, sin envíos tardíos) y (b) que está hecha para vender
    por redes sociales — con palabras simples, NUNCA la palabra «dolores».
 9. **Contraste:** botones verdes con letra blanca (solo color de texto).
+10. **Imágenes (slots + integración):** la landing hoy no tiene fotografía/ilustración.
+    Integrar 4 raster en `landing/public/assets/` (JPG optimizado, 1600px lado mayor):
+    `hero-ventas.jpg` (Hero, 16:9, `fetchpriority="high"`), `servicio-inventario.jpg`,
+    `servicio-pagos.jpg`, `servicio-logistica.jpg` (cards 01/03/04, lazy).
+    Gestión Comercial (02) queda sin imagen (el chat en vivo es el visual).
+    Cada una con `alt` en español. Los archivos los provee el dueño (generados con
+    los prompts del ANEXO); si un archivo falta al buildear, la sección rinde sin
+    imagen (sin romper layout ni build).
+
+## ANEXO — Prompts de generación (pegar en Gemini/GPT-imagen, uno por imagen)
+Bloqueo de estilo (incluir en los 4): «flat modern vector illustration, dark
+charcoal background #202020, emerald-to-teal gradient accents #2FAC66 to #38E0CC,
+soft glow, clean minimal, NO text, NO letters, NO watermark, 16:9».
+1. **hero-ventas.jpg:** «smartphone showing a WhatsApp-style chat with order
+   bubbles, floating mini cards (parcel box, QR code, checkmark badge) around it,
+   delivery scooter silhouette in background» + bloqueo.
+2. **servicio-inventario.jpg:** «tidy stock shelves with labeled parcel boxes and
+   small SKU tag cards, one box glowing in gradient» + bloqueo.
+3. **servicio-pagos.jpg:** «hand holding smartphone scanning a QR code, payment
+   checkmark shield glowing above» + bloqueo.
+4. **servicio-logistica.jpg:** «delivery scooter with parcel box, map pin and
+   dashed route line to a house door» + bloqueo.
 
 ## ENTREGABLES
 Builds Astro+Vite verdes; `astro check` + typecheck + tests sin regresiones;
