@@ -385,3 +385,5 @@
 - **2026-09-18 (solicitud real recibida)** — Form OK (Ethan/Ropa prueba PENDIENTE); falta bandeja en panel -> `01-Arquitectura/PROMPT-WEB-BANDEJA-SOLICITUDES.md`.
 
 - **2026-09-18 (lote 71 COMPLETO)** — Codigo elegible: UNIQUE parcial, fn_sugerir anon (sin O), alta consume con linaje + mismatch/consumida, EF con campo codigo (409+sugerencias), E2E completo, fosiles TIE/TNX. Prompts: web solicitud-codigo + app solicitud-codigo/ficha.
+
+- **2026-09-18 (solicitud-codigo en ambos clientes)** — Web: campo landing + SolicitudesPage + wizard prefill/sugerencias (46/46, df34ff6). Movil: ficha visible + alta prefill + sugerencias (237/237, 8a9ec14). Deploy 6c1742f1 (campo codigo en vivo).
