@@ -375,3 +375,5 @@
 - **2026-09-17 (deploy polish landing)** — Cambios Codex sin commit (mockups+fotos+copy); tests 40/40; deploy 7a153a0a (200). Arbol web sucio pendiente commit.
 
 - **2026-09-17 (prompt Antigravity cierre)** — `01-Arquitectura/PROMPT-ANTIGRAVITY-CIERRE-MOBILE.md` (estado verificado 208/208 + 5 fixes: dashboards, botones, ~15 emojis->SVG, tab Verificaciones, back Android sin handler).
+
+- **2026-09-18 (suite aislamiento OK)** — Lint: RLS 100%, DEFINER con search_path, ALL scoped. Matriz 11 casos JWT: anon 42501, adminA/B vacio, support/sysadmin UPDATE denegados, superadmin ok, cajero/logistics denegados, grants test 0. Hallazgo para lote 69: SUPPORT escribe directo en su comercio (tiene_acceso_sucursal) — quitar + staff_reads.
