@@ -417,3 +417,5 @@
 - **2026-09-18 (QR multi-formato en vivo)** — Movil 372f351 + web 12d7bca (66/66) verificados; deploy 6990a597. Tope era cliente (backend sin MIME).
 
 - **2026-09-18 (email solicitud + prompt)** — Mig 75 + EF (201/422/ausente OK, trazas borradas). Prompt landing en `PROMPT-WEB-SOLICITUD-EMAIL.md`. Nota: los prompts viven en el vault y se pegan a los agentes (el agente no los ve en su workspace).
+
+- **2026-09-18 (email landing en vivo)** — Web 53854e3 (68/68); deploy c707fd86 con campo email.
