@@ -397,3 +397,5 @@
 - **2026-09-18 (flujo restaurado)** — Boton crear-comercio repuesto en web (49/49) + deploy a4e4eb28.
 
 - **2026-09-18 (flujo solicitud-alta E2E)** — EF->PENDIENTE->APROBADA->alta FLJ con linaje->fosil; grants 0.
+
+- **2026-09-18 (73 + prompts usuarios/solicitudes)** — Sysadmin lee/resuelve solicitudes (E2E). Prompts: web usuarios+solic-sysadmin + app solic-sysadmin.
