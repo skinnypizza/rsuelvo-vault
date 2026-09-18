@@ -373,3 +373,5 @@
 - **2026-09-17 (lote 68 COMPLETO)** — fn_editar_usuario (protegido superadmin) + fn_gestionar_vinculo (cajero unico, logistica con sucursal, sin SUPERADMIN, reactivacion idempotente, comercio compatible) + EF v8 (invite 2/3/4). E2E 6 guards + invite support->login->lectura; trazas borradas; grants test 0.
 
 - **2026-09-17 (deploy polish landing)** — Cambios Codex sin commit (mockups+fotos+copy); tests 40/40; deploy 7a153a0a (200). Arbol web sucio pendiente commit.
+
+- **2026-09-17 (prompt Antigravity cierre)** — `01-Arquitectura/PROMPT-ANTIGRAVITY-CIERRE-MOBILE.md` (estado verificado 208/208 + 5 fixes: dashboards, botones, ~15 emojis->SVG, tab Verificaciones, back Android sin handler).
