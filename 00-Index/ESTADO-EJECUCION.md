@@ -387,3 +387,5 @@
 - **2026-09-18 (lote 71 COMPLETO)** — Codigo elegible: UNIQUE parcial, fn_sugerir anon (sin O), alta consume con linaje + mismatch/consumida, EF con campo codigo (409+sugerencias), E2E completo, fosiles TIE/TNX. Prompts: web solicitud-codigo + app solicitud-codigo/ficha.
 
 - **2026-09-18 (solicitud-codigo en ambos clientes)** — Web: campo landing + SolicitudesPage + wizard prefill/sugerencias (46/46, df34ff6). Movil: ficha visible + alta prefill + sugerencias (237/237, 8a9ec14). Deploy 6c1742f1 (campo codigo en vivo).
+
+- **2026-09-18 (backend 72)** — Cajero ajusta SU sucursal via RPC (norte denegado); CHECK cantidad >0 -> <>0 (AJUSTE con signo); stock 15 restaurado.
