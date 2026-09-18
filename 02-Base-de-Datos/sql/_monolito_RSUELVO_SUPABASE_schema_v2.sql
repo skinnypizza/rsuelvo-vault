@@ -7573,3 +7573,12 @@ begin
     'nuevo', case when p_aprueba then 'APROBADA' else 'RECHAZADA' end);
 end;
 $fn$;
+-- ═══ MIG 63 addendum (depositos_dueno_delete, aplicada 2026-09-18) ═══
+
+-- 2026-09-18: dueño elimina sus depositos (reemplazo de comprobante)
+drop policy if exists depositos_dueno_delete on storage.objects;
+create policy depositos_dueno_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'depositos-creditos'
+    and split_part(name, '/', 1) ~ '^[0-9a-f-]{36}$'
+    and rsuelvo.fn_es_admin_comercio(split_part(name, '/', 1)::uuid));

@@ -298,3 +298,11 @@ begin
     'creditos', v_c.creditos_comprados, 'saldo', v_saldo + v_c.creditos_comprados);
 end;
 $fn$;
+
+-- 2026-09-18: dueño elimina sus depositos (reemplazo de comprobante)
+drop policy if exists depositos_dueno_delete on storage.objects;
+create policy depositos_dueno_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'depositos-creditos'
+    and split_part(name, '/', 1) ~ '^[0-9a-f-]{36}$'
+    and rsuelvo.fn_es_admin_comercio(split_part(name, '/', 1)::uuid));
