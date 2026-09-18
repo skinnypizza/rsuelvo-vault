@@ -7600,3 +7600,9 @@ drop policy if exists qr_paquetes_public_select on storage.objects;
 create policy qr_paquetes_public_select on storage.objects
   for select to authenticated
   using (bucket_id = 'qr-pagos' and name like 'paquetes/%');
+-- ═══ MIG 75 (aplicada 2026-09-18: email solicitud) ═══
+-- 75_solicitud_email.sql
+-- La solicitud suma email (opcional, para invitar al aprobar sin pedirlo despues).
+
+alter table rsuelvo.tbl_solicitudes_alta
+  add column if not exists email text;

@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     body = JSON.parse(raw);
   } catch { return json(req, { error: "Cuerpo inválido" }, 400); }
 
-  const allowed = ["nombre", "telefono", "tienda", "mensaje", "plan", "origen", "sitio_web", "codigo"];
+  const allowed = ["nombre", "telefono", "tienda", "mensaje", "plan", "origen", "sitio_web", "codigo", "email"];
   for (const k of Object.keys(body)) {
     if (!allowed.includes(k)) return json(req, { error: "Campo inesperado" }, 400);
   }
@@ -65,6 +65,10 @@ Deno.serve(async (req: Request) => {
     return json(req, { error: "Plan inválido" }, 422);
   }
   const codigoRaw = body.codigo == null ? null : String(body.codigo).trim().toUpperCase();
+  const emailRaw = body.email == null ? null : String(body.email).trim().toLowerCase();
+  if (emailRaw !== null && (emailRaw.length > 150 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw))) {
+    return json(req, { error: "Email inválido" }, 422);
+  }
   if (codigoRaw !== null && (codigoRaw.length !== 3 || /O/.test(codigoRaw) || /[^A-Z0-9]/.test(codigoRaw))) {
     return json(req, { error: "Código inválido (3 caracteres A-Z0-9 sin O)" }, 422);
   }
@@ -100,6 +104,7 @@ Deno.serve(async (req: Request) => {
     origen: "landing", estado: "PENDIENTE",
     idempotency_key: key, payload_hash: hash, ip_origen: ip || null,
     codigo_sugerido: codigoRaw,
+    email: emailRaw,
   }).select("id_solicitud, estado, payload_hash").single();
 
   if (ierr) {

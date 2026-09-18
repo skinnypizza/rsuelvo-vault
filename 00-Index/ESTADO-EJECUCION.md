@@ -415,3 +415,5 @@
 - **2026-09-18 (catch-up bitacora)** — Movil: rediseño Astra verificado (208/208, sin secretos/escrituras) + fix solicitudes c5c0ed8 (ficha completa, p_aprueba boolean, 235/235). Nombres Lina/Juan corregidos (Perez inventado fuera; Juan TEST). PENDIENTES: (1) Zoho app-password para mail de aceptacion+temporal en EF invite; (2) plan pruebas trafico real (propuesta: tenant TEST + 2 numeros + guion reserva->entrega + carga/paralelo; dueno no respondio escenario); (3) login E2E superadmin en panel (email listo, falta su prueba); (4) dominio rsuelvo.com a Pages.
 
 - **2026-09-18 (QR multi-formato en vivo)** — Movil 372f351 + web 12d7bca (66/66) verificados; deploy 6990a597. Tope era cliente (backend sin MIME).
+
+- **2026-09-18 (email solicitud + prompt)** — Mig 75 + EF (201/422/ausente OK, trazas borradas). Prompt landing en `PROMPT-WEB-SOLICITUD-EMAIL.md`. Nota: prompts viven en vault, se pegan a agentes ( Seng5116f).
