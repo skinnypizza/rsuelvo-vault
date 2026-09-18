@@ -405,3 +405,5 @@
 - **2026-09-18 (flujo creditos sysadmin OK)** — Dueno solicita Basico -> sysadmin aprueba (PAGADA +100) -> reversion -100 (saldo 65); grant revocado.
 
 - **2026-09-18 (comprobantes deposito E2E)** — Subida dueno + solicitar + firma staff OK; compra cancelada, objeto borrado, grant revocado. Backend listo para fotos reales.
+
+- **2026-09-18 (74 QR paquetes + prompts)** — Columna + UPDATE superadmin + lectura plataforma; E2E set/lectura OK (revertido). Prompts web+movil.
