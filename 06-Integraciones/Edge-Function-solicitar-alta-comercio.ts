@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     body = JSON.parse(raw);
   } catch { return json(req, { error: "Cuerpo inválido" }, 400); }
 
-  const allowed = ["nombre", "telefono", "tienda", "mensaje", "plan", "origen", "sitio_web"];
+  const allowed = ["nombre", "telefono", "tienda", "mensaje", "plan", "origen", "sitio_web", "codigo"];
   for (const k of Object.keys(body)) {
     if (!allowed.includes(k)) return json(req, { error: "Campo inesperado" }, 400);
   }
@@ -63,6 +63,10 @@ Deno.serve(async (req: Request) => {
   if (mensaje.length < 1 || mensaje.length > 1500) return json(req, { error: "Mensaje inválido" }, 422);
   if (plan !== null && !["Básico", "Basico", "Pro", "Empresa"].includes(plan)) {
     return json(req, { error: "Plan inválido" }, 422);
+  }
+  const codigoRaw = body.codigo == null ? null : String(body.codigo).trim().toUpperCase();
+  if (codigoRaw !== null && (codigoRaw.length !== 3 || /O/.test(codigoRaw) || /[^A-Z0-9]/.test(codigoRaw))) {
+    return json(req, { error: "Código inválido (3 caracteres A-Z0-9 sin O)" }, 422);
   }
   if (!/^[0-9a-f-]{36}$/i.test(key)) return json(req, { error: "Falta clave de idempotencia" }, 400);
 
@@ -84,10 +88,18 @@ Deno.serve(async (req: Request) => {
   const hash = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 
   // Idempotencia atómica: la clave es UNIQUE
+  if (codigoRaw !== null) {
+    const { data: libre } = await supa.rpc("fn_sugerir_codigo", { p_base: codigoRaw });
+    const lista: string[] = (libre as { sugerencias?: string[] })?.sugerencias ?? [];
+    if (!lista.includes(codigoRaw)) {
+      return json(req, { error: "Código en uso", sugerencias: lista }, 409);
+    }
+  }
   const { data: ins, error: ierr } = await supa.from("tbl_solicitudes_alta").insert({
     nombre, telefono, tienda, mensaje, plan,
     origen: "landing", estado: "PENDIENTE",
     idempotency_key: key, payload_hash: hash, ip_origen: ip || null,
+    codigo_sugerido: codigoRaw,
   }).select("id_solicitud, estado, payload_hash").single();
 
   if (ierr) {

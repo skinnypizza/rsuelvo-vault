@@ -383,3 +383,5 @@
 - **2026-09-18 (solicitudes alta COMPLETO)** — Mig 70 (enum+tabla+RLS+resolver+GRANT) + EF publica (validacion/honeypot/idempotencia/rate/CORS) + E2E 201/200/409/422 + bandeja/resolve + endpoint en Pages + deploy ccb8d4f7. Lecciones: GRANTs en nuevas tablas, Deno.serve cierra });.
 
 - **2026-09-18 (solicitud real recibida)** — Form OK (Ethan/Ropa prueba PENDIENTE); falta bandeja en panel -> `01-Arquitectura/PROMPT-WEB-BANDEJA-SOLICITUDES.md`.
+
+- **2026-09-18 (lote 71 COMPLETO)** — Codigo elegible: UNIQUE parcial, fn_sugerir anon (sin O), alta consume con linaje + mismatch/consumida, EF con campo codigo (409+sugerencias), E2E completo, fosiles TIE/TNX. Prompts: web solicitud-codigo + app solicitud-codigo/ficha.
