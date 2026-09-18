@@ -399,3 +399,5 @@
 - **2026-09-18 (flujo solicitud-alta E2E)** — EF->PENDIENTE->APROBADA->alta FLJ con linaje->fosil; grants 0.
 
 - **2026-09-18 (73 + prompts usuarios/solicitudes)** — Sysadmin lee/resuelve solicitudes (E2E). Prompts: web usuarios+solic-sysadmin + app solic-sysadmin.
+
+- **2026-09-18 (usuarios+solic-sysadmin en vivo)** — Movil a2b8049 (247/247) + web b141c93 (53/53) verificados; deploy ac887d9d.
