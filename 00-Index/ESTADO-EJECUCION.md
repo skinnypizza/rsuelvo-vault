@@ -407,3 +407,5 @@
 - **2026-09-18 (comprobantes deposito E2E)** — Subida dueno + solicitar + firma staff OK; compra cancelada, objeto borrado, grant revocado. Backend listo para fotos reales.
 
 - **2026-09-18 (74 QR paquetes + prompts)** — Columna + UPDATE superadmin + lectura plataforma; E2E set/lectura OK (revertido). Prompts web+movil.
+
+- **2026-09-18 (QR paquetes en vivo)** — Movil a81ab54 (250/250) + web add7e88 (56/56) verificados; deploy b002641a.
