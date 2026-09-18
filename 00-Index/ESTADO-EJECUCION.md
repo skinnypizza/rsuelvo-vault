@@ -393,3 +393,5 @@
 - **2026-09-18 (prompts paquete)** — `PROMPT-APP-PAQUETE-CAJERO-FILTROS-CREDITOS.md` + `PROMPT-WEB-BANDEJA-CREDITOS.md` (bandeja previa como entrega 1).
 
 - **2026-09-18 (paquete verificado)** — Movil 9868061 (242/242, alcance completo incl. solicitud->alta). Web 6ad9851+a93ddfc (49+8 verdes) PERO recorto boton crear-comercio ( rec recorte unilateral; movil si lo tiene).
+
+- **2026-09-18 (flujo restaurado)** — Boton crear-comercio repuesto en web (49/49) + deploy a4e4eb28.
