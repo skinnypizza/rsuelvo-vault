@@ -379,3 +379,5 @@
 - **2026-09-18 (suite aislamiento OK)** — Lint: RLS 100%, DEFINER con search_path, ALL scoped. Matriz 11 casos JWT: anon 42501, adminA/B vacio, support/sysadmin UPDATE denegados, superadmin ok, cajero/logistics denegados, grants test 0. Hallazgo para lote 69: SUPPORT escribe directo en su comercio (tiene_acceso_sucursal) — quitar + staff_reads.
 
 - **2026-09-18 (B + lote 69 COMPLETO)** — Tenant SYS BLOQUEADO (solo fila base); staff real en SYS. SUPPORT fuera de sucursal (incl. fix NULL-sucursal solo admin tras E2E que lo evidencio) + staff_read x5. E2E: support puro UPDATE denegado/SELECT ok, sysadmin global ok. Residual: tiene_acceso_comercio (clientes/comprobantes) para P0.1-full futuro.
+
+- **2026-09-18 (solicitudes alta COMPLETO)** — Mig 70 (enum+tabla+RLS+resolver+GRANT) + EF publica (validacion/honeypot/idempotencia/rate/CORS) + E2E 201/200/409/422 + bandeja/resolve + endpoint en Pages + deploy ccb8d4f7. Lecciones: GRANTs en nuevas tablas, Deno.serve cierra });.
