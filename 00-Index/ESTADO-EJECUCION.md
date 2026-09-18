@@ -395,3 +395,5 @@
 - **2026-09-18 (paquete verificado)** — Movil 9868061 (242/242, alcance completo incl. solicitud->alta). Web 6ad9851+a93ddfc (49+8 verdes) PERO recorto boton crear-comercio ( rec recorte unilateral; movil si lo tiene).
 
 - **2026-09-18 (flujo restaurado)** — Boton crear-comercio repuesto en web (49/49) + deploy a4e4eb28.
+
+- **2026-09-18 (flujo solicitud-alta E2E)** — EF->PENDIENTE->APROBADA->alta FLJ con linaje->fosil; grants 0.
