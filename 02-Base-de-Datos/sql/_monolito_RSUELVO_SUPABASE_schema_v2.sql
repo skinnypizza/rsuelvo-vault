@@ -7873,3 +7873,25 @@ alter table rsuelvo.tbl_canal_whatsapp drop constraint if exists tbl_canal_whats
 update rsuelvo.tbl_canal_whatsapp set provider_phone_number_id = '1275143265687773' where provider_phone_number_id is null;
 
 drop function if exists rsuelvo.fn_alta_comercio(text, text, text, text, text, integer, boolean, integer, rsuelvo.estado_comercio);
+-- ═══ MIG 78 (aplicada 2026-09-19: transportadoras tenant) ═══
+-- 78_transportadoras_tenant.sql
+-- Opcion B: transportadoras por comercio (NULL = global/plantilla).
+-- RLS: globales visibles para autenticados; propias full para el dueño.
+
+alter table rsuelvo.tbl_transportadoras
+  add column if not exists id_comercio uuid references rsuelvo.tbl_comercios(id_comercio);
+
+drop policy if exists transportadoras_read on rsuelvo.tbl_transportadoras;
+drop policy if exists transportadoras_manage on rsuelvo.tbl_transportadoras;
+
+create policy transportadoras_read on rsuelvo.tbl_transportadoras
+  for select to authenticated
+  using (id_comercio is null or rsuelvo.fn_tiene_acceso_comercio(id_comercio));
+
+create policy transportadoras_manage on rsuelvo.tbl_transportadoras
+  for all to authenticated
+  using (id_comercio is not null and rsuelvo.fn_es_admin_comercio(id_comercio))
+  with check (id_comercio is not null and rsuelvo.fn_es_admin_comercio(id_comercio));
+
+-- GRANTs (PostgREST los exige antes que RLS)
+grant all on rsuelvo.tbl_transportadoras to anon, authenticated, service_role;
