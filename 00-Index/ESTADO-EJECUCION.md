@@ -425,3 +425,5 @@
 - **2026-09-19 (FEE: metodo faltante + 77)** — WF-20 moria en fn_generar_cobro ('sin metodos de pago'): FEE sin filas; backfill + alta crea QR por defecto. Categorias: tabla vacia, sin UI (prompt CRUD movil). Transportadoras: globales sin id_comercio, sin FK en envios (diseno pendiente).
 
 - **2026-09-19 (78 transportadoras + prompts)** — id_comercio NULL=global + RLS + GRANTs; E2E crear/leer OK (limpio). Prompts: avisos setup + transportadoras movil.
+
+- **2026-09-19 (avisos OK, transportadoras mal)** — Avisos setup verificados (OwnerSetupWarnings en dashboard+config). fde23f4 hizo categorias globales en vez de transportadoras -> redirect `PROMPT-APP-TRANSPORTADORAS-2.md`.
