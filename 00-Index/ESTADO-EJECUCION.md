@@ -421,3 +421,5 @@
 - **2026-09-18 (email landing en vivo)** — Web 53854e3 (68/68); deploy c707fd86 con campo email.
 
 - **2026-09-19 (incidente FEE: 2 causas + fix)** — SKU llegaba y ruteaba OK (M1), pero: (1) mig 61 dejo sin identidad a PG directo (n8n) -> 'Sin acceso' en upsert; fix: current_user postgres/service_role es backend (PostgREST sigue con JWT). (2) pnid NULL en comercios nuevos -> WF-80 400; fix: pnid universal por defecto en alta + backfill + DROP UNIQUE pnid (anti-D16). QR FEE ya subido. Falta: dueno reenvia SKU. Prompts email-prefill web+movil.
+
+- **2026-09-19 (FEE: metodo faltante + 77)** — WF-20 moria en fn_generar_cobro ('sin metodos de pago'): FEE sin filas; backfill + alta crea QR por defecto. Categorias: tabla vacia, sin UI (prompt CRUD movil). Transportadoras: globales sin id_comercio, sin FK en envios (diseno pendiente).
