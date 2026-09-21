@@ -8098,3 +8098,9 @@ end;
 $fn$;
 revoke execute on function rsuelvo.fn_revocar_invitacion(uuid) from public;
 grant execute on function rsuelvo.fn_revocar_invitacion(uuid) to authenticated, service_role;
+-- ═══ MIG 80 (aplicada 2026-09-21: invited_by nullable) ═══
+-- 80_fix_invited_by_nullable.sql
+-- IAM-1 parche revision ChatGPT: invited_by nullable (auditoria historica
+-- preservada con ON DELETE SET NULL). No reescribe mig 79.
+
+alter table rsuelvo.tbl_invitaciones alter column invited_by drop not null;

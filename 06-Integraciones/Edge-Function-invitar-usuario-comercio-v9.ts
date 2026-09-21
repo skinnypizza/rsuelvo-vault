@@ -76,12 +76,14 @@ Deno.serve(async (req: Request) => {
     if (!suc) return json({ ok: false, error: "Sucursal ajena al comercio" }, 400);
   }
 
-  // Idempotencia 1: vinculo equivalente ya activo -> 200 sin nada
-  const { data: urow } = await supa.from("tbl_usuarios").select("id_usuario")
+  // Identidad RSUELVO = tbl_usuarios por email normalizado (UNICA fuente, sin enumerar Auth)
+  const { data: existente } = await supa.from("tbl_usuarios").select("id_usuario, auth_user_id")
     .eq("email", email).maybeSingle();
-  if (urow) {
+
+  // Idempotencia 1: vinculo equivalente ya activo -> 200 sin nada
+  if (existente) {
     const { data: vrow } = await supa.from("tbl_usuario_comercio").select("id")
-      .eq("id_usuario", (urow as { id_usuario: string }).id_usuario)
+      .eq("id_usuario", (existente as { id_usuario: string }).id_usuario)
       .eq("id_comercio", idComercio).eq("id_rol", idRol).eq("activo", true).maybeSingle();
     if (vrow) {
       return json({ ok: true, email, ya_existente: true, mensaje: "La persona ya tiene acceso." });
@@ -103,37 +105,34 @@ Deno.serve(async (req: Request) => {
   }).select("id").single();
   if (ierr || !inv) return json({ ok: false, error: "No se pudo crear la invitación" }, 500);
 
-  // Usuario nuevo (sin auth user): invitar via Supabase (unico secreto, fuera de RSUELVO)
-  const { data: existing } = await supa.auth.admin.listUsers();
-  const yaAuth = (existing?.users ?? []).find((u: { email?: string }) => u.email?.toLowerCase() === email);
-  if (!yaAuth) {
-    const { error: invErr } = await supa.auth.admin.inviteUserByEmail(email);
-    if (invErr) {
+  // (existente ya resuelto arriba: unica fuente tbl_usuarios)
+  if (!existente) {
+    const { data: invData, error: invErr } = await supa.auth.admin.inviteUserByEmail(email);
+    if (invErr || !invData?.user) {
+      const msg = String((invErr as { message?: string })?.message ?? "");
+      // Auth ya tiene la identidad pero RSUELVO no: reconciliacion explicita, sin escanear Auth
+      if (/already|exists|registered/i.test(msg)) {
+        await supa.from("tbl_invitaciones").delete().eq("id", (inv as { id: string }).id);
+        return json({ ok: false, error: "Cuenta existente sin vínculo: contactar al superadmin", codigo: "cuenta_huerfana" }, 409);
+      }
       await supa.from("tbl_invitaciones").delete().eq("id", (inv as { id: string }).id);
       return json({ ok: false, error: "No se pudo enviar la invitación" }, 500);
     }
-    // Fila espejo minima para el auth user recien creado (acepta luego por JWT)
-    const { data: created } = await supa.auth.admin.listUsers();
-    const nu = (created?.users ?? []).find((u: { email?: string }) => u.email?.toLowerCase() === email);
-    if (nu) {
-      await supa.from("tbl_usuarios").upsert(
-        { auth_user_id: (nu as { id: string }).id, email, nombre: "Invitado", activo: true },
-        { onConflict: "auth_user_id" },
-      );
+    // Espejo minimo directo del user retornado (sin segundo listUsers)
+    const { error: upErr } = await supa.from("tbl_usuarios").upsert(
+      { auth_user_id: invData.user.id, email, nombre: "Invitado", activo: true },
+      { onConflict: "auth_user_id" },
+    );
+    if (upErr) {
+      await supa.from("tbl_invitaciones").delete().eq("id", (inv as { id: string }).id);
+      return json({ ok: false, error: "No se pudo registrar la invitación" }, 500);
     }
     return json({ ok: true, email, pendiente: true, mensaje: "Invitación enviada. La persona deberá aceptar el acceso desde su propio correo verificado." }, 201);
   }
 
   // Usuario existente: sin token; acepta autenticado via fn_mis_invitaciones_pendientes/fn_aceptar_invitacion
-  if (!urow) {
-    const { data: vinculada } = await supa.from("tbl_usuarios").update({
-      auth_user_id: (yaAuth as { id: string }).id,
-    }).eq("email", email).is("auth_user_id", null).select("id_usuario").maybeSingle();
-    if (!vinculada) {
-      await supa.from("tbl_usuarios").insert({
-        auth_user_id: (yaAuth as { id: string }).id, email, nombre: "Invitado", activo: true,
-      });
-    }
+  if (!(existente as { auth_user_id?: string }).auth_user_id) {
+    return json({ ok: false, error: "Cuenta sin identidad verificada: contactar al superadmin", codigo: "cuenta_huerfana" }, 409);
   }
   return json({ ok: true, email, pendiente: true, mensaje: "Invitación enviada. La persona deberá aceptar el acceso desde su cuenta." }, 201);
 });
