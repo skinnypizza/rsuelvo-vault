@@ -124,7 +124,10 @@ Deno.serve(async (req: Request) => {
       { onConflict: "auth_user_id" },
     );
     if (upErr) {
+      // Compensacion completa: sin espejo no hay invitacion ni Auth huerfano
+      const { error: delErr } = await supa.auth.admin.deleteUser(invData.user.id);
       await supa.from("tbl_invitaciones").delete().eq("id", (inv as { id: string }).id);
+      console.error("invite espejo fallo", { email, compensacion_auth: delErr ? "FALLO" : "ok" });
       return json({ ok: false, error: "No se pudo registrar la invitación" }, 500);
     }
     return json({ ok: true, email, pendiente: true, mensaje: "Invitación enviada. La persona deberá aceptar el acceso desde su propio correo verificado." }, 201);
