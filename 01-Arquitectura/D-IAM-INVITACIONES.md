@@ -25,7 +25,7 @@ RLS deny-by-default: solo `service_role` + función `fn_aceptar_invitacion` (SEC
 
 **Usuario nuevo:** admin crea invitación (EF, guarda rol+sucursal del tenant) → EF llama `auth.admin.inviteUserByEmail(email)` → usuario pone su contraseña vía link Supabase → app invoca `fn_aceptar_invitacion` que vincula por email PENDIENTE vigente → vínculo ACTIVE + invitación ACEPTADA. Admin jamás ve secreto.
 
-**Usuario existente:** sin token Supabase. Usuario autenticado acepta por id de invitación; guarda: `auth.email() = invitacion.email` + PENDIENTE + vigente. Mismo `fn_aceptar_invitacion`, mismo resultado.
+**Usuario existente:** sin token Supabase. Descubrimiento server-side vía `fn_mis_invitaciones_pendientes()`: identidad/email exclusivamente del JWT; devuelve solo PENDIENTES vigentes del autenticado (comercio/rol/sucursal/estado + `id_invitacion`); jamás tokens/secretos; `tbl_invitaciones` deny-by-default sin SELECT directo. Aceptación `fn_aceptar_invitacion(p_id_invitacion)` revalida server-side: identidad autenticada, coincidencia de email, PENDIENTE, `expira_at > now()`, comercio/rol/sucursal válidos, idempotencia/concurrencia. El `id_invitacion` es identificador de recurso, nunca factor de autenticación. Mismo resultado que flujo nuevo.
 
 **Expiración/revocación:** guarda `expira_at` en accept; cron marca VENCIDA; admin revoca PENDIENTE→REVOCADA vía fn con guarda de rol. Todo a `tbl_logs_auditoria`.
 
