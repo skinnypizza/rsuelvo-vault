@@ -433,3 +433,5 @@
 - **2026-09-21 (IAM-0 completo)** — DB (orquestador) + Flutter (Codex Terra) + Web (Codex Luna) + QA (Codex Luna): H-01/02/03 confirmados; 6 hallazgos nuevos (N-1..N-6); baselines verdes (flutter 278, web build); `Auditoria-IAM-MultiRepo.md` + suite + contrato IAM-1 propuestos.
 
 - **2026-09-21 (IAM-0 cerrado)** — Revision ChatGPT procesada: D-IAM-INVITACIONES + D-IAM-WEB-SCOPE decididas; C-04 N-1 deuda / N-6 brecha real a IAM-6; SHAs baseline registrados; contrato IAM-1 definitivo listo para delegar.
+
+- **2026-09-21 (IAM-1 listo para delegar)** — Correcciones ChatGPT aplicadas (§4 sin token propio, N-4 a IAM-2, 2 invariantes backend). 4 prompts IAM-1 escritos (BACKEND/FLUTTER/WEB/QA). Orden: backend -> Flutter/Web -> QA.

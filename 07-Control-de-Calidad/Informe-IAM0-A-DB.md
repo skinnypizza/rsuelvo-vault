@@ -24,7 +24,7 @@
 ## 3. Qué falta para IAM-1/IAM-2 (migración mínima PROPUESTA, no aplicada)
 
 1. Columnas aditivas en `tbl_usuario_comercio`: `estado text default 'ACTIVE'` (INVITED/ACTIVE/SUSPENDED/REVOKED), `invited_by uuid`, `invited_at`, `accepted_at`, `disabled_at`, `disabled_by`, `revocation_reason text` — compatible con `activo` actual (mantener sincronizado por trigger o vista).
-2. Invitación un-solo-uso: preferir `auth.admin.inviteUserByEmail` nativo (token Supabase, expiración, consumo único) + fila `tbl_invitaciones` (id, id_comercio, id_rol, id_sucursal, email, invited_by, token_hash sha256 — jamás token claro — expira_at, consumida_at, revocada) con UNIQUE(email, id_comercio) para idempotencia y `email ya existe → vincular por aceptación` en vez de 409.
+2. Invitación un-solo-uso: según `01-Arquitectura/D-IAM-INVITACIONES.md` (decisión posterior que reemplaza este borrador): Supabase único secreto + `tbl_invitaciones` solo contexto/estado, índice único parcial PENDIENTE(email, id_comercio), `fn_aceptar_invitacion` con identidad exclusiva del JWT, expiración inline sin depender del cron.
 3. Decisión A-1: scope de `cajero_multiplo` por comercio.
 4. No loggear tokens (Regla 9); RLS deny-by-default en `tbl_invitaciones` (solo service_role + lectura propia del invitado por token_hash).
 

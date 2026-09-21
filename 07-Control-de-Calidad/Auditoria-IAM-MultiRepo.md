@@ -31,7 +31,7 @@ Fuentes: `Informe-IAM0-A-DB.md` (este dir) · `Informe-IAM0-B-Flutter.md` · `In
 
 ## 4. Contrato IAM-1 propuesto (lote exacto a implementar)
 
-1. **Backend (DB):** migración aditiva §3 de `Informe-IAM0-A-DB.md` + `tbl_invitaciones` (token_hash, expira, consumo único, idempotencia por email+comercio, email-existente→vincular) + decisión N-4. EF reescrita: no devuelve secreto; acepta por enlace/código.
+1. **Backend (DB):** implementar `01-Arquitectura/D-IAM-INVITACIONES.md` (migración aditiva: columnas lifecycle en `tbl_usuario_comercio` + `tbl_invitaciones` solo contexto/estado con índice único parcial PENDIENTE; Supabase único secreto; `fn_aceptar_invitacion`; EF reescrita sin secreto, acepta por enlace Supabase / aceptación autenticada). Invariantes: (a) `fn_aceptar_invitacion` obtiene identidad y email exclusivamente del JWT autenticado, jamás de parámetros del cliente; (b) `PENDIENTE + expira_at <= now()` se trata como vencida en toda operación; nada depende del cron. N-4 (`cajero_multiplo`) va a IAM-2, fuera de este lote.
 2. **Flutter:** eliminar `_PasswordDialog`/`passwordTemporal`/Copiar (2 sitios) + UX Pendiente/Aceptada/Vencida/Revocada; NO tocar selección multi (eso es IAM-3).
 3. **Web:** mismo contrato invite; cerrar N-2 (roles permitidos) en la misma pasada.
 4. **QA:** ejecutar `Suite-Aceptacion-IAM.md` casos IAM-D invite (nueva/idempotente/expirada/usada/revocada/existente/nuevo/rol/sucursal/atacante/sin-password) + regresión REG-D.
