@@ -439,3 +439,5 @@
 - **2026-09-21 (IAM-1 backend completo)** — Mig 79 + EF v9 desplegada. E2E 10/10 (invite, idempotencia, descubrimiento JWT, ajena rechazada, accept, re-accept, revoke, re-revoke, expirada inline, deny-by-default SELECT). Sin secretos en responses. Limpio (fosiles revertidos). EF-doc v9.
 
 - **2026-09-21 (IAM-1 parche)** — Mig 80 (invited_by nullable) + EF v9 sin listUsers (tbl_usuarios unica fuente, cuenta_huerfana 409). Regresion 5/5 + grep cero secretos. Limpio. Pendiente: PATH SUPERADMIN vivo + usuario nuevo vivo (credenciales superadmin / cuota mail).
+
+- **2026-09-21 (IAM-1 Flutter)** — Codex Terra implemento (dialog/screens/repos/tests), orquestador verifico: cero passwordTemporal/Clipboard en lib, analyze 0, 280/280, commit `9988301`. Nota: codex exec muere ~1min en sesiones workspace-write bajo nohup; continuar con tramos cortos o cierre manual.
