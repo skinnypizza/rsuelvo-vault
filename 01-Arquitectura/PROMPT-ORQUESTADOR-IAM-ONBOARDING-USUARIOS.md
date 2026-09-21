@@ -76,8 +76,10 @@ Roles canónicos actuales:
 - `ROLE_SYSADMIN`
 - `ROLE_SUPPORT`
 - `ROLE_TENANT_ADMIN`
-- `ROLE_CASHIER`
-- `ROLE_LOGISTICS`
+- `ROLE_TENANT_CASHIER`
+- `ROLE_LOGISTICS_AGENT`
+
+> ⚠️ Nombres exactos según `02-Base-de-Datos/sql/02_enums.sql:90-91` y maestro §2. `ROLE_CASHIER` / `ROLE_LOGISTICS` NO existen — no usarlos en búsquedas ni migraciones.
 
 No renumerar ni sustituir roles durante P0. La granularización futura se hará de forma compatible.
 
@@ -609,9 +611,9 @@ No exigir inicialmente:
 - selfie/liveness;
 - documentación societaria.
 
-## Decisión pendiente a cerrar
+## Decisión ya cerrada — no reabrir
 
-Resolver definitivamente HU-002: self-service vs alta/aprobación por SuperAdmin.
+D4 (self-service→ACTIVO) + D17 (staff→pendiente con aprobación SuperAdmin) del maestro están CERRADAS. IAM-8 implementa el onboarding SOBRE esas decisiones, no las rediscute.
 
 Recomendación de arquitectura:
 
