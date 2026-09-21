@@ -39,3 +39,11 @@ Fuentes: `Informe-IAM0-A-DB.md` (este dir) · `Informe-IAM0-B-Flutter.md` · `In
 
 ## 5. DoD IAM-0
 Cero cambios funcionales ✅ · inventarios contra código+cloud reales ✅ · breaking changes: ninguno con migración aditiva ✅ · dependencias: IAM-1 necesita migración A-1/A-2 aplicada primero ✅.
+
+## 6. Cierre de condiciones ChatGPT (2026-09-21, orquestador)
+
+- **C-01/C-02 → `01-Arquitectura/D-IAM-INVITACIONES.md` DECIDIDA:** Supabase único secreto + `tbl_invitaciones` (contexto/estado, sin tokens) + índice único parcial PENDIENTE(email, id_comercio). Usuario nuevo por `inviteUserByEmail`; existente acepta autenticado con guarda de email.
+- **C-03 → `01-Arquitectura/D-IAM-WEB-SCOPE.md` DECIDIDA:** web = backoffice staff global; `highestRole` intencional; sin selector tenant; N-5/N-6 a IAM-6.
+- **C-04 auditado en cloud:** N-1 RECLASIFICADO a deuda (tabla `paquetes_superadmin_update` + storage `qr_pagos_superadmin_*` exigen superadmin; SYSADMIN/SUPPORT reciben deny) · **N-6 CONFIRMADO** como brecha real (`compras_select` permite SYSADMIN/SUPPORT ver depósitos; restricción solo en `visibleReportKinds`) → fix en IAM-6.
+- **Baselines SHA:** flutter `41e3b1264af7e23d5e564774dd089e7025687293` (278/278, analyze 0) · web `e00a9f866da58cba24bb4b317a2e84a0c98a20b8` (build OK) · vault `02d87ee`.
+- **Contrato IAM-1 definitivo:** §4 de este doc + D-IAM-INVITACIONES (superficies Flutter: invite_dialog, staff_screen, autorizaciones_screen, modelos/repos/tests). Orden: backend → Flutter/Web → QA IAM-D. N-1/N-3/N-5/N-6 fuera del lote.

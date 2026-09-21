@@ -431,3 +431,5 @@
 - **2026-09-19 (auditoria IAM-0)** — Pull vault (Prompt Orquestador IAM 821 lineas). Auditoria propia: H-IAM-01/02/03 confirmados en codigo; corregidos 2 errores del doc (roles inexistentes ROLE_CASHIER/ROLE_LOGISTICS -> canonicos; IAM-8 no reabre D4/D17). 4 prompts IAM-0 listos (A-DB, B-Flutter, C-Web, D-QA).
 
 - **2026-09-21 (IAM-0 completo)** — DB (orquestador) + Flutter (Codex Terra) + Web (Codex Luna) + QA (Codex Luna): H-01/02/03 confirmados; 6 hallazgos nuevos (N-1..N-6); baselines verdes (flutter 278, web build); `Auditoria-IAM-MultiRepo.md` + suite + contrato IAM-1 propuestos.
+
+- **2026-09-21 (IAM-0 cerrado)** — Revision ChatGPT procesada: D-IAM-INVITACIONES + D-IAM-WEB-SCOPE decididas; C-04 N-1 deuda / N-6 brecha real a IAM-6; SHAs baseline registrados; contrato IAM-1 definitivo listo para delegar.
