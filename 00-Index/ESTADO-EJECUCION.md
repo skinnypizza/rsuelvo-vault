@@ -435,3 +435,5 @@
 - **2026-09-21 (IAM-0 cerrado)** — Revision ChatGPT procesada: D-IAM-INVITACIONES + D-IAM-WEB-SCOPE decididas; C-04 N-1 deuda / N-6 brecha real a IAM-6; SHAs baseline registrados; contrato IAM-1 definitivo listo para delegar.
 
 - **2026-09-21 (IAM-1 listo para delegar)** — Correcciones ChatGPT aplicadas (§4 sin token propio, N-4 a IAM-2, 2 invariantes backend). 4 prompts IAM-1 escritos (BACKEND/FLUTTER/WEB/QA). Orden: backend -> Flutter/Web -> QA.
+
+- **2026-09-21 (IAM-1 backend completo)** — Mig 79 + EF v9 desplegada. E2E 10/10 (invite, idempotencia, descubrimiento JWT, ajena rechazada, accept, re-accept, revoke, re-revoke, expirada inline, deny-by-default SELECT). Sin secretos en responses. Limpio (fosiles revertidos). EF-doc v9.

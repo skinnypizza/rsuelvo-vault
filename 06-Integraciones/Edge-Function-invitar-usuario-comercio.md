@@ -21,16 +21,16 @@ final res = await supabase.functions.invoke(
 );
 ```
 
-### Respuestas
+### Respuestas (v9 — IAM-1, sin secretos)
 | HTTP | Cuerpo | Significado |
 |---|---|---|
-| **200** | `{ok:true, email, id_usuario, ya_existente:true}` | Reintento idempotente (mismo email+vinculo) |
-| **201** | `{ok:true, email, id_usuario, password_temporal, mensaje}` | Invitado creado. **Mostrar `password_temporal` con botón COPIAR** — no se envía por correo en v1 |
-| **400** | `{ok:false, error}` | Email inválido · rol fuera de 4/5/6 · falta sucursal/comercio · sucursal/comercio ajeno |
+| **200** | `{ok:true, email, ya_existente:true}` | Vínculo equivalente ya activo |
+| **200** | `{ok:true, email, pendiente:true}` | Invitación PENDIENTE reutilizada (idempotencia) |
+| **201** | `{ok:true, email, pendiente:true}` | Invitación creada. **JAMÁS contiene secreto.** Usuario nuevo recibe correo Supabase; existente acepta desde su cuenta |
+| **400** | `{ok:false, error}` | Email inválido · rol fuera de 2-6 · falta sucursal/comercio · sucursal/comercio ajeno |
 | **401** | `{ok:false, error}` | Sin sesión / token inválido |
 | **403** | `{ok:false, error}` | El invocador no tiene permiso para este rol |
-| **409** | `{ok:false, error}` | Ese email ya tiene cuenta (otro vínculo) |
-| **500** | `{ok:false, error}` | Error interno (con compensación: no quedan usuarios/vínculos a medias) |
+| **500** | `{ok:false, error}` | Error interno (con compensación: invitación huérfana se elimina o se reutiliza) |
 
 ### Path SUPERADMIN (v6, aprueba comercios)
 Solo `ROLE_SUPERADMIN`, con `{email, nombre, apellido, telefono, id_rol:4,
@@ -43,24 +43,24 @@ y luego este invite (reintentable; 200 si ya existe). Fuente: `db:{schema:rsuelv
 ### UX recomendada (solo ADMIN, en `UsuariosListScreen`)
 - Botón "Invitar usuario" visible SOLO para ADMIN (`id_rol == 4`).
 - Formulario: email, nombre, apellido, teléfono, rol (CAJERO/REPARTIDOR) y sucursal (dropdown de las sucursales del comercio).
-- Al 201: diálogo destacado con la **contraseña temporal** + botón **Copiar** + advertencia "compartila por un canal seguro; se cambia en el primer ingreso".
+- Al 200/201: mensaje "Invitación enviada/pendiente. La persona deberá aceptar el acceso desde su cuenta." + estado Pendiente. **PROHIBIDO mostrar/copiar credenciales (ya no existen).**
 - Refrescar la lista de usuarios al cerrar.
 - **NO** usar `supabase.auth.signUp()` ni inserts directos a `tbl_usuarios`.
 
-## Qué hace la función (seguridad)
+## Qué hace la función (v9 — IAM-1, D-IAM-INVITACIONES)
 1. Exige JWT (`verify_jwt=true`) y resuelve `auth.uid()`.
-2. Valida `tbl_usuarios.auth_user_id = uid` y un vínculo **activo con `id_rol=4`** → deriva `id_comercio` (MVP: un comercio por admin).
-3. Valida email (normalizado), rol ∈ {5,6}, `id_sucursal` existente/activa **del mismo comercio**.
-4. Crea el Auth user con `auth.admin.createUser({ email_confirm: true, password: <temporal fuerte> })`.
-5. Inserta `tbl_usuarios` (nombre vacío → "Usuario invitado") y `tbl_usuario_comercio`.
-6. **Compensación**: ante cualquier fallo posterior, borra el vínculo/fila y el Auth user → no deja estados incompletos.
-7. La contraseña temporal **nunca** se loguea ni persiste.
+2. Resuelve invocador y sus vínculos (PATH SUPER rol 2/3/4 con comercio explícito; PATH ADMIN rol 5/6 con sucursal del propio comercio).
+3. Valida email, rol ∈ {2..6}, sucursal del comercio.
+4. Idempotencia: vínculo equivalente → 200; PENDIENTE vigente → 200.
+5. Crea fila `tbl_invitaciones` PENDIENTE primero (reintento seguro).
+6. Usuario nuevo: `auth.admin.inviteUserByEmail` (Supabase único secreto) + fila espejo mínima; usuario existente: solo invitación (acepta vía `fn_mis_invitaciones_pendientes`/`fn_aceptar_invitacion`).
+7. **Compensación**: si el envío falla, elimina la invitación huérfana.
+8. Ningún secreto se loguea, persiste ni devuelve.
 
 ## Secretos y configuración
 - **No requiere secretos nuevos**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` se inyectan automáticamente en las Edge Functions.
 - `service_role` vive **solo** dentro de la función (jamás en Flutter).
-- **v1 no envía correo** (decisión acordada): el ADMIN comparte la contraseña temporal.
-- **Futuro (v2)**: si se configura `RESEND_API_KEY` (+ dominio verificado) o SMTP, la función puede enviar el correo "Tu acceso a RSUELVO" con el código, manteniendo la contraseña en la respuesta como respaldo. No se requiere cambio de contrato: se agrega el envío dentro de la EF.
+- v9 no envía credenciales: usuario nuevo por correo Supabase, existente por aceptación autenticada (D-IAM-INVITACIONES).
 
 ## Operación
 - **Actualizar**: redeploy con `deploy_edge_function` (mismo slug).
