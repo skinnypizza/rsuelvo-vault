@@ -475,3 +475,5 @@
 - **2026-09-22 (IAM-4 UI)** — Mig 85 discovery. Flutter `1e71b9e` (307/307): propiedad/transferir/cerrar owner + tests. Web `f3d4cf7` (68 tests, deploy b8b61973 200): cerrar + transferencias en Perfil. `Reporte-IAM4.md` listo para revision.
 
 - **2026-09-22 (IAM-4 cerrado + IAM-5 contrato)** — IAM-4 APROBADO. UX web `Cerrar comercio` + deploy e77d38d8. IAM-5: auditoria Auth real (TOTP ON, aal verificable, MFA cero en clientes) + `D-IAM-SEGURIDAD.md` PROPUESTA + prompt. Sin codigo.
+
+- **2026-09-22 (INCIDENTE P0 + IAM-5 backend)** — `fn_es_service_role()` devolvia TRUE a todo autenticado (mig 76 `current_user` + owner postgres): RLS con ese helper abierta (audit global legible). Mig 87: JWT manda con JWT, fallback solo sin JWT; overload gestionar eliminado. Verificado: helper false, audit scoped FER, gates restaurados, backend-identity true, FER revertido a ACTIVO. Mig 86: `fn_tiene_aal2` + guards (iniciar/responder/cerrar/gestionar/editar-off); aal1->`mfa_requerido` en vivo. aal2-PASS pendiente: challenge MFA rechaza UUID valido (GoTrue v2.197; investigar via SDK en UI) + factores fosiles limpiados.
