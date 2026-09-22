@@ -449,3 +449,5 @@
 - **2026-09-22 (QA IAM-1)** — Codex Luna: Reporte-IAM1.md (BLOQUEADO por su sandbox sin red) + orquestador ejecuto casos faltantes en vivo (rol/sucursal/atacante/sin-sesion PASS). Solo pendientes externos: usuario-nuevo vivo + superadmin vivo.
 
 - **2026-09-22 (Reporte IAM-1 corregido)** — Veredicto ChatGPT aplicado: APROBADA CON CERTIFICACION PENDIENTE (PASS/DIFERIDO/PENDIENTE EXTERNO). Solo 2 bloqueantes reales: usuario-nuevo vivo + superadmin vivo (sesion interactiva o cuenta QA temporal; jamas pedir contrasena).
+
+- **2026-09-22 (IAM-2 contrato)** — Auditoria propia (10/10 ACTIVE, divergencia DESACTIVAR confirmada, N-4 ubicado, Flutter UPDATE directo detectado). `D-IAM-MEMBERSHIP.md` PROPUESTA + `PROMPT-IAM2-BACKEND.md` listos para revision ChatGPT. Sin codigo aun.
