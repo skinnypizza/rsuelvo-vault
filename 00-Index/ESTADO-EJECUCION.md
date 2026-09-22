@@ -529,3 +529,5 @@
 - **2026-09-22 (IAM-9 mig 98 + E2E)** — Grants solicitar (authenticated), staging->operativo via EF habilitar-v1 + finalize idempotente. E2E: qr_por_publicar, publish+ACTIVO, retry ya_activo, 1 evidencia+1 log, staging retenido por decision. Deuda IAM9-D1: 2 objetos huerfanos qr-pagos (borrado bloqueado por API). Pendiente superadmin: revocar live.
 
 - **2026-09-22 (IAM-9 mig 98/99 + frontera QR)** — Finalize solo service_role; EF qr-entrega (estado-gated, signed URL, rate-limit). E2E: V0 DENY + V1 signed + demote DENY sin mover archivos. Pendiente superadmin: revocar live.
+
+- **2026-09-22 (IAM-9 mig 100)** — Sin saga: solicitar transiciona directo (staging canonico), finalizar DROP, habilitar-v1 undeployed. E2E 1-16 (cero objetos publicos, entrega privada, retry, restore). Deuda IAM9-D1/D2. Pendiente superadmin: revocar live.
