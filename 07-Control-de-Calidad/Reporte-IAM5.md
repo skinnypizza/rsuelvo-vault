@@ -24,3 +24,7 @@ Enroll/verify, challenge, `mfaEnrollmentRequired` sin gracia, router gates, cerr
 
 ## Pendiente externo
 sesión SuperAdmin real con MFA (cuando exista) + login posterior con challenge en dispositivo real. Recovery-TOTP: sin bypass (declarado no implementado).
+
+## Patch fail-closed (2026-09-22)
+- Flutter `58c4995` (315/315): `verificationUnavailable` + `/mfa-unavailable` (reintentar/cerrar) + router gate + tests error/retry.
+- Web `686fb5e` (74 tests, deploy `6c3c285a`): `MfaStatus` extendido + StaffGate + página + tests. Backend sin cambios.
