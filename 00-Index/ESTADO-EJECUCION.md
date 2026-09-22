@@ -471,3 +471,5 @@
 - **2026-09-22 (IAM-4 backend)** — Mig 83: propietario + backfill (FER/FEE/ABC auto, resto NULL) + transferencias lifecycle + fn_es_owner + anti-degradar + cerrar + auto-owner trigger. E2E: transferencia ida/vuelta + doble pendiente + cierre owner/no-owner/repetido OK, limpio. Pendiente superadmin: SUSPENDER/REVOCAR/CAMBIAR/editar owner_protegido en vivo.
 
 - **2026-09-22 (IAM-4 mig 84 + E2E)** — Cancel solo origen/superadmin + sweep expiracion + unique determinista + auto-owner count==1 + revalidacion origen admin. E2E: cancel matriz + expirada-no-bloquea + auto-owner 1/2-admins OK, limpio. Pendiente superadmin: owner_protegido en gestionar/editar + concurrencia real.
+
+- **2026-09-22 (IAM-4 UI)** — Mig 85 discovery. Flutter `1e71b9e` (307/307): propiedad/transferir/cerrar owner + tests. Web `f3d4cf7` (68 tests, deploy b8b61973 200): cerrar + transferencias en Perfil. `Reporte-IAM4.md` listo para revision.
