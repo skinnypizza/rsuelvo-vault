@@ -18,7 +18,7 @@
 | `business.transferOwnership` | TENANT | ✅ (cancela) | ❌ | ❌ | solo recibe | ✅ inicia | ❌ | ❌ | transferencia lifecycle | ✅ | transf. UI | perfil |
 | `business.configure` | TENANT | ✅ | ❌ | ❌ | ✅ | — | ❌ | ❌ | `tbl_comercio_config` RLS | — | config | — |
 | `credits.read` | GLOBAL/TENANT | ✅ | ✅ propio-staff | ✅ lectura | ✅ propio | — | ❌ | ❌ | `staff_read`, cuentas/movimientos | — | créditos | `credits.read` |
-| `credits.resolve` | GLOBAL | ✅ | ✅ | ❌ | ❌ | — | ❌ | ❌ | `fn_resolver_compra_creditos` (+autorizaciones) | — | — | `credits.resolve` |
+| `credits.resolve` | GLOBAL | ✅ | ❌ DENY (ciego sin deposit.read) | ❌ | ❌ | — | ❌ | ❌ | `fn_resolver_compra_creditos` (solo SUPERADMIN) | — | — | `credits.resolve` (visible, backend DENY no-superadmin) |
 | `credits.deposit.read` | GLOBAL/TENANT | ✅ | ❌ DENY | ❌ DENY | ❌ | ✅ mismo comercio | ❌ | ❌ | `compras_select` + `depositos-creditos` Storage | — | — | solo vía matriz |
 | `credits.packages.manage` | GLOBAL | ✅ | ❌ | ❌ | ❌ | — | ❌ | ❌ | `paquetes_superadmin_update` + Storage | — | — | `packages.manage` |
 | `reports.operational` | GLOBAL/TENANT | ✅ | ✅ | ✅ | ✅ propio | — | ❌ | ❌ | RLS por tabla | — | `reportes_access` | `reports.operational` |

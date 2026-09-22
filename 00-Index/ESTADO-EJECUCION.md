@@ -489,3 +489,5 @@
 - **2026-09-22 (IAM-6 contrato)** — Auditoria (DB sin matriz unica, Flutter 20 hunters + reportes centralizado, web N-5/N-6, SUPPORT con acceso admin, exports sin capability). `D-IAM-PERMISOS.md` PROPUESTA + prompt. Sin codigo.
 
 - **2026-09-22 (IAM-6 DB)** — Mig 89: N-6 tabla+Storage (owner/superadmin), SUPPORT fuera de resolver-compras y alta, helpers intactos. E2E: owner lee, cajero vacio, guards_sanos verde. SYSADMIN/SUPPORT live pendientes (sin logins). Impacto: sysadmin pierde revision de depositos hasta caso explicito.
+
+- **2026-09-22 (IAM-6 mig 90)** — Resolve solo SUPERADMIN (SYSADMIN/SUPPORT fuera, sin consumidor server). E2E: owner lee deposito pero `solo staff autorizado` al resolver. SYSADMIN/SUPPORT/SuperAdmin live pendientes (sin logins).
