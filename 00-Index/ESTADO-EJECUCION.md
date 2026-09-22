@@ -459,3 +459,5 @@
 - **2026-09-22 (IAM-2B mig 82 + E2E)** — Fixes: CAMBIAR in-place mismo rol, tupla-exacta-primero en accept/CREAR, audit destino determinista, N-4 tercer path (trigger). E2E: B reactiva misma fila + C IAM-D-007 + D cajero_multiplo + trigger + indice OK, limpio. Pendiente superadmin: CAMBIAR/SUSPENDER/REVOCAR/editar en vivo (A/E/F).
 
 - **2026-09-22 (IAM-3 contrato)** — Auditoria propia (selected.first unico punto, 20+ archivos idComercio, sin persistencia). `D-IAM-MULTICOMERCIO-FLUTTER.md` PROPUESTA + `PROMPT-IAM3-FLUTTER.md`. Sin codigo.
+
+- **2026-09-22 (IAM-3 Flutter)** — Orquestador directo: Membership/SelectedMembership/noMemberships/needSelector + persistencia scoped + switching + selector + reconciliacion (bootstrap/recargar/resume/accept) + router. `selected.first` solo en comentario. Analyze 0, 297/297, commit `a18c50c` pusheado.
