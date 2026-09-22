@@ -525,3 +525,5 @@
 - **2026-09-22 (IAM-9 backend)** — Mig 96: evidencia + checks + estado/solicitar/revocar. E2E 25/32 live (checks, AAL1/AAL2, obsoleta, concurrencia, snapshot, restore). Residuo: 1 objeto huerfano qr-pagos (borrado bloqueado por API). Pendiente superadmin: revocar + no-owner/cashier con aal2.
 
 - **2026-09-22 (IAM-9 mig 97 + E2E)** — Bucket staging privado + check dual + solicitar sin service_role + revocar real (lock, ya_v0, motivo obligatorio). E2E: upload staging real ALLOW/403, no-owner/cashier aal2 solo_owner, RLS evidencia DENY, sin evidencia espuria. Limpio + guards_sanos. Pendiente superadmin: revocar live + motivo.
+
+- **2026-09-22 (IAM-9 mig 98 + E2E)** — Grants solicitar (authenticated), staging->operativo via EF habilitar-v1 + finalize idempotente. E2E: qr_por_publicar, publish+ACTIVO, retry ya_activo, 1 evidencia+1 log, staging retenido por decision. Deuda IAM9-D1: 2 objetos huerfanos qr-pagos (borrado bloqueado por API). Pendiente superadmin: revocar live.
