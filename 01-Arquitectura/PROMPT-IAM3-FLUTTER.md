@@ -25,13 +25,13 @@ Contrato aprobado. IAM-2B backend ya desplegado (lifecycle disponible).
 - Flujos operativos intactos; `password_temporal` sigue en cero
 
 ## CAMBIOS PERMITIDOS
-Modelo Membership + SelectedMembership; selector UI; persistencia solo-id en secure storage; providers family/invalidación; expulsión al perder la seleccionada; segunda invitación NO cambia contexto.
+Modelo Membership + SelectedMembership + `noMemberships`; selector UI; persistencia `selected_membership:<auth_user_id>` con validación/purga; transición `switchingMembership` con bloqueo UI + family/generation anti-stale; reconciliación en bootstrap/recargar/resume/accept/pérdida-acceso; segunda invitación NO cambia contexto.
 
 ## CAMBIOS PROHIBIDOS
 Backend/schema; reescribir pantallas operativas; permisos dinámicos; MFA; secretos en storage/logs; `service_role`.
 
 ## PRUEBAS REQUERIDAS
-E2E del contrato (2 comercios, cambio repetido, revocación, restart, 0 membresías) con mocks; grep `selected.first` en `lib/` debe dar cero; verificación anti-mezcla tenant.
+E2E del contrato con mocks: A persisted ajeno jamás restaura · B persisted no-vigente se descarta · C N sin válida→selector · D request tardío de A no aparece en B · E revocación+2→selector · F revocación+1→auto · G revocación+0→`noMemberships` con invitaciones accesibles · H logout/login distinto sin contaminación · grep `selected.first` en `lib/` cero.
 
 ## ENTREGABLES
 Commit en `main` + SHA para revisión.
