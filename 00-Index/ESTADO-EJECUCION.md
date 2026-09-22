@@ -483,3 +483,5 @@
 - **2026-09-22 (IAM-5 UI + aal2 live)** — SDKs verificados en fuentes. Flutter `b8a8de3` (313/313): enroll/challenge/restringido/sesiones. Web `2acd5e6` (72 tests, ac96e3fd): mismo lifecycle. E2E aal2 REAL (enroll+challenge+verify via shape correcto, cerrar PASS, todo limpio). `Reporte-IAM5.md`.
 
 - **2026-09-22 (IAM-5 fail-closed)** — Flutter `58c4995` (315/315): verificationUnavailable + /mfa-unavailable + retry. Web `686fb5e` (74 tests, deploy): mismo + StaffGate. Backend sin cambios. Reporte-IAM5 actualizado.
+
+- **2026-09-22 (IAM-5 CERRADO)** — Implementacion APROBADA (fail-closed incluido, aal2 live). Deuda externa: superadmin MFA real + challenge fisico + recovery-TOTP sin bypass.
