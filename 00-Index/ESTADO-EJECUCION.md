@@ -507,3 +507,5 @@
 - **2026-09-22 (IAM-7 mig 93)** — Vigencia en pendientes + obsoleta-viva + auditoria solo en insert (ya_aceptado). E2E: futuro excluido, v1->obsoleta, doble 1+1 log, restore limpio + guards_sanos.
 
 - **2026-09-22 (IAM-7 E2E)** — 12 puntos (6 live + 6 codigo): pendientes/aceptar/retry/obsoleta/v2-gate verdes, restore limpio. `Reporte-IAM7.md`.
+
+- **2026-09-22 (IAM-7 CERRADO)** — Implementacion APROBADA/CERRADA. Pre-produccion: validacion juridica de 3 BORRADORES.
