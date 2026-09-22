@@ -441,3 +441,5 @@
 - **2026-09-21 (IAM-1 parche)** — Mig 80 (invited_by nullable) + EF v9 sin listUsers (tbl_usuarios unica fuente, cuenta_huerfana 409). Regresion 5/5 + grep cero secretos. Limpio. Pendiente: PATH SUPERADMIN vivo + usuario nuevo vivo (credenciales superadmin / cuota mail).
 
 - **2026-09-21 (IAM-1 Flutter)** — Codex Terra implemento (dialog/screens/repos/tests), orquestador verifico: cero passwordTemporal/Clipboard en lib, analyze 0, 280/280, commit `9988301`. Nota: codex exec muere ~1min en sesiones workspace-write bajo nohup; continuar con tramos cortos o cierre manual.
+
+- **2026-09-21 (IAM-1 Flutter acceptance)** — Lado invitado por orquestador: `MisInvitacionesScreen` (/mis-invitaciones, todos los roles, entrada en menu perfil) + `fn_mis/aceptar` por gateway + `recargarPerfil()` sin tocar selected.first. Analyze 0, 285/285, commit `1c32e39` pusheado.
