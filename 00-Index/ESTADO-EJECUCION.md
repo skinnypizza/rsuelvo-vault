@@ -493,3 +493,5 @@
 - **2026-09-22 (IAM-6 mig 90)** — Resolve solo SUPERADMIN (SYSADMIN/SUPPORT fuera, sin consumidor server). E2E: owner lee deposito pero `solo staff autorizado` al resolver. SYSADMIN/SUPPORT/SuperAdmin live pendientes (sin logins).
 
 - **2026-09-22 (IAM-6 mig 91)** — CANCELAR consistente (service_role/superadmin en las 3 ramas). E2E humano DENY x3 con fila intacta, fosil eliminado. Service_role live sin llave disponible: verificado por codigo identico + backend-identity true.
+
+- **2026-09-22 (IAM-6 clientes)** — Flutter `f442a7d` (322/322): can()+mapper, decisiones a codigos. Web `bd373bc` (74 tests, dea41b3d): taxonomia completa, SUPPORT readonly, resolve oculto, N-5. `Reporte-IAM6.md`.
