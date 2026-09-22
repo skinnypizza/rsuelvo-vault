@@ -499,3 +499,5 @@
 - **2026-09-22 (IAM-6 patch final)** — members.read minimo privilegio + nota limpia + N-5 dialogs. Flutter f96a150, web e9f4bd4 (ad7a8522).
 
 - **2026-09-22 (IAM-6 CERRADO)** — Implementacion APROBADA/CERRADA. Deuda externa: live sysadmin/support/superadmin + concurrencia + futuro deposit.read SYSADMIN.
+
+- **2026-09-22 (IAM-7 contrato + prompts codex)** — Auditoria: cero consentimiento en BD/app/web (solo opt-out STOP). `D-IAM-CONSENTIMIENTO.md` PROPUESTA + 3 prompts (BACKEND/FLUTTER/WEB) formato 11 secciones. Sin codigo.
