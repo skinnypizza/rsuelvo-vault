@@ -505,3 +505,5 @@
 - **2026-09-22 (IAM-7 backend)** — Mig 92: documentos inmutables + aceptaciones + fns + seed BORRADOR. E2E 12/12 (pendientes, aceptar, idempotencia, canal, deny directo, v2 transaccional, obsoleta, trigger, restore limpio) + guards_sanos verde.
 
 - **2026-09-22 (IAM-7 mig 93)** — Vigencia en pendientes + obsoleta-viva + auditoria solo en insert (ya_aceptado). E2E: futuro excluido, v1->obsoleta, doble 1+1 log, restore limpio + guards_sanos.
+
+- **2026-09-22 (IAM-7 E2E)** — 12 puntos (6 live + 6 codigo): pendientes/aceptar/retry/obsoleta/v2-gate verdes, restore limpio. `Reporte-IAM7.md`.
