@@ -7,7 +7,7 @@
 
 | Capability | Scope | SUPERADMIN | SYSADMIN | SUPPORT | TENANT_ADMIN | OWNER (+admin) | CASHIER | LOGISTICS | Autoridad backend | AAL2 | Flutter | Web |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `members.read` | GLOBAL/TENANT | ✅ | ✅ | ✅ staff | ✅ propio | — | ❌ | ❌ | `users_select`, `user_commerce_select` | — | `can views` | `members.read` |
+| `members.read` | GLOBAL/TENANT | ✅ | ❌ DENY | ❌ DENY | ✅ propio | — | ❌ | ❌ | `users_select`, `user_commerce_select` | — | `can views` | `members.read` |
 | `members.invite` | GLOBAL/TENANT | ✅ | ❌ | ❌ | ✅ 5/6 (PATH A) | — | ❌ | ❌ | EF invite v9 | — | invite dialogs | `members.invite` |
 | `members.mutate` | GLOBAL/TENANT | ✅ | ❌ | ❌ | ❌ | — | ❌ | ❌ | `fn_editar_usuario`, `fn_gestionar_vinculo` | desactivar | `gestionarVinculoGlobal` | `members.mutate` |
 | `members.lifecycle` | TENANT | ✅ | ❌ | ❌ | ❌ | — | ❌ | ❌ | SUSPENDER/REVOCAR/CAMBIAR | ✅ | vía fn | — |
@@ -33,6 +33,8 @@
 
 Notas:
 - SUPPORT: lectura + diagnóstico explícito; cero writes, cero exports, cero depósitos (cambio vs matriz pre-IAM que le daba aprobar/resolve).
-- SYSADMIN: pierde `credits.resolve`→ conserva (operativo: aprueba compras con comprobante) — ver nota: matriz pre-IAM le daba aprobar; IAM-6 conserva `credits.resolve` SYSADMIN pero DENY depósitos. `solicitudes.resolve` SYSADMIN conserva (flujo actual), SUPPORT lo pierde.
+- `solicitudes.resolve` SYSADMIN conserva (flujo actual), SUPPORT lo pierde.
 - `business.create` SUPPORT: DENY (antes permitido en web).
+- SYSADMIN: `credits.resolve` DENY y `credits.deposit.read` DENY; caso futuro requiere cambio explícito de contrato.
+- `members.read`: SYSADMIN/SUPPORT DENY global (mínimo privilegio); diagnóstico futuro = capability específica, no reutilizar.
 - Owner ≠ rol: toda fila OWNER requiere `context.owner=true` verificado por `fn_es_owner`.

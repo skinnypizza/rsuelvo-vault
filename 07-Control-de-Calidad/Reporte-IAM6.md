@@ -25,3 +25,9 @@ Best-effort client-side documentado (sin RPC frontera existente); no se vende co
 
 ## Pendiente externo
 SYSADMIN/SUPPORT/SuperAdmin live + concurrencia (heredado) + caso `credits.deposit.read` SYSADMIN si negocio lo pide.
+
+## Patch final (2026-09-22)
+- `members.read` DENY SYSADMIN/SUPPORT en matriz + Flutter (Web ya estaba); test dedicado.
+- Nota obsoleta `conserva credits.resolve` eliminada (grep cero).
+- N-5: `EditDialog`/`InviteDialog` reciben `allowed` + guard en `submit` (defense-in-depth; backend autoridad).
+- Flutter `f96a150` (323/323, analyze 0) · Web `e9f4bd4` (74 tests, `ad7a8522`).
