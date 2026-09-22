@@ -1,6 +1,6 @@
-# D-IAM-MEMBERSHIP — Contrato lifecycle (propuesta para revisión, SIN implementar)
+# D-IAM-MEMBERSHIP — Contrato lifecycle (revisión 2, SIN implementar)
 
-**Fecha:** 2026-09-22 · **Estado:** PROPUESTA (requiere revisión ChatGPT antes de codificar) · Cubre puntos 1-8 del brief IAM-2.
+**Fecha:** 2026-09-22 · **Estado:** REVISIÓN 2 con ajustes ChatGPT (requiere aprobación antes de codificar mig 81).
 
 ## Auditoría del estado actual (cloud 2026-09-22)
 
@@ -12,16 +12,16 @@
 - N-4 (`68:127-135`): `cajero_multiplo` cuenta por `id_usuario` en TODOS los comercios.
 - Reactivación existe solo en `gestionar_vinculo` CREAR (misma tupla usuario/comercio/rol/sucursal).
 
-## Decisiones propuestas
+## Decisiones (revisión 2)
 
-1. **N-4:** scope por comercio. Un usuario PUEDE ser cajero en comercios distintos; sigue prohibido doble cajero en el MISMO comercio (regla de negocio vigente).
-2. **Lifecycle:** `ACTIVE ↔ SUSPENDED` (reversible), `ACTIVE/SUSPENDED → REVOKED` (terminal). REVOKED nunca se reactiva: reingreso = fila nueva (trazabilidad intacta).
-3. **Regla canónica única:** `activo = (estado = 'ACTIVE')`, impuesta por trigger `BEFORE INSERT/UPDATE` (fuente = `estado`; `activo` derivado). Cero divergencia futura.
-4. **Acciones:** extender `fn_gestionar_vinculo` con `SUSPENDER` (=SUSPENDED) y `REVOCAR` (=REVOKED); `DESACTIVAR` se mapea a SUSPENDER (compatibilidad); `fn_editar_usuario` en cascada pone REVOKED; `fn_aceptar_invitacion` crea ACTIVE (intacto).
-5. **Anti-duplicados:** índice único parcial `UNIQUE(id_usuario,id_comercio,id_rol,coalesce(id_sucursal,'000...')) WHERE estado='ACTIVE'` + `FOR UPDATE` en funciones (aceptar ya lo tiene; agregar en gestionar).
-6. **Aislamiento:** ninguna acción toca filas de otro comercio (todas filtran `id_comercio`); RLS/auditoría/protección SUPERADMIN intactos; contratos IAM-1 e invitaciones intactos.
-7. **IAM-D-007:** E2E dedicado (existente + otro comercio + accept → ACTIVE en B, intacto en A).
-8. **Fuera:** selector UI y `selected.first` (IAM-3); Flutter `actualizarVinculo` por fn (sublote IAM-2/Flutter tras revisión); MFA/SecurityEvent.
+1. **N-4 EN TODOS LOS PATHS:** mig 81 incluye `CREATE OR REPLACE` mínimo de `fn_aceptar_invitacion` que cambia EXCLUSIVAMENTE la regla `cajero_multiplo`: cuenta cajero dentro de `v_inv.id_comercio` y solo membresías vigentes (`estado IN ('ACTIVE','SUSPENDED')`). Permite cajero A + cajero B; impide duplicado en el mismo comercio. Resto de invariantes IAM-1 intactas (JWT, email, expiración, locks, sucursal, auditoría, cero secretos). Sin esto IAM-D-007 no pasa. Mismo ajuste en `fn_gestionar_vinculo`.
+2. **Lifecycle:** `ACTIVE ↔ SUSPENDED` (reversible), `ACTIVE/SUSPENDED → REVOKED` (terminal). REVOKED nunca se reactiva: reingreso = fila nueva.
+3. **Compatibilidad Flutter (2 fases, preferida):** NO desplegar trigger canónico con el cliente actual sin resolver (un `activo := (estado='ACTIVE')` convertiría legacy `UPDATE activo=false` en no-op). Fase A: sublote IAM-2/Flutter reemplaza UPDATE directo por `fn_gestionar_vinculo` + verificación. Fase B: endurecer DB. Si quedaran clientes antiguos: compatibilidad transitoria (cambio explícito de `estado` manda; legacy `activo=false` sin cambio de estado = SUSPENDED; legacy `activo=true` solo reactiva desde SUSPENDED; jamás REVOKED→ACTIVE), a retirar tras migración.
+4. **Acciones:** extender `fn_gestionar_vinculo` con `SUSPENDER` (=SUSPENDED) y `REVOCAR` (=REVOKED); `DESACTIVAR` se mapea a SUSPENDER (compatibilidad).
+5. **`fn_editar_usuario` NO revoca:** `activo=false` → memberships ACTIVE pasan a SUSPENDED (REVOKED es terminal; revocación solo por REVOCAR explícito). Al reactivar usuario: cuenta sí, memberships NO (salvo regla explícita de causa) — no restaurar accesos suspendidos por otro admin.
+6. **Anti-duplicados:** `UNIQUE(id_usuario,id_comercio,id_rol,coalesce(id_sucursal,uuid-cero)) WHERE estado IN ('ACTIVE','SUSPENDED')` (REVOKED fuera, historia intacta). Semántica CREAR: ACTIVE→idempotente; SUSPENDED→reactivar MISMA fila; solo-REVOKED→FILA NUEVA. Preflight de duplicados antes de crear el índice. El índice es la garantía final anti-phantom; la función captura `unique_violation` determinista/idempotente.
+7. **Aislamiento/auditoría/IAM-1:** intactos (salvo ajuste puntual N-4 en accept).
+8. **Fuera:** selector UI y `selected.first` (IAM-3); MFA/SecurityEvent.
 
 ## E2E backend requerido (fósiles, revertido)
 

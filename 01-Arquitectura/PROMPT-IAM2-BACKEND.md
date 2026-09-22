@@ -26,13 +26,13 @@ Contrato D-IAM-MEMBERSHIP aprobado por revisión. Sin aprobación, NO codificar.
 - Flujos operativos vivos
 
 ## CAMBIOS PERMITIDOS
-Mig 81: trigger canónico `activo=(estado='ACTIVE')` · N-4 por comercio · acciones SUSPENDER/REVOCAR en `fn_gestionar_vinculo` (DESACTIVAR→SUSPENDER) · cascada editar→REVOKED · índice único parcial anti-duplicado ACTIVE · `FOR UPDATE` faltantes.
+Mig 81: `CREATE OR REPLACE` mínimo de `fn_aceptar_invitacion` (solo regla N-4 por comercio + vigentes) · N-4 por comercio en `fn_gestionar_vinculo` · acciones SUSPENDER/REVOCAR (DESACTIVAR→SUSPENDER) · cascada editar→SUSPENDED (jamás REVOKED; sin auto-reactivación) · índice único parcial `WHERE estado IN ('ACTIVE','SUSPENDED')` con preflight + manejo `unique_violation` · `FOR UPDATE` faltantes · trigger canónico `activo=(estado='ACTIVE')` SOLO en Fase B (tras sublote Flutter verificado) o compatibilidad transitoria documentada.
 
 ## CAMBIOS PROHIBIDOS
-Reescribir migs 68/79/80 · tocar invitaciones/accept · selector UI · `selected.first` · MFA/SecurityEvent · N-1/N-3/N-5/N-6 · secretos en logs.
+Reescribir migs 68/79/80 · tocar invitaciones/accept salvo regla N-4 puntual · REVOKED por defecto en editar · trigger canónico en Fase A con cliente legacy sin migrar · selector UI · `selected.first` · MFA/SecurityEvent · N-1/N-3/N-5/N-6 · secretos en logs.
 
 ## PRUEBAS REQUERIDAS
-E2E backend con fósiles (revertido): N-4 por comercio · transiciones + terminalidad REVOKED + reingreso fila nueva · cascada · A-no-afecta-B · duplicado concurrente · IAM-D-007 · regresión IAM-1 (10/10) + aislamiento 11 + grep cero secretos.
+E2E backend con fósiles (revertido): N-4 por comercio en AMBOS paths (gestionar + accept) · transiciones + terminalidad REVOKED + reingreso fila nueva · SUSPENDED reactiva misma fila · cascada editar sin auto-restaurar · A-no-afecta-B · duplicado concurrente (índice) · IAM-D-007 · regresión IAM-1 (10/10) + aislamiento 11 + grep cero secretos.
 
 ## ENTREGABLES
 Mig 81 aplicada + verificada · informe E2E por caso · monolito + ESTADO-EJECUCION.
