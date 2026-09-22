@@ -491,3 +491,5 @@
 - **2026-09-22 (IAM-6 DB)** — Mig 89: N-6 tabla+Storage (owner/superadmin), SUPPORT fuera de resolver-compras y alta, helpers intactos. E2E: owner lee, cajero vacio, guards_sanos verde. SYSADMIN/SUPPORT live pendientes (sin logins). Impacto: sysadmin pierde revision de depositos hasta caso explicito.
 
 - **2026-09-22 (IAM-6 mig 90)** — Resolve solo SUPERADMIN (SYSADMIN/SUPPORT fuera, sin consumidor server). E2E: owner lee deposito pero `solo staff autorizado` al resolver. SYSADMIN/SUPPORT/SuperAdmin live pendientes (sin logins).
+
+- **2026-09-22 (IAM-6 mig 91)** — CANCELAR consistente (service_role/superadmin en las 3 ramas). E2E humano DENY x3 con fila intacta, fosil eliminado. Service_role live sin llave disponible: verificado por codigo identico + backend-identity true.
