@@ -519,3 +519,5 @@
 - **2026-09-22 (IAM-8 E2E final)** — 37 puntos (live + codigo honesto): registro, auto-alta, V0 DENYs, V1, regresiones. Restore total. `Reporte-IAM8.md`.
 
 - **2026-09-22 (IAM-8 CERRADO)** — Implementacion APROBADA/CERRADA. Deuda IAM8-D1 (Auth fosil e2eF) + retencion intentos.
+
+- **2026-09-22 (IAM-9 contrato)** — Auditoria (NIT/razon/tel/email/QR disponibles; cero infra). `D-IAM-VERIFICACION.md` PROPUESTA (V0->V1 declarativo, sin KYC, evidencia por checks). Sin codigo/prompts.
