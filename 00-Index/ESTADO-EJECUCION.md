@@ -511,3 +511,5 @@
 - **2026-09-22 (IAM-7 CERRADO)** — Implementacion APROBADA/CERRADA. Pre-produccion: validacion juridica de 3 BORRADORES.
 
 - **2026-09-22 (IAM-8 contrato)** — Auditoria: alta 100% staff-mediada (D4 no implementado como tal; rige D17). `D-IAM-ONBOARDING.md` PROPUESTA (cuenta/comercio/habilitación separados, auto-alta con límites, owner=creador). Sin codigo.
+
+- **2026-09-22 (IAM-8 backend)** — Mig 94: estado + helper + requests/intentos + auto-alta atomica + V0 guards (solicitar/transfer/EF/QR). EF registrar v1 + invite v9 redeploys. E2E 15/17 live (2 code: no-verificado DENY, transfer-V0 destino). Limpio + guards_sanos + IAM-1 regression OK.

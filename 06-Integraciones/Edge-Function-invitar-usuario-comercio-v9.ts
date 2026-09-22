@@ -76,6 +76,14 @@ Deno.serve(async (req: Request) => {
     if (!suc) return json({ ok: false, error: "Sucursal ajena al comercio" }, 400);
   }
 
+  // IAM-8 V0: solo comercios ACTIVO o PENDIENTE_APROBACION reciben memberships
+  const { data: comEstado } = await supa.from("tbl_comercios").select("estado")
+    .eq("id_comercio", idComercio).maybeSingle();
+  const est = (comEstado as { estado?: string } | null)?.estado;
+  if (est !== "ACTIVO" && est !== "PENDIENTE_APROBACION") {
+    return json({ ok: false, error: "Comercio no habilitado", codigo: "comercio_no_habilitado" }, 403);
+  }
+
   // Identidad RSUELVO = tbl_usuarios por email normalizado (UNICA fuente, sin enumerar Auth)
   const { data: existente } = await supa.from("tbl_usuarios").select("id_usuario, auth_user_id")
     .eq("email", email).maybeSingle();
