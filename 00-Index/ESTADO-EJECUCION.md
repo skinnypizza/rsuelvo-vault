@@ -523,3 +523,5 @@
 - **2026-09-22 (IAM-9 contrato)** — Auditoria (NIT/razon/tel/email/QR disponibles; cero infra). `D-IAM-VERIFICACION.md` PROPUESTA (V0->V1 declarativo, sin KYC, evidencia por checks). Sin codigo/prompts.
 
 - **2026-09-22 (IAM-9 backend)** — Mig 96: evidencia + checks + estado/solicitar/revocar. E2E 25/32 live (checks, AAL1/AAL2, obsoleta, concurrencia, snapshot, restore). Residuo: 1 objeto huerfano qr-pagos (borrado bloqueado por API). Pendiente superadmin: revocar + no-owner/cashier con aal2.
+
+- **2026-09-22 (IAM-9 mig 97 + E2E)** — Bucket staging privado + check dual + solicitar sin service_role + revocar real (lock, ya_v0, motivo obligatorio). E2E: upload staging real ALLOW/403, no-owner/cashier aal2 solo_owner, RLS evidencia DENY, sin evidencia espuria. Limpio + guards_sanos. Pendiente superadmin: revocar live + motivo.
