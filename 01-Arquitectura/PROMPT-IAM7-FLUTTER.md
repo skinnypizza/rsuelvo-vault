@@ -1,37 +1,43 @@
-# IAM-7/FLUTTER — Aceptación de términos + banner de versión (implementación, SOLO tras backend + contrato aprobado)
+# IAM-7/FLUTTER — Aceptación legal (implementación Codex)
 
 ## OBJETIVO
-Implementar `01-Arquitectura/D-IAM-CONSENTIMIENTO.md` en Flutter: aceptar Términos/Privacidad al registrarse o al primer acceso pendiente + banner ante versión nueva + preferencias opcionales sin bloqueo.
+Implementar D-IAM-CONSENTIMIENTO.md rev3 en Flutter contra el backend IAM-7 desplegado (mig 92+93, APROBADO). Sin esto no cierra IAM-7.
 
 ## ALCANCE EXACTO
-Solo consentimiento. Prohibido: KYC, biometría, SecurityEvent, tocar auth/selección/IAM-3, backend/schema.
+Solo consentimiento legal. Prohibido: backend/schema, KYC, SecurityEvent, tocar IAM-3/IAM-5/capabilities, service_role.
 
 ## REPOSITORIO
 `skinnypizza/rsuelvo-flutter`, rama `main`.
 
-## ARCHIVOS/RUTAS CANÓNICAS A REVISAR
-- `01-Arquitectura/D-IAM-CONSENTIMIENTO.md` (flujos obligatorio/opcional, gracia)
-- Contrato real desplegado: `fn_documentos_pendientes`, `fn_aceptar_documento` (NO inventar campos; leer respuestas exactas del vault/EF si aplica)
-- `lib/features/auth/` (dónde enganchar pendientes post-login sin romper IAM-3/5), `lib/features/shell/app_shell.dart` (banner global si aplica)
-- `07-Control-de-Calidad/Informe-IAM0-B-Flutter.md` (patrones repo/gateway/mocks)
+## CONTRATOS REALES (NO inventar campos)
+`fn_documentos_pendientes()` → `{ok:true, documentos:[{id_documento, tipo, version, titulo, url_texto, content_sha256, obligatorio, vigente_desde}]}` ordenado por tipo; error `{ok:false,codigo:'sin_acceso'}`. La lista YA viene filtrada (activo, vigente, no aceptado); el cliente NO re-decide vigencia ni compara semver.
+`fn_aceptar_documento(p_id_documento, p_canal='APP')` → éxito `{ok:true,codigo:'aceptado'|'ya_aceptado'}` (ambos éxito UX); errores `canal_invalido|sin_acceso|documento_no_existe|documento_no_vigente|version_obsoleta`. Ante obsoleta/no-vigente: refrescar pendientes, NO reintentar el id.
+
+## ARCHIVOS A REVISAR
+`lib/features/auth/` (auth_controller, AuthState, MFA gates: integrar DESPUÉS de auth/MFA sin romper selector IAM-3), `lib/core/router.dart` (gates), `lib/features/shell/app_shell.dart` (banner), `07-Control-de-Calidad/Informe-IAM0-B-Flutter.md` (patrones repo/gateway/mocks), `01-Arquitectura/D-IAM-CONSENTIMIENTO.md`.
 
 ## DEPENDENCIAS
-Backend IAM-7 desplegado (tablas + fns + seed v1). Sin eso, solo preparar sin integrar.
+Backend desplegado. Nada más.
 
-## CONTRATOS QUE NO SE PUEDEN ROMPER
-- IAM-1..6 intactos (invite, lifecycle, selector, owner, MFA, capabilities); suite verde completa (actualizar, no reducir); `flutter analyze` 0; jamás `service_role`; comprador exento (sin cuenta, sin cambios WhatsApp).
+## REGLAS CLIENTE OBLIGATORIAS
+- Gate `legalAcceptanceRequired` si hay pendientes con `obligatorio==true`; bloquea operación; excepciones: recovery, MFA setup/challenge, flujo legal, ayuda, logout. No romper selector IAM-3 ni MFA IAM-5.
+- Aceptación explícita por documento (tipo/título/versión + enlace url_texto); sin autoaceptar/background; botón anti-doble-submit; refrescar pendientes tras cada éxito; liberar solo sin obligatorios pendientes; `ya_aceptado` = éxito.
+- Nueva versión en sesión → `legalAcceptanceRequired` + banner; sin gracia v1; sin semver local.
+- Futuro `obligatorio=false`: nunca bloquea; no mezclar con STOP/marketing; no inventar RPC.
+- Seeds BORRADOR: mostrar `Contenido legal pendiente de validación final`.
+- Fail-closed: error técnico en pendientes (autenticado) → `legalStatusUnavailable` (NO asumir cero); bloquea operación; recovery/MFA/legal-retry/ayuda/logout accesibles + Retry + logout. Nunca bloquear recovery.
 
 ## CAMBIOS PERMITIDOS
-Repository por gateway + modelos + pantalla/aceptación + banner versión + preferencias opcionales + tests con mocks + textos ES claros (sin redactar obligación legal definitiva: marcar textos como borrador pendiente de validación boliviana).
+Repository por gateway + modelos exactos + estados + pantalla legal + retry/logout + tests con mocks.
 
 ## CAMBIOS PROHIBIDOS
-KYC/documentos/selfie · bloquear comprador · reauth/MFA nuevo · permission engine · secretos en logs · UPDATE/INSERT directos (solo fns).
+Backend/schema · service_role · KYC · SecurityEvent · cambiar IAM-3/IAM-5/capabilities · autoaceptar · guardar accepted_at/version/hash local como autoridad · modificar contrato.
 
 ## PRUEBAS REQUERIDAS
-Tests con mocks: pendientes visibles, aceptar registra, versión nueva exige re-aceptar, opcional no bloquea, error backend mapeado, `flutter analyze` 0.
+Mocks: pendientes visibles, aceptar OK, `ya_aceptado`, obsoleta/no-vigente refresca, nueva versión en sesión, opcional no bloquea, error→unavailable+retry, no privilegiado/exento según contrato, `flutter analyze` 0, suite completa verde.
 
 ## ENTREGABLES
-Commit en `main` + resumen (archivos, analyze, nº tests, contratos faltantes).
+Commit en `main` + SHA + resumen (archivos, analyze, nº tests, desvíos si los hubo — justificados o reportados, jamás silenciosos).
 
 ## DEFINITION OF DONE
-Flujos del contrato verdes; suite verde; sin cambios fuera del alcance.
+Contrato respetado campo por campo; suite verde; cero cambios fuera del alcance.
