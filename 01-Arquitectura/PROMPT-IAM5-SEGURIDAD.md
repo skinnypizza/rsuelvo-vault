@@ -22,13 +22,13 @@ Contrato aprobado. IAM-1..4 desplegados (no romper; `mfa_requerido` nuevo códig
 - RLS/aislamiento/auditoría; invitaciones/lifecycle/owner intactos + regresión; suites verdes; `selected.first` cero; jamás secretos; login sin MFA sigue funcionando (con privilegios reducidos).
 
 ## CAMBIOS PERMITIDOS
-Guards `aal2` en fns críticas (helper canónico) · enroll/verify TOTP guiado · UX sesiones (ver/cerrar-otras, invalidación tras críticos) · matriz recovery · mensajes `mfa_requerido`.
+Helper `fn_tiene_aal2` + guards en fns listadas · enroll/verify TOTP guiado + `mfaEnrollmentRequired` (sin gracia) · sesiones (cerrar-otras cliente si SDK lo permite + EF ownership-estricto) · matriz recovery A-D (B/C sin automatización) · mensajes `mfa_requerido`.
 
 ## CAMBIOS PROHIBIDOS
-Phone/WebAuthn (apagados en cloud) · passkeys · bypass manual de MFA · booleanos cliente como autorización · permission engine · secretos en logs.
+"Recent-auth" sin mecanismo · phone/WebAuthn · passkeys · bypass/TOTP-removal manual o automatizado · `auth.admin`/service_role en clientes · user_id arbitrario en EF sesiones · booleanos cliente como autorización · permission engine · secretos (incl. QR TOTP) en logs/tablas.
 
 ## PRUEBAS REQUERIDAS
-E2E fósiles: enroll/verify, login sin MFA con críticas bloqueadas, login con MFA OK, sesiones ver/cerrar, recovery privilegiado contenido (aal1), atacante aal1 en crítica, regresión IAM-1..4 + suites.
+E2E fósiles: sin-factor→enrollmentRequired · aal1 salta UI en crítica→`mfa_requerido` · aal2 PASS · normal aal1 conserva no-críticas · service_role intacto · QR/secret ausente en logs/tablas · enroll incompleto/reintento · recovery no elimina factor · recovery-privilegiado aal1 sin crítica · login post-enroll exige challenge · cerrar-otras no toca otro usuario · grep service_role/admin en clientes cero · regresión IAM-1..4 + suites.
 
 ## ENTREGABLES
 Mig + UI + `Reporte-IAM5.md` + vault actualizado.
