@@ -473,3 +473,5 @@
 - **2026-09-22 (IAM-4 mig 84 + E2E)** — Cancel solo origen/superadmin + sweep expiracion + unique determinista + auto-owner count==1 + revalidacion origen admin. E2E: cancel matriz + expirada-no-bloquea + auto-owner 1/2-admins OK, limpio. Pendiente superadmin: owner_protegido en gestionar/editar + concurrencia real.
 
 - **2026-09-22 (IAM-4 UI)** — Mig 85 discovery. Flutter `1e71b9e` (307/307): propiedad/transferir/cerrar owner + tests. Web `f3d4cf7` (68 tests, deploy b8b61973 200): cerrar + transferencias en Perfil. `Reporte-IAM4.md` listo para revision.
+
+- **2026-09-22 (IAM-4 cerrado + IAM-5 contrato)** — IAM-4 APROBADO. UX web `Cerrar comercio` + deploy e77d38d8. IAM-5: auditoria Auth real (TOTP ON, aal verificable, MFA cero en clientes) + `D-IAM-SEGURIDAD.md` PROPUESTA + prompt. Sin codigo.
