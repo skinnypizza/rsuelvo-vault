@@ -445,3 +445,5 @@
 - **2026-09-21 (IAM-1 Flutter acceptance)** — Lado invitado por orquestador: `MisInvitacionesScreen` (/mis-invitaciones, todos los roles, entrada en menu perfil) + `fn_mis/aceptar` por gateway + `recargarPerfil()` sin tocar selected.first. Analyze 0, 285/285, commit `1c32e39` pusheado.
 
 - **2026-09-22 (IAM-1 Web)** — Orquestador directo: invite sin secreto (InviteResult ya_existente/pendiente/mensaje), cero password_temporal en web, roles 2/3/4 = PATH B (N-2 alineado), build OK, 68 tests, commit `8bef7ac` + deploy Pages 200.
+
+- **2026-09-22 (QA IAM-1)** — Codex Luna: Reporte-IAM1.md (BLOQUEADO por su sandbox sin red) + orquestador ejecuto casos faltantes en vivo (rol/sucursal/atacante/sin-sesion PASS). Solo pendientes externos: usuario-nuevo vivo + superadmin vivo.
