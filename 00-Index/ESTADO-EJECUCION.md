@@ -515,3 +515,5 @@
 - **2026-09-22 (IAM-8 backend)** — Mig 94: estado + helper + requests/intentos + auto-alta atomica + V0 guards (solicitar/transfer/EF/QR). EF registrar v1 + invite v9 redeploys. E2E 15/17 live (2 code: no-verificado DENY, transfer-V0 destino). Limpio + guards_sanos + IAM-1 regression OK.
 
 - **2026-09-22 (IAM-8 parche)** — EF v2 (metadata + upsert perfil, sin enumerar) + mig 95 (firma sin p_email, reclamo huerfana, sin overload). Hallazgo: auth_user_id NOT NULL imposibilita fila huerfana (reparo real en auto-alta). E2E: perfil con nombre, retry sin dup, re-registro neutral, transfer-V0 live DENY. Limpio + guards_sanos.
+
+- **2026-09-22 (IAM-8 E2E final)** — 37 puntos (live + codigo honesto): registro, auto-alta, V0 DENYs, V1, regresiones. Restore total. `Reporte-IAM8.md`.
