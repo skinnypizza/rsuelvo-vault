@@ -469,3 +469,5 @@
 - **2026-09-22 (IAM-4 contrato)** — Auditoria propia (sin owner en BD, vias criticas superadmin-only, sin reauth/MFA/transferencia). `D-IAM-OWNER.md` PROPUESTA (owner explicito opcion A + matriz) + `PROMPT-IAM4-OWNER.md`. Sin codigo.
 
 - **2026-09-22 (IAM-4 backend)** — Mig 83: propietario + backfill (FER/FEE/ABC auto, resto NULL) + transferencias lifecycle + fn_es_owner + anti-degradar + cerrar + auto-owner trigger. E2E: transferencia ida/vuelta + doble pendiente + cierre owner/no-owner/repetido OK, limpio. Pendiente superadmin: SUSPENDER/REVOCAR/CAMBIAR/editar owner_protegido en vivo.
+
+- **2026-09-22 (IAM-4 mig 84 + E2E)** — Cancel solo origen/superadmin + sweep expiracion + unique determinista + auto-owner count==1 + revalidacion origen admin. E2E: cancel matriz + expirada-no-bloquea + auto-owner 1/2-admins OK, limpio. Pendiente superadmin: owner_protegido en gestionar/editar + concurrencia real.
