@@ -531,3 +531,5 @@
 - **2026-09-22 (IAM-9 mig 98/99 + frontera QR)** — Finalize solo service_role; EF qr-entrega (estado-gated, signed URL, rate-limit). E2E: V0 DENY + V1 signed + demote DENY sin mover archivos. Pendiente superadmin: revocar live.
 
 - **2026-09-22 (IAM-9 mig 100)** — Sin saga: solicitar transiciona directo (staging canonico), finalizar DROP, habilitar-v1 undeployed. E2E 1-16 (cero objetos publicos, entrega privada, retry, restore). Deuda IAM9-D1/D2. Pendiente superadmin: revocar live.
+
+- **2026-09-22 (IAM-9 CERRADO)** — Implementación COMPLETA/APROBADA/CERRADA. Backend (mig 92-100), Flutter (b3ebaa9), Web (2c4eb51), E2E 37 puntos (25 LIVE/12 CÓDIGO/5 PENDIENTE). Deudas IAM9-D1/D2 + SuperAdmin live pendientes. Vault: f8d355d (contrato) / b3ebaa9 (Flutter) / 2c4eb51 (Web) / e78a3b4 (prompts).
