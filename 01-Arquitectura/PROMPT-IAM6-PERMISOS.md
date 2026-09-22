@@ -23,13 +23,13 @@ Contrato aprobado. IAM-1..5 desplegados (no romper; `mfa_requerido` intacto).
 - RLS/aislamiento/auditoría; backend autoridad (UI nunca autoriza); `selected.first` cero; suites verdes; jamás secretos; ventas/n8n sin cambios de lógica.
 
 ## CAMBIOS PERMITIDOS
-Matriz reescrita · `can()` Flutter central + migración hunters · capabilities web extendidas + gates internos · RLS `compras_select` o excepción documentada · SUPPORT recortado (o documentado) · `*.export` + AuditLog descargas.
+Matriz reescrita (normativa por capability: scope/roles/contexto/autoridad/gates/MFA) · migración taxonomía completa `users/commerce→members/business` + `credits.*` (sin aliases) · `can(subject,cap,context)` Flutter + `permissions.ts` extendido · RLS N-6 DB+Storage o excepción firmada · SUPPORT recortado exacto §5 · helpers separados con dependency audit · `*.export` server-side o best-effort documentado + AuditLog.
 
 ## CAMBIOS PROHIBIDOS
-Tablas de permisos dinámicos/ABAC sin caso producto · MFA · KYC · SecurityEvent · tocar lógica ventas/n8n · secretos en logs.
+Aliases permanentes/dual-catalog · `TENANT_ADMIN==owner` en UI · highest-role para tenant · cambiar semántica global de helpers sin audit · tablas dinámicas/ABAC sin caso · MFA · KYC · SecurityEvent · lógica ventas/n8n · secretos en logs.
 
 ## PRUEBAS REQUERIDAS
-Matriz por rol con evidencia backend (no solo UI) · N-5/N-6 · SUPPORT · export auditado · grep hunters · regresión IAM-1..5 + suites.
+E2E §12 del contrato (owner/no-owner, SUPPORT read+Deny DB+Storage, SYSADMIN depósito, sin escalada, multi-membership, web global, export DENY/auditado, guards_sanos, ventas/n8n) con evidencia backend · grep hunters fuera de mapper · regresión IAM-1..5 + suites.
 
 ## ENTREGABLES
 Mig + UI + `Reporte-IAM6.md` + vault actualizado.
