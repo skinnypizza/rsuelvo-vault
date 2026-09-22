@@ -497,3 +497,5 @@
 - **2026-09-22 (IAM-6 clientes)** — Flutter `f442a7d` (322/322): can()+mapper, decisiones a codigos. Web `bd373bc` (74 tests, dea41b3d): taxonomia completa, SUPPORT readonly, resolve oculto, N-5. `Reporte-IAM6.md`.
 
 - **2026-09-22 (IAM-6 patch final)** — members.read minimo privilegio + nota limpia + N-5 dialogs. Flutter f96a150, web e9f4bd4 (ad7a8522).
+
+- **2026-09-22 (IAM-6 CERRADO)** — Implementacion APROBADA/CERRADA. Deuda externa: live sysadmin/support/superadmin + concurrencia + futuro deposit.read SYSADMIN.
