@@ -465,3 +465,5 @@
 - **2026-09-22 (IAM-3 scope)** — `selectedMembershipIdProvider` central + filtro sucursal reactivo (purga al cambiar tenant) + `tenant_scope_test` (A->B, B->A, estado safe; verificado no-vacuo). Auditoria: unicos mutables = 2 Notifiers (1 fix, 1 safe). Analyze 0, 300/300, commit scope pusheado.
 
 - **2026-09-22 (IAM-3 CERRADO)** — Implementacion APROBADA (a18c50c + scope b0064fd). Deuda externa separada: certificacion privilegiada IAM-2 + E2E IAM-1 (usuario-nuevo + superadmin).
+
+- **2026-09-22 (IAM-4 contrato)** — Auditoria propia (sin owner en BD, vias criticas superadmin-only, sin reauth/MFA/transferencia). `D-IAM-OWNER.md` PROPUESTA (owner explicito opcion A + matriz) + `PROMPT-IAM4-OWNER.md`. Sin codigo.
