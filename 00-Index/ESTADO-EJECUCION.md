@@ -447,3 +447,5 @@
 - **2026-09-22 (IAM-1 Web)** — Orquestador directo: invite sin secreto (InviteResult ya_existente/pendiente/mensaje), cero password_temporal en web, roles 2/3/4 = PATH B (N-2 alineado), build OK, 68 tests, commit `8bef7ac` + deploy Pages 200.
 
 - **2026-09-22 (QA IAM-1)** — Codex Luna: Reporte-IAM1.md (BLOQUEADO por su sandbox sin red) + orquestador ejecuto casos faltantes en vivo (rol/sucursal/atacante/sin-sesion PASS). Solo pendientes externos: usuario-nuevo vivo + superadmin vivo.
+
+- **2026-09-22 (Reporte IAM-1 corregido)** — Veredicto ChatGPT aplicado: APROBADA CON CERTIFICACION PENDIENTE (PASS/DIFERIDO/PENDIENTE EXTERNO). Solo 2 bloqueantes reales: usuario-nuevo vivo + superadmin vivo (sesion interactiva o cuenta QA temporal; jamas pedir contrasena).
