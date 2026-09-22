@@ -21,7 +21,7 @@ Contrato aprobado. Sin eso, NO codificar.
 - Reglas de Oro 2, 6, 7, 9; `fn_es_service_role()`/`fn_tiene_aal2()` intactos; IAM-1..6 sin regresión; `fn_verificar_guards_sanos()` verde.
 
 ## CAMBIOS PERMITIDOS
-Mig aditiva (`tbl_documentos_legales`, `tbl_aceptaciones`, UNIQUE usuario+doc+versión, RLS deny-by-default + GRANTs, `fn_aceptar_documento`, `fn_documentos_pendientes`, seed v1 TERMINOS/PRIVACIDAD) + triggers de `updated_at` si aplica.
+Mig aditiva rev2: `tbl_documentos_legales` (UNIQUE tipo+version, content_sha256, una activa por tipo) + `tbl_aceptaciones` (UNIQUE usuario+documento, sin version dup, sin IP) + RLS + `fn_documentos_pendientes`/`fn_aceptar_documento` según §7 + seed v1 BORRADOR (TERMINOS/PRIVACIDAD/TRATAMIENTO_DATOS).
 
 ## CAMBIOS PROHIBIDOS
 Bloquear flujos existentes por defecto (la obligatoriedad la aplica la UI tras revisión) · KYC/biometría · SecurityEvent · tocar contact_preferences · secretos en logs.

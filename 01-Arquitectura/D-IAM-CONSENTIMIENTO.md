@@ -1,18 +1,37 @@
-# D-IAM-CONSENTIMIENTO — Contrato IAM-7 (propuesta, SIN implementar)
+# D-IAM-CONSENTIMIENTO — Contrato IAM-7 (rev2, SIN implementar)
 
-**Fecha:** 2026-09-22 · **Estado:** PROPUESTA para revisión ChatGPT.
+**Fecha:** 2026-09-22 · **Estado:** REV2 con 12 ajustes ChatGPT (requiere aprobación; Codex Backend solo después).
 
-## Auditoría real (2026-09-22)
-- BD: 0 tablas de consentimientos/términos. Solo `tbl_contact_preferences` (opt-out STOP por canal, distinto dominio).
-- Flutter/Web/landing: 0 pantallas, 0 textos, 0 versiones. Alta de comercio, invite y registro operan sin aceptación registrada.
+## 1. Tipos explícitos (no un "consentimiento" único)
+- `TERMINOS` → aceptación contractual obligatoria.
+- `PRIVACIDAD` → constancia del aviso/política.
+- `TRATAMIENTO_DATOS` → autorización/consentimiento informado cuando corresponda.
+- Marketing/novedades → preferencia opcional revocable, jamás bloqueante; sin fusionar con legales ni con STOP (`tbl_contact_preferences` intacto).
 
-## Decisiones
-1. **Versionado explícito:** `tbl_documentos_legales` (id, tipo: TERMINOS/PRIVACIDAD, versión semver-texto, título, url_texto, vigente_desde, activo) + `tbl_aceptaciones` (id_usuario, id_documento, versión, accepted_at, canal: APP/WEB, ip?) con UNIQUE(id_usuario, id_documento, versión). RLS deny-by-default + fns (`fn_aceptar_documento`, `fn_documentos_pendientes`).
-2. **Obligatorio vs opcional:** obligatorios = Términos + Privacidad (bloquean operar hasta aceptar); opcionales = marketing/novedades (nunca bloquean; viven junto a `tbl_contact_preferences` sin fusionarse).
-3. **Cambio de versión:** nueva versión activa → usuarios con versión vieja ven banner y deben aceptar; gracia operativa definida (ej. 30 días con aviso; Dorso: o bloqueo inmediato para cambios materiales — elegir en revisión).
-4. **Comprador sin cuenta:** no acepta términos (solo WhatsApp); su STOP sigue en `tbl_contact_preferences`.
-5. **Evidencia:** timestamp + versión + usuario + canal; auditoría; jamás contenido legal dentro de tablas de aceptación (solo referencia versión).
-6. **Fuera:** KYC/biometría/documentos (IAM-9); SecurityEvent (IAM-10); ventas/n8n salvo que un flujo exija aceptación previa (no es el caso hoy).
+## 2. Documento = versión inmutable
+`tbl_documentos_legales(id_documento PK, tipo, version text, titulo, url_texto, content_sha256, vigente_desde, activo, created_at)` · `UNIQUE(tipo, version)` · máximo una activa/vigente por tipo · publicado no se edita (nueva redacción = nueva versión).
 
-## E2E
-Documentos seed v1 · pendientes al registrar/invitar · aceptar registra evidencia · versión nueva → banner + re-aceptación · opcional no bloquea · comprador exento · regresión IAM-1..6 + suites.
+## 3-4. Aceptación + evidencia
+`tbl_aceptaciones(id_aceptacion, id_usuario, id_documento, accepted_at, canal)` · `UNIQUE(id_usuario, id_documento)` (sin versión duplicada; versión y hash vía documento). Evidencia: usuario X + documento Y + versión Z + hash H + timestamp T + canal C. Sin contenido completo en aceptación. Sin IP (sin requerimiento, sin fuente fiable, sin retención definida; jamás IP de cliente).
+
+## 5. Política de versión (congelada, sin gracia v1)
+Nuevo con obligatorios pendientes → no opera. Existente con nueva versión → `legalAcceptanceRequired` hasta aceptar vigente. Siempre accesibles: recovery, MFA setup/challenge, pantalla legal, ayuda, logout. Opcionales nunca bloquean.
+
+## 6. Autoridad y límites honestos
+`fn_documentos_pendientes()` fuente server-side (usuario solo de `auth.uid()`; sin `p_id_usuario`). v1 NO añade guards a RPCs de ventas: control = session/router gate en clientes respaldado por la fn. Documentado como limitación (no frontera absoluta de API).
+
+## 7. Contratos RPC
+- `fn_documentos_pendientes()` → lista determinista: id_documento, tipo, version, titulo, url_texto, content_sha256, obligatorio, vigente_desde. Solo vigentes+activos+requeridos+no-aceptados del propio usuario.
+- `fn_aceptar_documento(p_id_documento, p_canal)`: deriva usuario JWT; valida activo/vigente/no-obsoleto; idempotente (retry/doble tap, una fila); `{ok,codigo}` sin secretos. Cliente no controla user/timestamp/hash/versión.
+
+## 8. RLS
+Documentos: lectura de publicados; escritura backend/migraciones. Aceptaciones: sin INSERT/UPDATE/DELETE directo; solo RPC; lectura propia solo si hay caso UX (si no, RPC dedicada). Sin service_role en clientes.
+
+## 9. Seeds
+v1 = `BORRADOR — PENDIENTE VALIDACIÓN LEGAL BOLIVIA` explícito. Producción exige validación profesional (Términos, Privacidad, tratamiento).
+
+## 10. E2E Backend
+Nuevo→pendientes · aceptar parcial→resto pendiente · todos→cero · doble→idempotente 1 fila · otro usuario no acepta por el primero · inactivo DENY · vieja no satisface vigente · nueva→pendiente · opcional no bloquea · accepted_at/hash/versión server-side · INSERT directo DENY · buyer exento · recovery independiente · regresión IAM-1..6 + `fn_verificar_guards_sanos()` verde.
+
+## Fuera
+KYC/biometría (IAM-9); SecurityEvent (IAM-10); ventas/n8n. Agentes hijos NO modifican el contrato.
