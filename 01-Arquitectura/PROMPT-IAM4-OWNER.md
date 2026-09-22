@@ -22,13 +22,13 @@ Contrato aprobado. IAM-1/2/3 desplegados (no romper).
 - RLS/aislamiento/auditoría; invitaciones y lifecycle intactos + regresión; `selected.first` cero; suites verdes; jamás secretos; superadmin conserva suspensión/bloqueo.
 
 ## CAMBIOS PERMITIDOS
-Mig aditiva (`propietario_id` + backfill + transferencia explícita) · guardas owner/no-último-owner en fns · reauth (re-login) para críticas tenant · confirmaciones + notificaciones + AuditLog · gates UI por capability/rol.
+Mig aditiva (`propietario_id` nullable + backfill regla 1-admin + preflight ambiguos + `tbl_transferencias_propiedad` + índice única PENDIENTE/comercio) · `fn_es_owner` + guardas owner/no-último-owner/anti-degradar-owner en fns · transferencia con lifecycle (iniciar/aceptar/rechazar/cancelar, FOR UPDATE, expiración) · CERRAR owner vs SUSPENDER/BLOQUEAR superadmin · confirmaciones + notificaciones + AuditLog · gates UI por capability/rol.
 
 ## CAMBIOS PROHIBIDOS
-MFA/SecurityEvent completos · permission engine dinámico · KYC · selector tenant en web · tocar N-1/N-3/N-5/N-6 fuera de coordinación · secretos en logs.
+Reauth fuerte/MFA/SecurityEvent · permission engine dinámico · KYC · backfill por antigüedad · transferencia por UPDATE directo · transferencia sin expiración/límite · permitir REVOKED→propietario · CERRAR por no-owner · SUSPENDER/BLOQUEAR por owner · absorber N-6/IAM-6 · secretos en logs.
 
 ## PRUEBAS REQUERIDAS
-E2E fósiles: quitar admin, rol privilegiado, desactivar owner (bloqueado), transferencia doble-confirmada, email comercio, cierre con notificación, export auditado, atacante/no-owner rechazados, último-owner protegido, regresión IAM-1/2/3 + suites.
+E2E fósiles: backfill 1-admin→owner + 2-admins→NULL + preflight ambiguos · owner SUSPENDED no ejecuta · degradar/revocar owner bloqueado · transferencia a no-admin bloqueada · doble PENDIENTE imposible · concurrencia/idempotencia accept · vencida no cambia · accept atómico + ex-owner sin privilegios · CERRAR owner OK + SUSPENDER por owner rechazado · quitar admin + rol privilegiado + email comercio + export identificado · atacante/no-owner rechazados · último-owner protegido · regresión IAM-1/2/3 + suites.
 
 ## ENTREGABLES
 Mig + fns + UI + `Reporte-IAM4.md` + vault actualizado.

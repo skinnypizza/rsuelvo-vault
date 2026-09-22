@@ -1,6 +1,6 @@
-# D-IAM-OWNER — Decisión ownership + operaciones críticas (propuesta, SIN implementar)
+# D-IAM-OWNER — Decisión ownership + operaciones críticas (rev2, SIN implementar)
 
-**Fecha:** 2026-09-22 · **Estado:** PROPUESTA para revisión ChatGPT.
+**Fecha:** 2026-09-22 · **Estado:** REV2 con ajustes ChatGPT (requiere aprobación antes de código).
 
 ## Auditoría real (2026-09-22)
 
@@ -9,13 +9,16 @@
 - **Sin reauth/step-up/MFA** en ningún flujo (solo sesión Supabase); sin `SecurityEvent` (solo AuditLog negocio); exportación masiva = CSV web (`ReportsPage`) + reportes Flutter, con N-6 pendiente (IAM-6).
 - **Sin transferencia de propiedad** (no hay qué transferir formalmente).
 
-## Decisión propuesta: owner explícito (Opción A recomendada)
+## Decisión rev2: owner explícito + invariantes (Opción A)
 
-- Mig aditiva: `tbl_comercios.propietario_id → tbl_usuarios` (seteado en alta: creador/dueño invitado aceptado; backfill: admin activo más antiguo por comercio).
-- Solo owner (o superadmin): transferir propiedad (doble confirmación + auditoría + notificación), cerrar comercio, cambiar email/teléfono principal.
-- Solo superadmin (ya es así): suspender/bloquear, crear admins.
-- Admin no-owner: operar (invitar 5/6, gestión diaria) pero NO: quitar a otro admin, cambiar rol privilegiado, desactivar al owner.
-- Opción B descartada en propuesta (antigüedad implícita = ambigua ante empates/reingresos).
+- Mig aditiva: `tbl_comercios.propietario_id → tbl_usuarios` (nullable).
+- **Backfill sin inferencia:** exactamente 1 admin ACTIVE → owner automático; 0 o >1 → NULL + excepción (preflight/reporte de ambiguos; adjudicación explícita SuperAdmin). Jamás antigüedad.
+- **Invariante owner+membership** (helper canónico `fn_es_owner(p_id_comercio)` desde `auth.uid()`, jamás id de cliente): owner del mismo comercio + membership TENANT_ADMIN + no REVOKED; operación owner exige ACTIVE; prohibido revocar/suspender/degradar la membership del owner sin transferencia/resolución previa.
+- **Transferencia con lifecycle propio** `tbl_transferencias_propiedad` (id, comercio, origen, destino, estado PENDIENTE/ACEPTADA/RECHAZADA/CANCELADA/VENCIDA, expira_at, accepted_at, initiated_by): owner ACTIVE inicia hacia admin válido mismo comercio → PENDIENTE (única por comercio) → destinatario acepta/rechaza con `FOR UPDATE` + revalidación total → cambio `propietario_id` atómico + ACEPTADA + AuditLog. Sin tokens propios. CANCELAR por origen/SuperAdmin.
+- **CIERRE vs SUSPENSIÓN:** CERRAR voluntario = owner ACTIVE + confirmación + auditoría (no borra datos/memberships; define estado resultante y bloqueos); SUSPENDER/BLOQUEAR = SuperAdmin (puede forzar cierre excepcional).
+- **Admins:** crear/promover admin sigue SuperAdmin; owner puede pedir/ejecutar baja de otro admin solo si backend lo permite y sin tocar su propia membership; no-owner jamás degrada al owner; SuperAdmin conserva autoridad. Sin permission engine.
+- **Reauth:** IAM-4 = sesión + confirmación explícita + auditoría + ownership backend. Reauth fuerte/MFA = IAM-5 (documentar mecanismo Supabase antes de usarlo).
+- **Export:** IAM-4 solo la identifica como sensible (+AuditLog opcional sin cambiar permisos). Policy completa = IAM-6.
 
 ## Matriz de operaciones críticas (resumen; detalle en prompts)
 
