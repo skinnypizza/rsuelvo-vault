@@ -20,8 +20,8 @@ PERMITIDO: `business.read` + diagnóstico enumerado en matriz. DENY: `members.in
 ## 6. Helpers compartidos (dependency audit obligatorio)
 Inventariar dependientes de `fn_es_admin_comercio`, `fn_tiene_acceso_comercio/sucursal` y demás ANTES de tocarlos (lección P0). Si hace falta: separar `staff_read` vs `tenant_admin` explícitos; migrar solo policies/RPC necesarias + regresión ventas/n8n. No cambiar semántica global a ciegas.
 
-## 7. N-6 DB + Storage
-Misma regla en `tbl_compras_creditos` y `storage.objects/depositos-creditos` (`depositos_staff_select` verificada: SYSADMIN+SUPPORT leen). Decidir `credits.deposit.read` (SYSADMIN?) con SUPPORT DENY. Sin excepciones solo-frontend.
+## 7. N-6 DB + Storage (DECISIÓN CONGELADA: mínimo privilegio)
+`credits.deposit.read`: SUPERADMIN ALLOW · TENANT_ADMIN+owner+mismo comercio ALLOW · SYSADMIN DENY · SUPPORT DENY · CASHIER/LOGISTICS DENY. Sin lectura global "por si acaso" (SYSADMIN incluido); caso futuro = cambio de contrato. Aplicar idéntico en `tbl_compras_creditos` y `storage.objects/depositos-creditos` (`depositos_staff_select` verificada).
 
 ## 8. Export: boundary vs UX
 Export sensible controlado = RPC/EF canónica (JWT→capability→scope→AAL2 si aplica→AuditLog quién/qué/scope/cuándo/cantidad, nunca contenido). CSV client-side sobre datos legibles = `UX capability / best-effort`, NO frontera (documentarlo así; DoD honesto).

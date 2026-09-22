@@ -487,3 +487,5 @@
 - **2026-09-22 (IAM-5 CERRADO)** — Implementacion APROBADA (fail-closed incluido, aal2 live). Deuda externa: superadmin MFA real + challenge fisico + recovery-TOTP sin bypass.
 
 - **2026-09-22 (IAM-6 contrato)** — Auditoria (DB sin matriz unica, Flutter 20 hunters + reportes centralizado, web N-5/N-6, SUPPORT con acceso admin, exports sin capability). `D-IAM-PERMISOS.md` PROPUESTA + prompt. Sin codigo.
+
+- **2026-09-22 (IAM-6 DB)** — Mig 89: N-6 tabla+Storage (owner/superadmin), SUPPORT fuera de resolver-compras y alta, helpers intactos. E2E: owner lee, cajero vacio, guards_sanos verde. SYSADMIN/SUPPORT live pendientes (sin logins). Impacto: sysadmin pierde revision de depositos hasta caso explicito.
