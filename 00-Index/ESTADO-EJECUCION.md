@@ -521,3 +521,5 @@
 - **2026-09-22 (IAM-8 CERRADO)** — Implementacion APROBADA/CERRADA. Deuda IAM8-D1 (Auth fosil e2eF) + retencion intentos.
 
 - **2026-09-22 (IAM-9 contrato)** — Auditoria (NIT/razon/tel/email/QR disponibles; cero infra). `D-IAM-VERIFICACION.md` PROPUESTA (V0->V1 declarativo, sin KYC, evidencia por checks). Sin codigo/prompts.
+
+- **2026-09-22 (IAM-9 backend)** — Mig 96: evidencia + checks + estado/solicitar/revocar. E2E 25/32 live (checks, AAL1/AAL2, obsoleta, concurrencia, snapshot, restore). Residuo: 1 objeto huerfano qr-pagos (borrado bloqueado por API). Pendiente superadmin: revocar + no-owner/cashier con aal2.
