@@ -455,3 +455,5 @@
 - **2026-09-22 (IAM-2A completo)** — Orquestador directo: `actualizarVinculoPorFn` (DESACTIVAR/CREAR/remap) + dialog migrado + `actualizarVinculo` deprecado (unico UPDATE restante, sin llamadores). Analyze 0, 290/290, commit `1160232` pusheado. Puerta IAM-2B.
 
 - **2026-09-22 (IAM-2B backend)** — Mig 81 aplicada: indice ACTIVE+SUSPENDED, trigger canonico + backfill fosil, gestionar (N-4/comercio, SUSPENDER/REVOCAR/CAMBIAR), accept N-4/comercio, editar->SUSPENDED, trigger N-4 tercer path. E2E: N-4 mismo/otro comercio + IAM-D-007 + trigger + indice OK, limpio. Flutter `3f265ed` usa CAMBIAR (289/289). Pendiente sesion superadmin: SUSPENDER/REVOCAR/CAMBIAR/editar-cascada en vivo.
+
+- **2026-09-22 (IAM-2B mig 82 + E2E)** — Fixes: CAMBIAR in-place mismo rol, tupla-exacta-primero en accept/CREAR, audit destino determinista, N-4 tercer path (trigger). E2E: B reactiva misma fila + C IAM-D-007 + D cajero_multiplo + trigger + indice OK, limpio. Pendiente superadmin: CAMBIAR/SUSPENDER/REVOCAR/editar en vivo (A/E/F).
