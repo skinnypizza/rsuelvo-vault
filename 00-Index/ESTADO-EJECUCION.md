@@ -509,3 +509,5 @@
 - **2026-09-22 (IAM-7 E2E)** — 12 puntos (6 live + 6 codigo): pendientes/aceptar/retry/obsoleta/v2-gate verdes, restore limpio. `Reporte-IAM7.md`.
 
 - **2026-09-22 (IAM-7 CERRADO)** — Implementacion APROBADA/CERRADA. Pre-produccion: validacion juridica de 3 BORRADORES.
+
+- **2026-09-22 (IAM-8 contrato)** — Auditoria: alta 100% staff-mediada (D4 no implementado como tal; rige D17). `D-IAM-ONBOARDING.md` PROPUESTA (cuenta/comercio/habilitación separados, auto-alta con límites, owner=creador). Sin codigo.
