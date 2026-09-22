@@ -477,3 +477,5 @@
 - **2026-09-22 (IAM-4 cerrado + IAM-5 contrato)** — IAM-4 APROBADO. UX web `Cerrar comercio` + deploy e77d38d8. IAM-5: auditoria Auth real (TOTP ON, aal verificable, MFA cero en clientes) + `D-IAM-SEGURIDAD.md` PROPUESTA + prompt. Sin codigo.
 
 - **2026-09-22 (INCIDENTE P0 + IAM-5 backend)** — `fn_es_service_role()` devolvia TRUE a todo autenticado (mig 76 `current_user` + owner postgres): RLS con ese helper abierta (audit global legible). Mig 87: JWT manda con JWT, fallback solo sin JWT; overload gestionar eliminado. Verificado: helper false, audit scoped FER, gates restaurados, backend-identity true, FER revertido a ACTIVO. Mig 86: `fn_tiene_aal2` + guards (iniciar/responder/cerrar/gestionar/editar-off); aal1->`mfa_requerido` en vivo. aal2-PASS pendiente: challenge MFA rechaza UUID valido (GoTrue v2.197; investigar via SDK en UI) + factores fosiles limpiados.
+
+- **2026-09-22 (P0-IR cerrado)** — Inventario completo (1 policy + gates + 6 helpers con helper roto), retrospectiva (solo fosiles propios; lectura no cuantificable), n8n sin impacto, FER revertido sin efectos. Mig 88 regression permanente verde. `Reporte-Incidente-P0-ServiceRole.md`. GO IAM-5 UI.
