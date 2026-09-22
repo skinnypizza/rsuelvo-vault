@@ -467,3 +467,5 @@
 - **2026-09-22 (IAM-3 CERRADO)** — Implementacion APROBADA (a18c50c + scope b0064fd). Deuda externa separada: certificacion privilegiada IAM-2 + E2E IAM-1 (usuario-nuevo + superadmin).
 
 - **2026-09-22 (IAM-4 contrato)** — Auditoria propia (sin owner en BD, vias criticas superadmin-only, sin reauth/MFA/transferencia). `D-IAM-OWNER.md` PROPUESTA (owner explicito opcion A + matriz) + `PROMPT-IAM4-OWNER.md`. Sin codigo.
+
+- **2026-09-22 (IAM-4 backend)** — Mig 83: propietario + backfill (FER/FEE/ABC auto, resto NULL) + transferencias lifecycle + fn_es_owner + anti-degradar + cerrar + auto-owner trigger. E2E: transferencia ida/vuelta + doble pendiente + cierre owner/no-owner/repetido OK, limpio. Pendiente superadmin: SUSPENDER/REVOCAR/CAMBIAR/editar owner_protegido en vivo.
