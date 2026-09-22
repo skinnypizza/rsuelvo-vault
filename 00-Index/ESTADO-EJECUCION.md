@@ -451,3 +451,5 @@
 - **2026-09-22 (Reporte IAM-1 corregido)** — Veredicto ChatGPT aplicado: APROBADA CON CERTIFICACION PENDIENTE (PASS/DIFERIDO/PENDIENTE EXTERNO). Solo 2 bloqueantes reales: usuario-nuevo vivo + superadmin vivo (sesion interactiva o cuenta QA temporal; jamas pedir contrasena).
 
 - **2026-09-22 (IAM-2 contrato)** — Auditoria propia (10/10 ACTIVE, divergencia DESACTIVAR confirmada, N-4 ubicado, Flutter UPDATE directo detectado). `D-IAM-MEMBERSHIP.md` PROPUESTA + `PROMPT-IAM2-BACKEND.md` listos para revision ChatGPT. Sin codigo aun.
+
+- **2026-09-22 (IAM-2A completo)** — Orquestador directo: `actualizarVinculoPorFn` (DESACTIVAR/CREAR/remap) + dialog migrado + `actualizarVinculo` deprecado (unico UPDATE restante, sin llamadores). Analyze 0, 290/290, commit `1160232` pusheado. Puerta IAM-2B.
