@@ -18,13 +18,13 @@
 
 | Caso | Resultado | Evidencia |
 |---|---|---|
-| IAM-D-001 Invitación nueva (usuario existente) | PASS | Evidencia previa backend + addendum: flujo existente completo sin secretos. |
+| IAM-D-001 Invitación nueva | PENDIENTE EXTERNO IAM-1 | Escenario original (email inexistente + EF + sucursal): requiere `inviteUserByEmail` real con cuota de correo. Mismo bloqueante que IAM-D-008. Sin reinterpretación. |
 | IAM-D-002 Invitación idempotente | PASS | Evidencia previa backend 2026-09-21: reintento sin duplicado, fósiles revertidos. |
 | IAM-D-003 Invitación expirada | PASS | Evidencia previa: expiración inline rechazada sin depender del cron. |
 | IAM-D-004 Invitación usada | PASS | Evidencia previa: aceptación y re-aceptación; segundo uso rechazado. |
 | IAM-D-005 Invitación revocada | PASS | Evidencia previa: revoke + re-revoke, sin mutación colateral. |
 | IAM-D-006 Email existente/misma membresía | PASS | Evidencia previa: invite existente e idempotencia, sin duplicar identidad/vínculo. |
-| IAM-D-007 Email existente/otra membresía | PASS | Cubierto por IAM-D-006 + guarda `invitacion_ajena` verificada en vivo (addendum). |
+| IAM-D-007 Email existente con otra membresía | DIFERIDO A IAM-2 (cobertura multi-membership) | `invitacion_ajena` prueba aislamiento, no alta de segunda membresía. Sin evidencia viva de existente+otro comercio+aceptada. No bloqueante IAM-1. |
 | IAM-D-008 Usuario nuevo (flujo completo vivo) | PENDIENTE EXTERNO IAM-1 | Requiere cuota de correo Supabase (`inviteUserByEmail` real). Único bloqueante real #1. |
 | IAM-D-009 Rol no permitido | PASS | Addendum en vivo: `Rol fuera de alcance` + PATH SUPERADMIN roles pendiente en bloqueante #2. |
 | IAM-D-010 Sucursal de otro tenant | PASS | Evidencia previa backend + addendum en vivo: `Sucursal ajena al comercio`. |
@@ -51,7 +51,7 @@
 
 **IMPLEMENTACIÓN COMPLETA / APROBADA CON CERTIFICACIÓN E2E PENDIENTE DE 2 CASOS EXTERNOS.**
 
-Resumen: PASS IAM-1 = IAM-D-001/002/003/004/005/006/007/009/010/011/012 + REG-D-001–005 · PENDIENTE EXTERNO = IAM-D-008 (usuario nuevo vivo) + PATH SUPERADMIN vivo · DIFERIDO = IAM-D-013–018 (IAM-2/3), IAM-D-019 (IAM-5), IAM-D-020/021 + REG-D-006 (cobertura futura/transversal).
+Resumen: PASS IAM-1 = IAM-D-002/003/004/005/006/009/010/011/012 + REG-D-001–005 · PENDIENTE EXTERNO = IAM-D-001/008 (usuario nuevo vivo) + PATH SUPERADMIN vivo · DIFERIDO = IAM-D-007 + IAM-D-013–018 (IAM-2/3), IAM-D-019 (IAM-5), IAM-D-020/021 + REG-D-006 (cobertura futura/transversal).
 
 Tras esos 2 E2E, IAM-1 pasa a CERTIFICADO/CERRADO sin otra revisión arquitectónica.
 
