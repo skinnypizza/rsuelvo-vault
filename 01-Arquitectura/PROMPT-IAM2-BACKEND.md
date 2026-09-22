@@ -1,4 +1,7 @@
-# IAM-2/BACKEND — Lifecycle de membresías (implementación, SOLO tras aprobación del contrato)
+# IAM-2B/BACKEND — Lifecycle de membresías (implementación, SOLO tras IAM-2A)
+
+## DEPENDENCIA OBLIGATORIA
+**IAM-2A Flutter verificado (SHA registrado) antes de aplicar mig 81.** Sin eso, NO-GO. Compatibilidad transitoria solo como fallback para legacy realmente desplegado.
 
 ## OBJETIVO
 Implementar `01-Arquitectura/D-IAM-MEMBERSHIP.md`: lifecycle ACTIVE/SUSPENDED/REVOKED con regla canónica única, N-4 por comercio, anti-duplicados. Sin esto no hay IAM-3.
