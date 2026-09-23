@@ -1,6 +1,6 @@
 # D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3.2 contractual amendment)
 
-**Estado:** CONTRATO REV3.1 · APROBADO · GO BACKEND · NO IMPLEMENTADO
+**Estado vigente:** contrato REV3.2 aprobado; backend IAM-10 implementado y **CERRADO CON CERTIFICACIONES DIFERIDAS DOCUMENTADAS**. Este documento conserva el expediente histórico de auditoría y contrato.
 **Auditoría:** 2026-09-23 · Vault `728d06f`; Flutter `b3ebaa95c8e4c950a98637835094bea573c0b2bf`; Web `2c4eb51bf440072dafc276488156559ddb975e1a`.
 **Entorno LIVE inspeccionado en solo lectura:** Supabase `iwfaktlxebxtocmswdvv` (RSUELVO, ACTIVE_HEALTHY, PostgreSQL 17.6.1.155, plan Free). `pg_cron` 1.6.4 habilitado en DB `postgres`; 2 jobs activos completaron 1.440/1.440 ejecuciones cada uno en las últimas 24 h.
 
@@ -22,7 +22,7 @@
 | Monitoreo de guard | La función `fn_verificar_guards_sanos()` existe, pero no se encontró job cron LIVE que la ejecute como monitor ni que emita incidentes. | `SECURITY.GUARD_HEALTH_FAILURE` no tiene productor actual; queda fuera de V1 hasta diseñar monitor fiable. |
 | Alertas | No encontramos canal que consuma señales IAM como alertas de seguridad. | Storage y alerting permanecen decisiones separadas. |
 
-**IAM10-H1 / IAM5-CERT (resultado de certificación abajo):** la definición LIVE de `rsuelvo.fn_es_service_role()` es `SECURITY DEFINER` y tiene fallback `auth.jwt() IS NULL AND current_user IN ('postgres','service_role')`; `fn_tiene_aal2()` tiene fallback equivalente. La migración 87 explica el propósito: JWT presente manda; el fallback aplica solo a conexión directa sin JWT para backend/n8n. El incidente P0 histórico fue un `current_user` OR independiente aun con JWT, patrón distinto. SQL Editor confirma el contexto directo (JWT NULL y helper TRUE), pero eso no prueba una petición PostgREST. Se encontró consumidor PostgreSQL directo real en n8n y la llamada anon HTTP probó que PostgREST no cae en fallback. No se modificaron guards.
+**IAM10-H1 / IAM5-CERT (resultado histórico de frontera abajo):** la definición LIVE de `rsuelvo.fn_es_service_role()` es `SECURITY DEFINER` y tiene fallback `auth.jwt() IS NULL AND current_user IN ('postgres','service_role')`; `fn_tiene_aal2()` tiene fallback equivalente. La migración 87 explica el propósito: JWT presente manda; el fallback aplica solo a conexión directa sin JWT para backend confiable. El incidente P0 histórico fue un `current_user` OR independiente aun con JWT, patrón distinto. SQL Editor confirma el contexto directo (JWT NULL y helper TRUE), pero no prueba una petición PostgREST. A1 anon HTTP probó que PostgREST no cae en fallback. n8n direct-PG era un consumidor real cuando se realizó el inventario, pero n8n quedó retirado del target por decisión posterior; conservar el fallback durante la transición a Python/VPS está documentado. No se modificaron guards.
 
 ## 1.1 IAM10-H1 / IAM5-CERT — frontera PostgREST vs PostgreSQL directo
 
@@ -34,14 +34,14 @@
 
 ### Inventario real de consumidores PostgreSQL directos
 
-El n8n conectado muestra 16 workflows activos. Inspeccioné las versiones activas completas y la metadata de credenciales (sin secretos): **8 workflows tienen 25 nodos `n8n-nodes-base.postgres`** con una credencial `postgres` compartida llamada `Postgres account`:
+El inventario histórico n8n mostró 16 workflows activos. Se inspeccionaron las versiones activas y la metadata de credenciales (sin secretos): **8 workflows tenían 25 nodos `n8n-nodes-base.postgres`** con una credencial `postgres` compartida llamada `Postgres account`. Tras la decisión de retirar n8n, esta lista es LEGACY SOURCE para `MIG-PY-01`, no un consumidor objetivo que requiera nueva certificación:
 
 - WF-10 (3 nodos), WF-12 (1), WF-13 (3), WF-14 (5), WF-20 (4), WF-21 (1), WF-25-C (1), WF-80 (7).
 - Entre las operaciones llamadas están `fn_upsert_cliente`, `fn_solicitar_reserva`, `fn_agregar_lista_espera_v2`, `fn_crear_pedido_desde_reserva`, `fn_generar_cobro` y consultas/logs de WF-80.
 - Bitácora canónica de n8n registra `Postgres account` apuntando al proyecto `iwfaktlxebxtocmswdvv` con rol `bypassrls`; entradas de 2026-09-19 describen que n8n usa usuario `postgres` por conexión PG sin JWT y que quitar esa identidad rompió RPCs PG-node. No se ejecutaron workflows de negocio durante esta certificación.
 - **Respuesta A6:** sí existe consumidor real PostgreSQL directo que justifica el contexto sin JWT. La lista MCP protege secretos; no se leyó la contraseña ni se hizo conexión de prueba bajo esa credencial, así que el usuario SQL actual de ese secreto no se revalidó en este turno. La evidencia de productor activo + credencial type `postgres` + bitácora de rol/uso se considera evidencia LIVE de inventario, no una ejecución de RPC.
 
-### Matriz de certificación A1–A6
+### Matriz de certificación A1–A6 (corte de auditoría previo al retiro de n8n)
 
 | Caso | Resultado | Evidencia / límite |
 |---|---|---|
@@ -50,7 +50,7 @@ El n8n conectado muestra 16 workflows activos. Inspeccioné las versiones activa
 | **A3 JWT authenticated AAL2** | **PENDIENTE EXTERNO** (código inspeccionado) | Requiere sesión real MFA AAL2. No se tenía token/sesión interactiva ni se solicitaron contraseñas. Lógica espera service_role false y AAL2 true; no se atribuye resultado LIVE. |
 | **A4 JWT service_role por HTTP** | **PENDIENTE EXTERNO** (código inspeccionado) | No se dispuso de la service_role key para request HTTP y no se buscó/exhibió un secreto local. Lógica JWT branch concede `fn_es_service_role=true` y comportamiento técnico de AAL2. Certificar con credencial de servicio en contexto controlado. |
 | **A5 SQL Editor / PG directo sin JWT** | **LIVE PASS · DIRECT_PG_TRUSTED_CONTEXT** | Query de solo lectura: `auth.jwt()` NULL, `fn_es_service_role()` TRUE, `fn_verificar_guards_sanos()` `{"ok":true}`. Resultado esperado para contexto PostgreSQL privilegiado; no representa PostgREST. |
-| **A6 consumidor PostgreSQL directo** | **LIVE inventario + CÓDIGO/bitácora** | 16 workflows activos; 8 workflows/25 nodos Postgres directos. Bitácora registra la credencial como rol bypassrls y fallo histórico al perder la identidad PG sin JWT. No se ejecutaron workflows productivos. **Existe consumidor real; JWT-only cambiaría el contrato actual de n8n.** |
+| **A6-n8n consumidor PostgreSQL directo (estado en la auditoría original)** | **LIVE inventario + CÓDIGO/bitácora; luego SUPERSEDED** | En el inventario había 16 workflows activos; 8/25 nodos Postgres directos. La bitácora registraba el rol bypassrls y fallo histórico al perder la identidad PG sin JWT. La decisión arquitectónica posterior retira n8n del target. |
 
 **Resultado de frontera:** en la petición anon real observada el helper devolvió `false` por HTTP; ese resultado es consistente con el camino JWT/rol no privilegiado. No se expuso el GUC JWT de esa petición. No se observó bypass anon ni se confirma P0. A2/A3/A4 permanecen sin certificación LIVE, por falta de tokens/clave legítimos disponibles. Por evidencia actual la conclusión es **SAFE AS DESIGNED para la frontera A1 y el contexto A5, con certificación JWT de usuario/service_role aún parcial**, no certificación total de la matriz.
 
@@ -60,7 +60,7 @@ Su comprobación estática actual es insuficiente como análisis estructural: bu
 
 Mejora propuesta **no implementada**: el guard estático debería contrastar una forma canónica normalizada/parseable (o inspección estructural robusta del cuerpo) de ambas funciones, rechazar cualquier rama JWT que pueda OR-conceder por `current_user`, validar que el rol service_role se compare con `auth.jwt()->>'role'`, y que usuarios ordinarios solo pasen por claim AAL2 exacto. Mantener una prueba SQL directa etiquetada A5; complementar con harness HTTP externo A1–A4 que reporte contexto/status/helper y no abra grants temporales. Esta revisión no debe hacer que SQL Editor TRUE se marque como vulnerabilidad.
 
-**Clasificación actual:** `IAM10-H1 / IAM5-CERT — fallback direct-PG en helpers críticos requiere certificación de frontera PostgREST/direct-DB`. No es P0 confirmado. No modificar guards hasta completar A2/A3/A4 y revisión del contrato de la credencial PG n8n.
+**Clasificación vigente de IAM10-H1:** A1 LIVE PASS; A2/A3/A4 PENDIENTE EXTERNO; A5 LIVE PASS (`DIRECT_PG_TRUSTED_CONTEXT`). El fallback direct-PG permanece como compatibilidad transitoria hasta la migración Python/VPS; no es P0 confirmado y no se modifican guards en este cierre. A6-n8n quedó SUPERSEDED / NO PASS por decisión arquitectónica posterior; no se restaurará n8n Cloud para completar esa prueba. El gate sucesor es `IAM10-A6-PYTHON`, PENDIENTE antes del go-live Python/VPS. Ver `MIG-PY-01-N8N-A-PYTHON-VPS.md`.
 
 ## 2. Inventario de fuentes y productores
 
@@ -122,7 +122,7 @@ RLS activa, no FORCE. Políticas LIVE:
 
 ## 4. Contrato REV3.1 — ajuste operativo de purge; resto de REV3 congelado
 
-REV3 sustituyó la normativa §§4–17 de REV1/REV2. REV3.1 solo corrige la relación entre purge y disponibilidad IAM; las demás decisiones REV3, incluido el catálogo congelado de ocho event types, permanecen intactas. SecurityEvent no replica AuditLog. No hay tabla, RPC, cron de purge IAM-10 ni emisión actualmente; lo siguiente sigue siendo contrato, no implementación.
+En el corte documental de REV3.1, REV3 había sustituido la normativa §§4–17 de REV1/REV2 y solo se proponía el contrato: aún no existían tabla, RPC, cron de purge ni emisión IAM-10. Esa descripción es histórica; las migraciones 101/102 implementaron después REV3.2. SecurityEvent no replica AuditLog.
 
 ### 4.1 Catálogo V1 congelado
 
@@ -266,21 +266,20 @@ No índice separado en `producer_event_id` porque la columna no existe en V1; no
 | A3 authenticated AAL2 | PENDIENTE EXTERNO |
 | A4 service_role HTTP | PENDIENTE EXTERNO |
 | A5 PostgreSQL directo sin JWT | LIVE PASS · `DIRECT_PG_TRUSTED_CONTEXT` |
-| A6 consumidores direct-PG | LIVE INVENTARIO · 16 workflows activos; 8 usan 25 nodos PostgreSQL directos |
+| A6-n8n direct-PG | SUPERSEDED / NO PASS / NO APLICA AL TARGET; smoke preparado pero no ejecutado |
+| IAM10-A6-PYTHON | PENDIENTE / GATE PRE-GO-LIVE tras la migración Python/VPS |
 
-Conclusión: **SAFE AS DESIGNED para A1/A5 observados; certificación incompleta; NO P0 confirmado.** No bloquea el GO de contrato REV3 ni autoriza modificar IAM-5. Durante backend se deben añadir regresiones A1–A6 dentro de disponibilidad real de credenciales; nunca abrir grants temporales.
+Conclusión vigente: **SAFE AS DESIGNED para A1/A5 observados; A2/A3/A4 permanecen PENDIENTE EXTERNO; NO P0 confirmado.** La certificación histórica A6-n8n no se transforma en PASS y deja de ser gate de IAM-10. El gate futuro es IAM10-A6-PYTHON; nunca abrir grants temporales para facilitarlo.
 
 ### 4.11 E2E/DoD backend para este contrato
 
-Antes de producción: migración aplica/restore limpio; schema privado no expuesto; tabla append-only ACL/RLS verificados por PostgREST y roles; 8 transiciones emiten una fila exacta; retries, carreras, `ya_v0`, no-op, rollback y cambio de owner/membership no duplican; transferencia start misma pareja devuelve ID existente; cada actor/target/scope y metadata corresponde; validator/check rechaza campos extra/tipo/tamaño/event enums incorrectos; búsqueda solo SuperAdmin/SysAdmin, filtros/cursores/rango/paginación correctos y auditados; `service_role` no accede a tabla directa; purge por severity llega a cero vencidos, batch/retry/failure/watchdog/recovery y AuditLog probados; pg_cron job activo bajo `postgres` y últimas corridas exitosas; falla de scheduler simulada mientras IAM crítico sigue operando y emitiendo SecurityEvent; watchdog detecta/escalamiento; backlog drena tras recuperación; AuditLog `recovered`; cero pérdida de eventos no vencidos; regresión IAM-1..9, `fn_verificar_guards_sanos()` y 8 workflows n8n direct-PG; restore operativo verificado.
+El backend IAM-10 quedó aprobado a nivel de implementación conforme al reporte QA. Las certificaciones diferidas A2/A3/A4, E2E integral IAM-1..9 y restore permanecen registradas como pendientes externos. La prueba n8n direct-PG fue superseded por el cambio de arquitectura; la frontera de runtime futura se valida mediante `IAM10-A6-PYTHON` antes del go-live Python/VPS.
 
-**Resultado contractual:** REV3 fija catálogo, schema, retención y purge, lectores, escritura, grants/RLS, índices e idempotencia. REV3.1 aclara que purge es operacional y no bloquea IAM; si falla, el backlog se drena al recuperar el scheduler. Los cambios identificados a `fn_iniciar_transferencia` y `fn_gestionar_vinculo` forman parte del alcance backend IAM-10 antes de instrumentar SecurityEvent. GO backend aprobado; release productivo sigue condicionado a smoke/QA del nuevo job, purge y DoD E2E.
+**Resultado contractual de REV3.1 (corte histórico previo a implementación):** REV3 fijó catálogo, schema, retención/purge, lectores, escritura, grants/RLS, índices e idempotencia; REV3.1 aclaró que purge es operacional y no bloquea IAM. Los cambios identificados a `fn_iniciar_transferencia` y `fn_gestionar_vinculo` pasaron al alcance de implementación backend. El estado vigente de implementación y sus certificaciones diferidas se registra arriba y en `CIERRE-IAM-ONBOARDING.md`.
 
 ---
 
-**Veredicto de esta fase:** REV3.1 contractual aprobada; sin implementación.
-**IAM-10 CONTRATO = APROBADO · GO BACKEND.**
-**IAM-10 = CONTRATO REV3.1 / NO IMPLEMENTADO.**
+**Veredicto contractual histórico (antes de implementar backend):** REV3.1 aprobada; GO backend. Esta instantánea quedó superseded por la implementación 101/102, el cierre IAM10-B1 y el estado vigente documentado al inicio de este archivo y en `CIERRE-IAM-ONBOARDING.md`.
 
 ## 5. REV3.2 — enmienda contractual IAM10-B1
 
@@ -332,4 +331,4 @@ Para ACTIVE role A→role B, la operación efectiva emite exactamente un `MEMBER
 
 **Estado de contrato:** REV3.2 resuelve la insuficiencia de REV3.1 para pares de roles incomparables. **Estado de backend al redactar la enmienda:** migración 101 no conforme hasta que una migración posterior alinee validator, helper y metadata; no reinterpretar ni editar 101.
 
-**Actualización de implementación:** la migración aditiva `102_iam10_privilege_direction_contract.sql` alinea LIVE con esta enmienda; `101_security_events.sql` permanece inalterada. QA de matriz, retry y concurrencia figura en `07-Control-de-Calidad/Reporte-IAM10-Backend.md`. El backend continúa **NO APROBADO** hasta revisión independiente.
+**Actualización de implementación:** la migración aditiva `102_iam10_privilege_direction_contract.sql` alinea LIVE con esta enmienda; `101_security_events.sql` permanece inalterada. QA de matriz, retry y concurrencia figura en `07-Control-de-Calidad/Reporte-IAM10-Backend.md`. IAM10-B1 fue aprobado y el backend queda **CERRADO CON CERTIFICACIONES DIFERIDAS DOCUMENTADAS**, conforme a la decisión de cierre global en `07-Control-de-Calidad/CIERRE-IAM-ONBOARDING.md`.
