@@ -6,7 +6,7 @@ Contrato base: `ad38f80e7026490edbea8a04fd7218d2d3787aa8` (REV3.1); corrección 
 
 Migraciones: `101_security_events.sql` y `102_iam10_privilege_direction_contract.sql`
 
-Estado: **IMPLEMENTADO / NO APROBADO — pendiente revisión independiente**
+Estado: **IMPLEMENTADO / APROBADO A NIVEL DE CÓDIGO — certificación operativa n8n pendiente; backend no cerrado**
 
 ## Alcance
 
@@ -46,18 +46,21 @@ Implementación aditiva del event store privado IAM-10 V1 y sus ocho transicione
 | Lector staff / Support / tenant | CÓDIGO | PASS con impersonación SQL local: SuperAdmin/SysAdmin permitidos, Support denegado; paginación/filtros/límite; AuditLog. Sesiones staff LIVE no disponibles para prueba autenticada |
 | Purge / AuditLog / append-only delete controlado | CÓDIGO | PASS local: NOTICE vencido y CRITICAL vencido eliminados; HIGH vigente conservado; batch y AuditLog; UPDATE/DELETE ordinario rechazado |
 | Watchdog duplicados y recovery | CÓDIGO | PASS local: dos fallas producen una alerta; recuperación con backlog drenado produce un recovery; ticks repetidos no hacen spam |
-| Scheduler cron real | LIVE | PASS; ambos jobs activos en DB `postgres`, usuario `postgres`; purge `succeeded` a 15:50 UTC y watchdog a 15:45 UTC, posteriores a migración 102. Sin filas de prueba en event store; el watchdog dejó solo el AuditLog contractual de configuración y el purge vacío no creó AuditLog |
+| Scheduler cron real | LIVE | PASS; ambos jobs activos en DB `postgres`, usuario `postgres`; purge `succeeded` a 16:05 UTC y watchdog a 16:00 UTC (23-sep-2026), posteriores a migración 102. Event store sin fixtures QA |
 | Fallo de scheduler con IAM operativo, backlog y recuperación | CÓDIGO | Writer no consulta scheduler/backlog por inspección y prueba local. No se simuló una indisponibilidad cron en LIVE para evitar mutación operativa en producción |
 | Guard IAM-5 | LIVE | PASS: `fn_verificar_guards_sanos()` devolvió `ok:true`; helpers `fn_es_service_role` y `fn_tiene_aal2` no fueron modificados |
 | A1 anon PostgREST | LIVE | PASS: RPC HTTP real sin Authorization devolvió `fn_es_service_role=false` |
-| Recheck IAM-5 tras migración 102 | LIVE | PASS; `fn_verificar_guards_sanos()` devuelve `ok:true`; `fn_es_service_role()` y `fn_tiene_aal2()` sin cambios. El PASS HTTP A1 anterior sigue aplicando porque no se modificó el helper ni su ACL |
+| Recheck IAM-5 tras migración 102 | LIVE | PASS; `fn_verificar_guards_sanos()` devuelve `ok:true`; `fn_es_service_role()` y `fn_tiene_aal2()` sin cambios. A1 HTTP conserva el PASS LIVE previo: migración 102 no modificó helpers ni grants IAM-5 |
 | Event store luego de migración 102 | LIVE | PASS; `tbl_security_events` sigue en cero filas; no se insertaron eventos/fixtures de QA |
-| Cron y acceso direct-PG luego de migración 102 | LIVE | PASS; purge `succeeded` a 15:50 UTC y watchdog a 15:45 UTC; misma firma `fn_gestionar_vinculo`, EXECUTE preservado para `service_role` y owner `postgres` |
+| Cron y acceso direct-PG luego de migración 102 | LIVE | PASS; cron siguió ejecutando hasta purge `succeeded` a 16:05 UTC / watchdog a 16:00 UTC; firma de `fn_gestionar_vinculo` y EXECUTE para `service_role` preservados |
+| Presencia de RPCs IAM-1..9 en catálogo LIVE | LIVE | PASS de integridad estructural únicamente: invitaciones, auto-alta, ownership, membership, verificación y guards siguen presentes; no equivale a E2E funcional con identidades |
+| Inspección runtime n8n posterior a 102 | LIVE | PASS de inventario read-only; ningún workflow tuvo ejecución registrada desde 2026-09-23T00:00Z. Se inspeccionaron los 16 activos y grafos completos de los workflows PostgreSQL directos |
 | IAM10-H1 A2 AAL1 / A3 AAL2 / A4 service_role HTTP | PENDIENTE EXTERNO | No se dispuso de sesiones/token controlados para estos contextos |
 | A5 direct-PG sin JWT | LIVE | PASS; `DIRECT_PG_TRUSTED_CONTEXT`, fallback histórico esperado |
-| A6 consumers direct-PG n8n | LIVE INVENTARIO | 16 workflows activos, 8 con 25 nodos PostgreSQL. Sin cambiar/ejecutar workflows; búsqueda posterior a migración 102 encontró 0 ejecuciones, por lo que regresión runtime n8n queda PENDIENTE EXTERNO |
-| Regresión funcional IAM-1..9 completa | PENDIENTE EXTERNO | No se ejecutó suite completa contra identidades y fixtures LIVE; la regresión local de transición se limita a rutas instrumentadas |
-| Restore de backup / recuperación completa | PENDIENTE EXTERNO | No se ejecutó restore LIVE; QA local se hizo en DB desechable |
+| A6 consumers direct-PG n8n | PENDIENTE EXTERNO | Inventario LIVE: 16 workflows activos, 8 con 25 nodos PostgreSQL directos. No hubo ejecuciones posteriores a 102. Los workflows inspeccionados con PG ejecutan mutaciones de reserva/lista/pago, INSERT de deduplicación/auditoría o envían WhatsApp; los triggers de subworkflows no son ejecutables directamente por MCP. No hay workflow read-only aislable con el runner disponible. Ejecutarlo podría afectar actividad comercial; se requiere fixture/ventana QA aislada o workflow de smoke read-only aprobado. Ningún workflow fue cambiado |
+| IAM-1..9: regresión funcional LIVE completa | PENDIENTE EXTERNO | No hay identidades/tokens y fixtures controlados para ejecutar invitaciones, auto-alta, ownership, membership y V0/V1 sin mutar comercios reales. Solo se hizo inspección estructural LIVE y regresión de código/local documentada abajo |
+| IAM-1..9: código y pruebas existentes | CÓDIGO | PASS según suites QA previas y regresiones locales de las funciones IAM-10 instrumentadas; no se atribuye como ejecución LIVE de IAM-1..9 |
+| Restore de backup / recuperación completa | PENDIENTE EXTERNO | Existe PostgreSQL local, pero `rsuelvo_iam10_qa` es un mock de 8.8 MB con 11 tablas, ya contiene 101/102 y carece del baseline completo/runbook necesario para simular la restauración solicitada. No se encontró dump o staging restaurable. No se intentó restore en producción |
 | Flutter / Web sin cambios | CÓDIGO | PASS; no hay cambios ni checkout Flutter accesible en este entorno |
 
 ## Advisors Supabase
@@ -71,9 +74,8 @@ No se insertaron fixtures ni eventos de prueba en LIVE. Las pruebas previas de t
 ## Deudas y revisión pendiente
 
 1. Obtener JWT de pruebas controladas para A2/A3 y service_role HTTP A4; repetir lectura con staff/Support de prueba en LIVE si se habilitan credenciales seguras.
-2. Ejecutar una regresión controlada de workflow n8n que use PostgreSQL direct-PG; el inventario y la firma/grant DB están intactos, pero no hay ejecución posterior al DDL que permita afirmar resultado de workflow.
-3. Ejecutar regresión IAM-1..9 completa y restore conforme al runbook con entorno de staging/backup.
-4. Revisión independiente del SQL, actores/roles y pruebas antes de marcar backend aprobado.
+2. Para A6, disponer de fixture/entorno QA aislado o workflow smoke direct-PG read-only que no envíe mensajes ni cambie datos; entonces ejecutarlo después de 102 y comparar su respuesta funcional.
+3. Proveer identidades QA y entorno de restore para E2E IAM-1..9 y recuperación completa. No usar producción para restauración destructiva.
 
 ## IAM10-B1: decisión y matriz
 
@@ -92,4 +94,4 @@ Los 25 pares efectivos producen 14 `MIXED`, 3 `ELEVATED`, 8 `REDUCED` y cero par
 
 Nota de procedencia: el expediente REV3.1 rastreado contenía un texto ampliado de cuatro direcciones y los IDs `membership_id`/`target_membership_id`; esto no coincide con el freeze de dos valores comunicado al revisar IAM10-B1. REV3.2 registra la insuficiencia y la resolución con evidencia de matriz/código; la autoridad de esta corrección es la enmienda documental y la migración 102.
 
-La certificación IAM10-H1 se mantiene: A1 LIVE PASS; A2/A3/A4 PENDIENTE EXTERNO; A5 LIVE PASS `DIRECT_PG_TRUSTED_CONTEXT`; A6 LIVE INVENTARIO. No P0 confirmado; no cambiar helpers IAM-5. IAM10-B1 queda corregido en LIVE y código, pendiente revisión/aprobación independiente.
+La certificación IAM10-H1 se mantiene: A1 LIVE PASS; A2/A3/A4 PENDIENTE EXTERNO; A5 LIVE PASS `DIRECT_PG_TRUSTED_CONTEXT`; A6 inventario LIVE y regresión runtime PENDIENTE EXTERNO por riesgo de efectos comerciales. No P0 confirmado; helpers IAM-5 sin cambios. IAM10-B1 está corregido y aprobado independientemente por el usuario. Estado: **IAM-10 BACKEND = APROBADO A NIVEL DE CÓDIGO / PENDIENTE CERTIFICACIÓN OPERATIVA; no cerrado mientras A6 no sea LIVE PASS**.
