@@ -1,8 +1,8 @@
-# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV2 contractual)
+# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3 contractual)
 
-**Estado:** CONTRATO REV2 PARA APROBACIÓN · NO IMPLEMENTADO · sin cambios funcionales
+**Estado:** CONTRATO REV3 · LISTO PARA GO BACKEND · NO IMPLEMENTADO
 **Auditoría:** 2026-09-23 · Vault `728d06f`; Flutter `b3ebaa95c8e4c950a98637835094bea573c0b2bf`; Web `2c4eb51bf440072dafc276488156559ddb975e1a`.
-**Entorno LIVE inspeccionado en solo lectura:** Supabase `iwfaktlxebxtocmswdvv` (RSUELVO, ACTIVE_HEALTHY, PostgreSQL 17.6.1.155, plan Free).
+**Entorno LIVE inspeccionado en solo lectura:** Supabase `iwfaktlxebxtocmswdvv` (RSUELVO, ACTIVE_HEALTHY, PostgreSQL 17.6.1.155, plan Free). `pg_cron` 1.6.4 habilitado en DB `postgres`; 2 jobs activos completaron 1.440/1.440 ejecuciones cada uno en las últimas 24 h.
 
 > SecurityEvent responde «¿qué evento relevante de seguridad ocurrió?». `tbl_logs_auditoria` continúa respondiendo «¿qué operación de negocio/administrativa ocurrió, quién la ejecutó y sobre qué recurso?» Son fuentes separadas; SecurityEvent no replica cada AuditLog ni cada error.
 
@@ -120,110 +120,161 @@ RLS activa, no FORCE. Políticas LIVE:
 | Mutabilidad | RLS evita update/delete ordinarios, pero grants/owner/servicio permiten más; no hay append-only fuerte. | Append-only para productores; sin UPDATE; DELETE solo proceso de retención auditado. |
 | Ejemplos | Cambió precio/pedido; membership cambió; evidencia V1 creada/revocada. | Transferencia ownership, cambio sensible de membership, V1 revocada. |
 
-## 4. Contrato REV2 — alcance normativo (sustituye §§4–17 de REV1)
+## 4. Contrato REV3 — canónico y listo para backend
 
-Esta sección es la única taxonomía normativa. Las listas/candidatos anteriores de REV1 quedan sustituidos. SecurityEvent no replica AuditLog. V1 solo cubre transiciones IAM persistidas por productores backend identificables. **La tabla/feed aún no existe y ningún evento se está emitiendo.** Cada productor futuro escribe el evento en la misma transacción que la transición efectiva.
+REV3 sustituye la normativa §§4–17 de REV1/REV2. Se mantiene exactamente el catálogo de ocho event types listado en 4.1. SecurityEvent no replica AuditLog. No hay tabla, RPC, cron de purge ni emisión actualmente; todo lo siguiente es contrato para implementar después de este GO.
 
-### 4.1 Catálogo V1 cerrado
+### 4.1 Catálogo V1 congelado
 
-Todos los eventos V1 tienen `id_comercio` **obligatorio**, `actor_type=USER`, `actor_user_id` interno no nulo y `source=POSTGRES_RPC`. El productor solo emite cuando puede derivar el actor humano de forma confiable; llamada técnica direct-PG sin actor humano no se atribuye a un usuario y queda fuera de estos tipos. Outcome y severidad son fijos; el productor no los acepta del cliente ni los cambia dinámicamente. `notify=NO` para todos en V1. La metadata es allowlist cerrada; UUIDs refieren exclusivamente IDs internos RSUELVO.
+Todos tienen scope `id_comercio NOT NULL`. Severidad y outcome son constantes por evento, fijados abajo y derivados por el writer; no son parámetros de producer ni de cliente. `source=POSTGRES_RPC` en los ocho.
 
-| `event_type` | Transición / RPC backend a instrumentar | Severidad única | Outcome único | Metadata permitida |
-|---|---|---:|---|---|
-| `OWNER.TRANSFER_STARTED` | Creación efectiva de transferencia (`fn_iniciar_transferencia`). | HIGH | SUCCESS | `transfer_id`, `target_user_id` |
-| `OWNER.TRANSFER_COMPLETED` | Cambio efectivo de owner (`fn_responder_transferencia`). | CRITICAL | SUCCESS | `transfer_id`, `previous_owner_user_id`, `target_user_id` |
-| `OWNER.TRANSFER_CANCELLED` | Cancelación efectiva (`fn_cancelar_transferencia`). | NOTICE | CANCELLED | `transfer_id` |
-| `MEMBERSHIP.SUSPENDED` | ACTIVE→SUSPENDED efectivo por operación de gestión de vínculo. | HIGH | SUCCESS | `membership_id`, `target_user_id` |
-| `MEMBERSHIP.REACTIVATED` | SUSPENDED→ACTIVE efectivo por operación de gestión de vínculo. | NOTICE | SUCCESS | `membership_id`, `target_user_id` |
-| `MEMBERSHIP.REVOKED` | Revocación efectiva de membership. | HIGH | SUCCESS | `membership_id`, `target_user_id` |
-| `MEMBERSHIP.PRIVILEGE_CHANGED` | Cambio efectivo de rol sensible que modifica capabilities, por elevación o reducción (`fn_gestionar_vinculo`). | HIGH | SUCCESS | `membership_id`, `target_user_id`, `from_role`, `to_role`, `direction` (`ELEVATED`\|`REDUCED`) |
-| `VERIFICATION.V1_REVOKED` | ACTIVO→PENDIENTE_VERIFICACION efectivo por `fn_revocar_verificacion_v1`. | HIGH | SUCCESS | `verification_id` |
+| `event_type` | RPC producer | Transición exacta | Severidad | Outcome |
+|---|---|---|---|---|
+| `OWNER.TRANSFER_STARTED` | `fn_iniciar_transferencia(p_id_comercio,p_destino)` | Se inserta una nueva fila `PENDIENTE` después de lock/lookup y sin transferencia vigente equivalente. | HIGH | SUCCESS |
+| `OWNER.TRANSFER_COMPLETED` | `fn_responder_transferencia(p_id,p_acepta=true)` | Owner del comercio cambia del origen esperado al destino y la transferencia pasa PENDIENTE→ACEPTADA en la misma transacción. | CRITICAL | SUCCESS |
+| `OWNER.TRANSFER_CANCELLED` | `fn_cancelar_transferencia(p_id)` | Transferencia PENDIENTE→CANCELADA efectiva. El rechazo del destino no es CANCELLED y queda fuera del catálogo. | NOTICE | CANCELLED |
+| `MEMBERSHIP.SUSPENDED` | `fn_gestionar_vinculo(...,p_accion='SUSPENDER'|'DESACTIVAR')` | La membership objetivo cambia ACTIVE→SUSPENDED. | HIGH | SUCCESS |
+| `MEMBERSHIP.REACTIVATED` | `fn_gestionar_vinculo(...,p_accion='CREAR')` o `CAMBIAR` mismo rol | La membership persistida cambia SUSPENDED→ACTIVE; solo si el estado previo leído bajo lock era SUSPENDED. | NOTICE | SUCCESS |
+| `MEMBERSHIP.REVOKED` | `fn_gestionar_vinculo(...,p_accion='REVOCAR')` | La membership cambia ACTIVE/SUSPENDED→REVOKED. | HIGH | SUCCESS |
+| `MEMBERSHIP.PRIVILEGE_CHANGED` | `fn_gestionar_vinculo(...,p_accion='CAMBIAR')` | Cambia realmente el rol activo o su conjunto de capabilities; una sola emisión por cambio semántico, no por suspender/crear filas intermedias. | HIGH | SUCCESS |
+| `VERIFICATION.V1_REVOKED` | `fn_revocar_verificacion_v1(p_id_comercio,p_motivo)` | ACTIVO→PENDIENTE_VERIFICACION y evidencia REVOCADA insertada en la misma transacción. | HIGH | SUCCESS |
 
-**Actor/target:** `actor_user_id` identifica exclusivamente a quien ejecuta la acción (`tbl_usuarios.id_usuario`). La metadata `target_user_id` identifica al usuario RSUELVO afectado/destinatario, nunca `auth.users.id`. `membership_id` refiere `tbl_usuario_comercio.id`; `transfer_id` refiere el ID interno de la transferencia; `verification_id` refiere `tbl_verificaciones_comercio.id_verificacion`. `previous_owner_user_id` es el owner interno anterior. No se registra `id_usuario` ambiguo para actor y target. En un evento de membership, el actor puede ser SuperAdmin o admin autorizado y el target es el miembro afectado.
+`VERIFICATION.V1_GRANTED`, Auth, MFA, recovery, denied, abuse thresholds y todo evento fuera de esta tabla permanecen OUT. No ampliar el catálogo sin nueva aprobación.
 
-**Privilege change:** un solo tipo captura todo cambio efectivo de rol que cambie capabilities; `direction` es obligatorio y cerrado (`ELEVATED`/`REDUCED`). Severidad siempre HIGH. Cambios sin efecto sobre rol/capabilities no emiten evento. Una mutación de capability independiente del rol no está en V1: requiere producer y metadata propios antes de incorporarse.
+### 4.2 Idempotencia por productor y concurrencia
 
-**Fuera de V1:**
+Regla común: writer se llama solo después de la transición efectiva y dentro de su misma transacción. Rollback elimina transición, AuditLog y SecurityEvent juntos. Solo un thread obtiene el lock y cruza el estado de origen; retries posteriores ven estado final/no-op y emiten cero. No se usa `event_type + actor + comercio` como clave global ni `correlation_id` como deduplicador. V1 omite `producer_event_id`: RPC transaccional más estado/locks e identidad de recurso cubren los retries; no hay fuente externa con ID estable.
 
-- `VERIFICATION.V1_GRANTED`: OUT. El V0→ACTIVO ordinario es una habilitación declarativa respaldada por `tbl_verificaciones_comercio` y AuditLog; emitir otro evento duplica evidencia sin señal adicional de amenaza. V1 conserva evidencia y AuditLog existentes.
-- `PERMISSION.CRITICAL_DENIED`: OUT hasta disponer de request/idempotency ID autoritativo y un producer que registre solo denegaciones de una allowlist explícita de acciones críticas. No cada 403 ni cada fallo AAL.
-- `ONBOARDING.ABUSE_THRESHOLD` e `INVITE.ABUSE_THRESHOLD`: OUT. Rate limits existentes son best-effort/no atómicos y no son contador autoritativo para threshold SecurityEvent.
-- Invitación normal, acceptance legal, MFA/Auth/recovery, selección de comercio, errores genéricos, guard checks y operaciones de negocio: AuditLog, Auth provider o telemetría existente según corresponda; no V1 SecurityEvent sin producer confiable y motivo de seguridad específico.
+| Evento | Identidad de transición | Retry tras commit | Concurrencia / control anti-duplicado |
+|---|---|---|---|
+| `OWNER.TRANSFER_STARTED` | `tbl_transferencias_propiedad.id` nuevo; clave activa por comercio. | Misma solicitud lógica (mismo owner+destino) devuelve ID PENDIENTE existente; cero insert y cero evento. | `fn_iniciar_transferencia` debe tomar `FOR UPDATE` de la fila comercio y revalidar owner, expirar vencidas, buscar pendiente vigente. Si owner+destino coincide, devuelve esa transferencia; otro destino devuelve `transferencia_pendiente`. El índice LIVE `transf_pendiente_unica` (UNIQUE por `id_comercio WHERE estado='PENDIENTE'`) queda como última defensa; convertir su carrera actual que retorna error en lookup del ganador. No insertar SecurityEvent si no se obtiene/crea una transición idempotente.
+| `OWNER.TRANSFER_COMPLETED` | `transfer_id`; transición PENDIENTE→ACEPTADA y cambio efectivo de `propietario_id`. | Estado no pendiente/owner ya cambiado → resultado no-op/ya procesado; cero evento. | `SELECT ... FOR UPDATE` de transferencia serializa; comprobar owner origen antes de actualizar; evento una sola vez tras verificar `UPDATE` efectivo.
+| `OWNER.TRANSFER_CANCELLED` | `transfer_id`; PENDIENTE→CANCELADA. | CANCELADA/no pendiente → cero evento. | Lock de transferencia serializa contra aceptar/rechazar/cancelar; solo ganador de PENDIENTE inserta el evento que corresponda.
+| `MEMBERSHIP.SUSPENDED` | `membership_id`; edge ACTIVE→SUSPENDED. | Estado distinto de ACTIVE → no-op/error de negocio, cero evento. | Lock de membership objetivo; emitir solo si `UPDATE ... WHERE estado='ACTIVE' RETURNING` devuelve fila.
+| `MEMBERSHIP.REACTIVATED` | `membership_id`; edge SUSPENDED→ACTIVE. | ACTIVE → `reactivado=false`/no-op, cero evento. | Lock de fila existente; emitir solo si transición condicional SUSPENDED→ACTIVE devuelve fila.
+| `MEMBERSHIP.REVOKED` | `membership_id`; edge ACTIVE/SUSPENDED→REVOKED terminal. | REVOKED/no encontrado → no-op, cero evento. | Lock de fila; emitir solo si transición condicional devuelve fila. Nunca reactivar REVOKED.
+| `MEMBERSHIP.PRIVILEGE_CHANGED` | Membership anterior + membership resultante; comparar tupla y capabilities. | Si destino ya está ACTIVE y origen ya refleja el resultado previo, devolver `ya_cambiado`, cero evento. | Lock de membership origen y destino; comparar el estado antes/después final. Un cambio CAMBIAR es un evento semántico único, no contar sus updates auxiliares como SUSPENDED/REACTIVATED. La implementación debe detectar replay antes de mutar para no repetir la transición.
+| `VERIFICATION.V1_REVOKED` | `verification_id` recién insertado, asociado al comercio bloqueado. | `ya_v0` → cero evidencia adicional/evento. | `SELECT tbl_comercios ... FOR UPDATE`; insertar evidencia y actualizar estado en la misma transacción; emitir solo después de comprobar ACTIVO→V0. Dos revocaciones concurrentes se serializan; la segunda ve V0.
 
-### 4.2 Valores, severidad y outcomes
+Verificación LIVE: `transf_pendiente_unica` ya existe; las RPC owner/membership/verificación usan locks de fila en la lógica inspeccionada. La función actual de inicio owner no hace lock/lookup idempotente para mismo owner+destino; su contrato actual de carrera devuelve `transferencia_pendiente` sin reutilizar el ID. REV3 requiere modificar ese RPC antes de insertar el evento. `fn_gestionar_vinculo` permite `CAMBIAR` también sobre una membership SUSPENDED; la implementación debe añadir la detección de replay definida arriba. Ninguno de estos cambios se implementa con REV3.
 
-Enums cerrados de REV2: severidad `NOTICE | HIGH | CRITICAL`; outcome `SUCCESS | CANCELLED`. Cada fila de 4.1 fija exactamente uno de cada uno. Sin severity dinámica, libre ni definida por cliente. No se almacena un evento para autorización denegada o fallo técnico en V1; añadirlos exige tipo, producer, outcome y política anti-ruido nuevos aprobados. `CRITICAL` queda reservado al cambio efectivo de owner; no significa urgencia operativa automatizada. El catálogo no implica notificaciones.
+Para `MEMBERSHIP.PRIVILEGE_CHANGED`, `direction` se deriva de la diferencia de capabilities del catálogo IAM: `ELEVATED` si el conjunto destino es superconjunto estricto; `REDUCED` si es subconjunto estricto; `MIXED` si pierde y gana capabilities; `RECLASSIFIED` si cambia el rol pero conserva el mismo conjunto. Los role codes validados corresponden al catálogo LIVE: `ROLE_SUPERADMIN`, `ROLE_SYSADMIN`, `ROLE_SUPPORT`, `ROLE_TENANT_ADMIN`, `ROLE_TENANT_CASHIER`, `ROLE_LOGISTICS_AGENT`; `fn_gestionar_vinculo` mantiene su guard de no asignar SUPERADMIN. Estos cuatro valores son cerrados; no cambian severidad/outcome. Se emite ante cambio efectivo de role code o capability; si el code cambia pero sus capabilities son iguales, la dirección es `RECLASSIFIED`. Para una transferencia de rol, el evento representa el resultado final y no los pasos de implementación.
 
-### 4.3 Idempotencia y deduplicación
+### 4.3 Metadata cerrada y enforcement
 
-**Transiciones PostgreSQL:** insertar SecurityEvent dentro de la transacción del cambio y solo después de comprobar la transición efectiva bajo lock. Si el RPC reintenta tras un commit y devuelve `ya_*`/no-op, emite cero eventos. Si el cambio falla o rollbackea, no queda evento. Una nueva transición legítima posterior (incluido volver de estado) sí produce otro evento.
+El producer no acepta `metadata` del cliente. Cada RPC construye internamente los campos tipados a partir de filas bloqueadas y valores ya validados; el helper valida allowlist antes de insertar y el constraint vuelve a validarla.
 
-El enlace idempotente es la identidad de la transición de dominio, no `event_type + actor + comercio`. Para recursos con ID estable (`transfer_id`, `membership_id`, `verification_id`), el producer debe asociar cada emisión con una identidad de transición/opération estable que permita reconocer el replay sin colapsar transiciones legítimas posteriores. Para RPCs sin request key/idempotencia suficiente, ese gap debe resolverse en el contrato del RPC o posponer el producer; no se inventará unicidad global por actor/recurso. Timeout después de commit debe reintentar y recibir el resultado de la misma operación/transición, sin insertar otra fila.
+| Event type | Claves exactas requeridas |
+|---|---|
+| `OWNER.TRANSFER_STARTED` | `transfer_id`, `target_user_id` |
+| `OWNER.TRANSFER_COMPLETED` | `transfer_id`, `previous_owner_user_id`, `target_user_id` |
+| `OWNER.TRANSFER_CANCELLED` | `transfer_id` |
+| `MEMBERSHIP.SUSPENDED` / `MEMBERSHIP.REACTIVATED` / `MEMBERSHIP.REVOKED` | `membership_id`, `target_user_id` |
+| `MEMBERSHIP.PRIVILEGE_CHANGED` | `membership_id` (fila anterior), `target_membership_id` (fila resultante), `target_user_id`, `from_role`, `to_role`, `direction` |
+| `VERIFICATION.V1_REVOKED` | `verification_id` |
 
-Campos conceptuales opcionales reservados para fuentes futuras: `producer` y `producer_event_id`; UNIQUE parcial sobre `(source, producer_event_id)` solo si la fuente garantiza un ID estable y no nulo. Futuro Auth ingest queda fuera de V1. `correlation_id` **no es** idempotency key y no deduplica: solo traza una solicitud; puede repetirse en AuditLog y SecurityEvent de la misma operación.
+UUIDs son IDs internos RSUELVO (`tbl_usuarios.id_usuario`, `tbl_usuario_comercio.id`, `tbl_transferencias_propiedad.id`, `tbl_verificaciones_comercio.id_verificacion`), nunca `auth.users.id`. Metadata no incluye correo, motivo libre, SQL/error, snapshots, tokens, headers, signed URLs, QR ni documentos.
 
-### 4.4 Actor, schema conceptual y metadata
+Enforcement contractual: `rsuelvo_private.fn_security_event_metadata_valid(text,jsonb) IMMUTABLE` pura y allowlisted por event type; rechaza claves extra/faltantes, tipo incorrecto, UUID/string inválidos, direction/role codes no válidos y objeto no JSON. CHECK llama al validator. Límite `octet_length(metadata::text) <= 2048` y `jsonb_typeof(metadata)='object'`. El helper de escritura también valida antes del INSERT. Sin SQL JSON arbitrario en endpoints de lectura.
 
-Actor canónico: `actor_type` cerrado (`USER`, `SERVICE_ROLE`, `SYSTEM`, `UNKNOWN`) y `actor_user_id` nullable FK a `tbl_usuarios.id_usuario`. Para los ocho event types V1, actor es `USER` y el ID es obligatorio. SuperAdmin es `USER` con permiso global derivado en backend, no actor type separado. Identidad `SERVICE_ROLE` debe validarse por fuente segura/JWT cuando aplica; conexión direct-PG confiable se clasifica explícitamente como contexto técnico, no se deduce identidad humana de `current_user` dentro de SECURITY DEFINER. `UNKNOWN` solo aplica a una futura fuente que no pueda mapear actor, no a V1.
+### 4.4 Schema físico mínimo propuesto (sin DDL en REV3)
 
-Schema conceptual (sin DDL): `id_evento` UUID PK; `occurred_at` (momento de transición); `created_at` (persistencia); `event_type`, `severity`, `outcome`, `actor_type`, `actor_user_id`; `id_comercio` (NOT NULL para todos los tipos V1; nullable únicamente si una extensión futura de Auth/global se aprueba); `source` cerrado (`POSTGRES_RPC` en V1); `producer`/`producer_event_id` opcionales para dedup estable; `correlation_id` nullable; `metadata` JSONB small/allowlisted. Sin `auth_user_id`, IP, User-Agent ni `session_ref` en V1: no hacen falta para estos productores y ampliarían PII. `correlation_id` nullable porque no existe request ID transversal en varios RPC DB.
+Tabla: `rsuelvo_private.tbl_security_events`, schema privado no expuesto a PostgREST/Data API. La configuración de schemas expuestos se verifica en backend; nunca añadir `rsuelvo_private`. Revocar `USAGE` del schema y todos los grants de tabla a `PUBLIC`, `anon`, `authenticated` y `service_role`.
 
-Claves metadata exactas: `transfer_id`, `target_user_id`, `previous_owner_user_id`, `membership_id`, `from_role`, `to_role`, `direction`, `verification_id`. Cada tipo usa solo la subselección en la tabla. Roles toman códigos canónicos; no guardar nombres, correo, SQL/error text, request bodies, headers, tokens, secretos MFA/OTP/QR, signed URLs, claves service_role, snapshots ni documentos. Ningún valor libre del cliente.
-
-### 4.5 Privacidad IP/UA
-
-V1 no guarda IP/User-Agent y no copia filas de `tbl_registro_intentos`. Su email/IP en claro, límites best-effort y falta de purga son deuda separada; no convertir ese contador en SecurityEvent. Una futura captura de IP solo desde backend/proxy confiable identificado y normalizado (nunca body ni `X-Forwarded-For` sin trusted-proxy contract), con minimización y retención aprobadas. User-Agent requeriría caso de uso y límite (máximo 512 bytes), sin fingerprint persistente.
-
-### 4.6 Producers, acceso e inmutabilidad
-
-Solo RPC backend allowlisted produce V1. Flutter/Web no insertan y no deciden tipo/actor/comercio/severidad/outcome. La tabla debe residir en schema no expuesto por Data API, con RLS si técnicamente aplica como defensa adicional: sin SELECT tenant; sin INSERT directo `authenticated`; sin UPDATE; sin DELETE runtime. Productores por función allowlisted con grants mínimos; evitar grant amplio de tabla a `service_role`. Lectura para tenant owner/admin/cashier: ninguna en V1. Acceso staff debe ser mínimo privilegio, con consultas de investigación auditadas y sin reutilizar automáticamente el RLS de AuditLog. SuperAdmin/SysAdmin no reciben mutación manual. Purga por proceso controlado de retención, nunca cliente/runtime.
-
-### 4.7 Correlación y retención
-
-`correlation_id` sirve para trazabilidad; no es clave de idempotencia, identidad ni secreto. Es nullable y puede compartirse con AuditLog para la misma operación. Si la frontera confiable lo genera, UUID aleatorio interno propagado sin autoridad; RPC sin ID transversal puede dejarlo NULL. Aún no existe formato/propagación común EF→RPC→AuditLog.
-
-**Retención: PROPUESTA NO APROBADA.** Se retiran 30/90/365 como política operativa; ninguna duración se codifica ni promete por ahora. La aprobación corresponde a owner de seguridad/producto junto con responsable legal/privacidad, considerando backups/PITR. El purge job debe formar parte del release backend IAM-10 que habilite retención finita, solo después de acordar plazos y verificar scheduler confiable. Aunque `pg_cron` existe/está disponible en el proyecto, su disponibilidad no prueba aún ejecución, monitoreo ni restauración del job. Si no hay scheduler confiable, no desplegar un event store con promesa de retención finita ni permitir acumulación indefinida: backend GO queda condicionado a resolver mecanismo operable y verificable. Eventos Auth externos mantienen la retención del proveedor y no heredan una promesa RSUELVO.
-
-### 4.8 Alerting, decisiones abiertas y E2E antes del backend
-
-V1 solo almacena eventos; no envía email/push, no crea SIEM y no bloquea cuentas. Futuras alertas posibles: transferencia completada o revocación V1. No se activan aquí.
-
-Decisiones necesarias antes de GO backend: aprobar plazos/responsable y purge operable; acordar cómo cada RPC reintenta la misma transición (en particular inicio de transferencia); aprobar lista mínima de lectores staff y auditoría de consultas; completar A2/A3/A4 de IAM10-H1 cuando existan credenciales QA legítimas. La certificación parcial IAM-5 no se altera ni bloquea el contrato documental por sí misma.
-
-E2E futuro (no ejecutado): cada transición de catálogo crea exactamente una fila tras commit; retry/no-op no duplica; rollback no deja evento; transición legítima posterior sí registra una nueva fila; actor/target/scope corresponden a IDs internos; enum, metadata y source fuera de allowlist se rechazan; usuarios tenant no pueden leer/insertar/actualizar/borrar por PostgREST/RPC; staff accede solo por consulta aprobada; ningún secreto/PII aparece; correlación no se usa para dedup; purge es acotado, idempotente, auditable y restaura conforme a política; regresión IAM-1..9, `fn_verificar_guards_sanos()` y los 8 workflows n8n direct-PG no se degradan.
-
-### 4.9 Definition of Done documental
-
-REV2 queda listo para revisión contractual cuando cada tipo tenga producer, transición, scope, actor/target, severity/outcome y metadata cerrados (tabla 4.1); idempotencia no colisione con transiciones legítimas; retención/purge y lectores tengan aprobación explícita. Esta revisión no autoriza DDL, RPC, trigger, Edge Function, Flutter, Web ni cambios n8n. Backend inicia solo después de aprobación expresa del contrato y resolución de decisiones de 4.8.
-
-## 5. Fuentes OUT / no convertidas en eventos V1
-
-No son SecurityEvent V1: actividad de pantalla/selector; lecturas RLS; cada 403; aceptación legal; ediciones/pedidos/ventas/pagos; QR view normal; log de retry/error técnico; cada fila de `tbl_registro_intentos`; autenticación/MFA/recovery sin feed server-side fiable; ejecución de workflow n8n. AuditLog conserva operaciones de negocio; Auth mantiene sus logs bajo la cobertura/retención del proveedor.
-
-## 6. IAM10-H1 / IAM5-CERT vigente
-
-| Caso | Clasificación | Resultado |
+| Columna | Tipo/constraint canónico | Nota |
 |---|---|---|
-| A1 anon/PostgREST | LIVE PASS | `fn_es_service_role() = false` en request anon real. |
-| A2 authenticated AAL1 | PENDIENTE EXTERNO | No se ejecutó con JWT QA real. |
-| A3 authenticated AAL2 | PENDIENTE EXTERNO | No se ejecutó con JWT MFA real. |
-| A4 service_role HTTP | PENDIENTE EXTERNO | No se ejecutó con credencial de servicio real. |
-| A5 PostgreSQL directo sin JWT | LIVE PASS · `DIRECT_PG_TRUSTED_CONTEXT` | Fallback privilegiado esperado según migración 87. |
-| A6 consumidor direct-PG | LIVE INVENTARIO | 16 workflows activos; 8 usan 25 nodos PostgreSQL directos. Consumidor real de n8n confirmado por inventario/bitácora; no se ejecutaron workflows en la certificación. |
+| `id_evento` | `uuid PRIMARY KEY DEFAULT gen_random_uuid()` | Identidad del evento. |
+| `occurred_at` | `timestamptz NOT NULL` | Lo fija writer con `clock_timestamp()` tras transition efectiva; nunca input cliente. |
+| `created_at` | `timestamptz NOT NULL DEFAULT transaction_timestamp()` | Timestamp de persistencia/transacción. |
+| `event_type` | `text NOT NULL CHECK` allowlist exacta de los 8 tipos 4.1 | Sin catálogo dinámico en V1. |
+| `severity` | `text NOT NULL CHECK IN ('NOTICE','HIGH','CRITICAL')` + CHECK cross-field | Constante por event_type; no input producer. |
+| `retention_days` | `smallint GENERATED ALWAYS AS (CASE severity WHEN 'NOTICE' THEN 180 WHEN 'HIGH' THEN 365 WHEN 'CRITICAL' THEN 365 END) STORED` | No parámetro ni editable; purger aplica por `occurred_at`. |
+| `outcome` | `text NOT NULL CHECK IN ('SUCCESS','CANCELLED')` + CHECK cross-field | Exacto por event_type 4.1. |
+| `actor_type` | `text NOT NULL CHECK IN ('USER','SERVICE_ROLE')` | Tipo técnico/humano explícito. |
+| `actor_user_id` | `uuid NULL REFERENCES rsuelvo.tbl_usuarios(id_usuario) ON DELETE RESTRICT` + CHECK | USER exige ID; SERVICE_ROLE exige NULL. |
+| `id_comercio` | `uuid NOT NULL REFERENCES rsuelvo.tbl_comercios(id_comercio) ON DELETE RESTRICT` | Scope requerido en todos los eventos V1. |
+| `source` | `text NOT NULL DEFAULT 'POSTGRES_RPC' CHECK (source='POSTGRES_RPC')` | Fuente cerrada en V1. |
+| `producer` | `text NOT NULL CHECK` en cinco RPCs canónicas | `fn_iniciar_transferencia`, `fn_responder_transferencia`, `fn_cancelar_transferencia`, `fn_gestionar_vinculo`, `fn_revocar_verificacion_v1`; CHECK cruzado limita cada tipo a su RPC. |
+| `correlation_id` | `uuid NULL` | Trazabilidad opcional; no identidad, secreto ni dedup. |
+| `metadata` | `jsonb NOT NULL CHECK` objeto + validator + máximo 2.048 bytes | JSON único allowlist por tipo (4.3). |
 
-Conclusión: **SAFE AS DESIGNED para las fronteras observadas A1/A5; certificación incompleta; NO P0 confirmado.** El fallback `current_user` es intencional para direct-PG confiable y no debe describirse como bypass PostgREST observado. No modificar IAM-5; mantener `IAM10-H1 / IAM5-CERT` abierto hasta A2/A3/A4 y revalidación controlada de credencial cuando corresponda. `fn_verificar_guards_sanos()` sigue necesitando mejora estática; no cambiarlo en esta fase.
+Constraints cruzados `event_type→severity,outcome,producer`, actor_id/actor_type y metadata son obligatorios. `ON DELETE RESTRICT` conserva integridad histórica; las identidades/comercios se desactivan/anonimizan según su lifecycle, no hard-delete. `producer_event_id` se **omite** en V1: solo hay producers PostgreSQL síncronos con transición/locks idempotentes; una ingestión Auth futura necesitaría contrato e ID externo estable antes de añadirlo. Sin `ip`, `user_agent`, `session_ref`, `auth_user_id`, `audit_log_id` ni columna libre extra.
 
-## 7. Deuda de auditoría
+### 4.5 Patrón único de escritura
 
-- `auth.audit_log_entries` estaba vacía LIVE; confirmar cobertura/configuración/retención en Dashboard con owner Supabase.
-- No hay Auth ingest, event store, alerting ni monitor LIVE de guard.
-- `tbl_registro_intentos` guarda email/IP en claro, es best-effort y no tiene purga encontrada; tratar por separado.
-- AuditLog captura snapshots JSON y no tiene purge detectado; revisar PII/retención independientemente.
-- No existe correlation ID transversal.
-- Retención SecurityEvent y mecanismo purge siguen sin aprobación.
-- Completar A2/A3/A4 como pendientes externos; no reabrir IAM-5 sin bypass demostrado.
+Usar helper central `rsuelvo_private.fn_emit_security_event(...)`, `SECURITY DEFINER`, `SET search_path = pg_catalog, rsuelvo_private, rsuelvo`, propiedad de `postgres` (igual a los RPC producers LIVE). Sin grants a `PUBLIC`, `anon`, `authenticated` ni `service_role`; sus propietarios `postgres` lo invocan internamente. Los RPC producers siguen siendo únicos puntos de entrada autorizados.
+
+Firma conceptual: `(event_type text, actor_type text, actor_user_id uuid, id_comercio uuid, producer text, correlation_id uuid, metadata jsonb) RETURNS uuid`. No recibe severity, outcome, retention_days ni source; los deriva del catálogo cerrado. Valida pairing event/producer, actor/scope y metadata, asigna timestamps, inserta una fila y devuelve `id_evento`. Actor y comercio vienen ya autorizados desde producer bajo JWT/membership/AAL/estado aplicables. Antes del INSERT comprueba que el job `rsuelvo-security-events-purge` tuvo éxito en las últimas 24 h y que no queda ningún evento vencido; si cualquiera falla, lanza excepción y revierte la transición IAM asociada. En instalación no se habilitan producers hasta la primera purga exitosa.
+
+Actor: transfer/verification RPCs actuales derivan el usuario por `auth.uid()/sub → tbl_usuarios`; son `USER` no nulo. `fn_gestionar_vinculo` LIVE actual no separa/deriva actor humano de forma canónica (sus params identifican target); backend debe derivar actor USER desde JWT y no reutilizar `p_id_usuario` como actor. Para invocación direct-PG/service_role validada por el helper IAM5 existente, actor=`SERVICE_ROLE`, actor_user_id=NULL; no inferir humano desde `current_user`. Esto conserva IAM10-H1 sin cambiar guards. Si actor/scope no son válidos, producer no llama al writer.
+
+### 4.6 Grants, RLS y append-only
+
+`rsuelvo_private.tbl_security_events`: `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY`; sin grants de tabla a API roles. Runtime no tiene SELECT/INSERT/UPDATE/DELETE directos, incluido `service_role`. Solo helper y RPCs SECURITY DEFINER con owner `postgres` acceden con permisos de owner; no exponer la tabla por Data API. RLS es defensa adicional, no autorización única. Las funciones usan `search_path` fijo/seguro y referencias calificadas.
+
+- **INSERT:** solo `fn_emit_security_event` internamente; REVOKE a PUBLIC/anon/authenticated/service_role. Producers construyen metadata internamente.
+- **UPDATE:** sin grant a ningún runtime/produtor; no existe RPC UPDATE. Eventos no se corrigen in-place.
+- **DELETE:** sin grant runtime/producer/lectura; solo `fn_security_events_purge` (4.8). Database owner break-glass es control de infraestructura fuera del runtime; toda intervención excepcional debe auditarse.
+- **SELECT:** solo `fn_security_events_buscar` tras autorización staff (4.7); sin grant de tabla a authenticated/service_role.
+
+RLS sin policy para usuarios API (default deny). Revocar explícitamente `USAGE` del schema y `ALL` sobre todas las tablas/secuencias a PUBLIC/anon/authenticated/service_role, y configurar default privileges de `postgres` en el schema privado para no conceder acceso a tablas futuras. Funciones privilegiadas se limitan por ACL, validaciones y uso interno; los grants no se sustituyen por RLS.
+
+### 4.7 Lectores staff y RPC de búsqueda
+
+Únicos lectores V1: `ROLE_SUPERADMIN` y `ROLE_SYSADMIN`, ambos **global SELECT**; autorización backend con `fn_es_superadmin() OR fn_tiene_rol('ROLE_SYSADMIN')`. `ROLE_SUPPORT`: sin acceso directo. Roles tenant, `authenticated` genérico, anon y service_role: sin acceso. No existe flujo caso/ticket para esta fase.
+
+RPC expuesta en schema `rsuelvo`: `fn_security_events_buscar(p_from timestamptz,p_to timestamptz,p_event_type text DEFAULT NULL,p_id_comercio uuid DEFAULT NULL,p_actor_user_id uuid DEFAULT NULL,p_before_at timestamptz DEFAULT NULL,p_before_id uuid DEFAULT NULL,p_limit integer DEFAULT 100) RETURNS TABLE(...)`, `SECURITY DEFINER`, search_path fijo. Revocar EXECUTE de PUBLIC/anon/service_role; conceder solo `authenticated`; cada llamada valida rol global en DB.
+
+- `p_from/p_to` requeridos, `p_from < p_to`, `p_to <= now()`, rango máximo 31 días y `p_from >= now()-365 days`.
+- `event_type`, comercio y actor son filtros exactos opcionales; event_type debe pertenecer a allowlist. No hay filtros JSON ni SQL/query libre.
+- `p_limit` 1..100; cursor keyset con `p_before_at` y `p_before_id` ambos NULL o ambos requeridos. Orden estable `occurred_at DESC, id_evento DESC`; siguiente página usa la última pareja retornada.
+- Campos retornados: `id_evento`, `occurred_at`, `created_at`, `event_type`, `severity`, `retention_days`, `outcome`, `actor_type`, `actor_user_id`, `id_comercio`, `source`, `producer`, `correlation_id`, `metadata` ya validada. No retorna headers, IP, UA, secretos ni payload libre.
+- Cada búsqueda autorizada escribe un AuditLog `security_events_consultados` con actor staff, sin contenido de eventos ni metadata; registra ventana, filtros usados y límite para trazabilidad de acceso.
+
+### 4.8 Retención y purge operable
+
+Política V1 cerrada, basada en `occurred_at` (UTC): `NOTICE=180 días`; `HIGH=365`; `CRITICAL=365`. `retention_days` es generated stored (4.4), no configurable en insert. No conservar SecurityEvents indefinidamente.
+
+**Scheduler LIVE verificado:** extensión `pg_cron` 1.6.4 instalada, `cron.job` y `cron.job_run_details` presentes, database target `postgres`. Hay dos jobs activos con `username=postgres`, schedule cada minuto; en las 24 h consultadas cada uno tiene 1.440 ejecuciones `succeeded`, 0 no-succeeded y última ejecución `2026-09-23 14:16 UTC`. Esto prueba scheduler operativo observado, no el nuevo job aún inexistente. REV3 usará el mismo `pg_cron` tras smoke de alta/ejecución del nuevo job en backend; no requiere infraestructura externa.
+
+Contrato de jobs: `cron.schedule('rsuelvo-security-events-purge','*/5 * * * *','select rsuelvo_private.fn_security_events_purge(500)')` y `cron.schedule('rsuelvo-security-events-purge-watchdog','*/15 * * * *','select rsuelvo_private.fn_security_events_purge_watchdog()')`; el scheduler corre como `postgres`. Purge: cada llamada es una transacción atómica que procesa chunks de 500 con `FOR UPDATE SKIP LOCKED`, hasta 10 chunks/5.000 filas por corrida y termina. Re-ejecución procesa backlog restante. Solo corta filas vencidas por severity; nunca recibe fecha/cutoff del llamador. Usa lock advisory transaccional para evitar solape con otra purga. Devuelve `deleted_count`; batch vacío no crea AuditLog.
+
+`fn_security_events_purge(p_batch_size integer)` SECURITY DEFINER propiedad `postgres`, valida 1..500, calcula corte internamente, borra solo expirados, es idempotente y escribe **un AuditLog por ejecución con deleted_count>0** (`accion='security_events_purge'`, tabla `tbl_security_events`, scope/actor NULL, metadata administrativa numérica y versión de política; sin contenido personal). DELETE + AuditLog son atómicos: error → rollback total y run `failed` en `cron.job_run_details`; el siguiente tick de 5 min reintenta.
+
+Job watchdog cada 15 min (`fn_security_events_purge_watchdog`, también solo `postgres`) inspecciona `cron.job_run_details`: si hay 2 fallas consecutivas o no hay ejecución exitosa de purge en 20 min, escribe una sola fila AuditLog `security_events_purge_failure` por incidente; al recuperarse registra `security_events_purge_recovered`. El owner de seguridad/DB revisa estas entradas y `cron.job_run_details`; fallo sostenido es incidente operativo, los eventos expirados no se purgan hasta recuperación. Al reanudar, los batches drenan backlog; el writer permanece fail-closed mientras una consulta encuentre cualquier fila vencida y solo se reactiva tras una corrida exitosa que deje cero expirados. Si scheduler deja de operar, no se permite acumulación indefinida: producers pasan a fail-closed después de 24 h sin purge exitoso (su transacción IAM crítica también revierte) hasta recuperación y purge ejecutado. Así una falla no transforma retención finita en una promesa silenciosa de almacenamiento perpetuo.
+
+### 4.9 Índices mínimos
+
+Además de PK en `id_evento`, crear solo:
+
+1. `(occurred_at DESC, id_evento DESC)` — consulta/cursor global y purge oldest-first.
+2. `(event_type, occurred_at DESC, id_evento DESC)` — filtro tipo.
+3. `(id_comercio, occurred_at DESC, id_evento DESC)` — filtro comercio.
+4. `(actor_user_id, occurred_at DESC, id_evento DESC)` — filtro actor.
+5. `(severity, occurred_at)` — corte de purge por 180/365 días.
+
+No índice separado en `producer_event_id` porque la columna no existe en V1; no indexar JSONB ni `correlation_id` sin caso medido.
+
+### 4.10 Estado IAM10-H1 y regresión backend
+
+| Caso | Clasificación vigente |
+|---|---|
+| A1 anon/PostgREST | LIVE PASS |
+| A2 authenticated AAL1 | PENDIENTE EXTERNO |
+| A3 authenticated AAL2 | PENDIENTE EXTERNO |
+| A4 service_role HTTP | PENDIENTE EXTERNO |
+| A5 PostgreSQL directo sin JWT | LIVE PASS · `DIRECT_PG_TRUSTED_CONTEXT` |
+| A6 consumidores direct-PG | LIVE INVENTARIO · 16 workflows activos; 8 usan 25 nodos PostgreSQL directos |
+
+Conclusión: **SAFE AS DESIGNED para A1/A5 observados; certificación incompleta; NO P0 confirmado.** No bloquea el GO de contrato REV3 ni autoriza modificar IAM-5. Durante backend se deben añadir regresiones A1–A6 dentro de disponibilidad real de credenciales; nunca abrir grants temporales.
+
+### 4.11 E2E/DoD backend para este contrato
+
+Antes de producción: migración aplica/restore limpio; schema privado no expuesto; tabla append-only ACL/RLS verificados por PostgREST y roles; 8 transiciones emiten una fila exacta; retries, carreras, `ya_v0`, no-op, rollback y cambio de owner/membership no duplican; transferencia start misma pareja devuelve ID existente; cada actor/target/scope y metadata corresponde; validator/check rechaza campos extra/tipo/tamaño/event enums incorrectos; búsqueda solo SuperAdmin/SysAdmin, filtros/cursores/rango/paginación correctos y auditados; `service_role` no accede a tabla directa; purge por severity llega a cero vencidos, batch/retry/failure/watchdog/recovery y AuditLog probados; pg_cron job activo bajo `postgres` y últimas corridas exitosas; fail-closed tras 24 h comprobado en entorno QA; regresión IAM-1..9, `fn_verificar_guards_sanos()` y 8 workflows n8n direct-PG; restore operativo verificado.
+
+**Resultado contractual:** REV3 fija catalog, schema, retención y purge, lectores, escritura, grants/RLS, índices e idempotencia. Los cambios identificados a `fn_iniciar_transferencia` y `fn_gestionar_vinculo` forman parte del alcance backend IAM-10 antes de habilitar SecurityEvent. La retención se apoya en `pg_cron` LIVE probado; el release sigue condicionado a smoke/QA del nuevo job y del purge.
 
 ---
 
-**Veredicto de esta fase:** auditoría + contrato REV2 documentales; implementación no iniciada.
-**IAM-10 = CONTRATO REV2 / NO IMPLEMENTADO.**
+**Veredicto de esta fase:** REV3 contractual documental terminada; sin implementación.
+**IAM-10 = CONTRATO REV3 / LISTO PARA GO BACKEND (NO IMPLEMENTADO).**
