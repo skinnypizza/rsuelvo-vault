@@ -1,7 +1,7 @@
 # MIG-PY-01 — Retiro progresivo de n8n y migración a Python/VPS
 
-**Estado:** DECISIÓN VINCULANTE / MIGRACIÓN NO INICIADA  
-**Fecha de registro:** 2026-09-23  
+**Estado:** DECISIÓN VINCULANTE / MIGRACIÓN NO INICIADA
+**Fecha de registro:** 2026-09-23
 **Ámbito de este documento:** registrar la decisión, el alcance de la deuda y sus gates. No define ni implementa la arquitectura Python.
 
 ## Decisión

@@ -1,7 +1,7 @@
 # Cierre global — Onboarding e IAM RSUELVO
 
-**Fecha:** 2026-09-23  
-**Resultado:** **ONBOARDING / IAM = CERRADO HASTA MIGRACIÓN PYTHON**  
+**Fecha:** 2026-09-23
+**Resultado:** **ONBOARDING / IAM = CERRADO HASTA MIGRACIÓN PYTHON**
 **IAM-10 BACKEND:** **CERRADO CON CERTIFICACIONES DIFERIDAS DOCUMENTADAS**
 
 Este cierre congela el alcance IAM/Onboarding ejecutado hasta IAM-10. Los estados de certificación pendientes se conservan explícitamente y no se convierten en PASS. La arquitectura futura de backend Python/VPS y su migración se gestionan en un proceso independiente; aquí solo se registra `MIG-PY-01` y el gate `IAM10-A6-PYTHON`.
