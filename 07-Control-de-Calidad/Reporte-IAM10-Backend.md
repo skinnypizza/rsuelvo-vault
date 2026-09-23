@@ -55,7 +55,7 @@ Implementación aditiva del event store privado IAM-10 V1 y sus ocho transicione
 | Cron y acceso direct-PG luego de migración 102 | LIVE | PASS; purge `succeeded` a 15:50 UTC y watchdog a 15:45 UTC; misma firma `fn_gestionar_vinculo`, EXECUTE preservado para `service_role` y owner `postgres` |
 | IAM10-H1 A2 AAL1 / A3 AAL2 / A4 service_role HTTP | PENDIENTE EXTERNO | No se dispuso de sesiones/token controlados para estos contextos |
 | A5 direct-PG sin JWT | LIVE | PASS; `DIRECT_PG_TRUSTED_CONTEXT`, fallback histórico esperado |
-| A6 consumers direct-PG n8n | LIVE INVENTARIO | 16 workflows activos, 8 con 25 nodos PostgreSQL; sin ejecutar/cambiar workflows |
+| A6 consumers direct-PG n8n | LIVE INVENTARIO | 16 workflows activos, 8 con 25 nodos PostgreSQL. Sin cambiar/ejecutar workflows; búsqueda posterior a migración 102 encontró 0 ejecuciones, por lo que regresión runtime n8n queda PENDIENTE EXTERNO |
 | Regresión funcional IAM-1..9 completa | PENDIENTE EXTERNO | No se ejecutó suite completa contra identidades y fixtures LIVE; la regresión local de transición se limita a rutas instrumentadas |
 | Restore de backup / recuperación completa | PENDIENTE EXTERNO | No se ejecutó restore LIVE; QA local se hizo en DB desechable |
 | Flutter / Web sin cambios | CÓDIGO | PASS; no hay cambios ni checkout Flutter accesible en este entorno |
@@ -71,8 +71,9 @@ No se insertaron fixtures ni eventos de prueba en LIVE. Las pruebas previas de t
 ## Deudas y revisión pendiente
 
 1. Obtener JWT de pruebas controladas para A2/A3 y service_role HTTP A4; repetir lectura con staff/Support de prueba en LIVE si se habilitan credenciales seguras.
-2. Ejecutar regresión IAM-1..9 completa y restore conforme al runbook con entorno de staging/backup.
-3. Revisión independiente del SQL, actores/roles y pruebas antes de marcar backend aprobado.
+2. Ejecutar una regresión controlada de workflow n8n que use PostgreSQL direct-PG; el inventario y la firma/grant DB están intactos, pero no hay ejecución posterior al DDL que permita afirmar resultado de workflow.
+3. Ejecutar regresión IAM-1..9 completa y restore conforme al runbook con entorno de staging/backup.
+4. Revisión independiente del SQL, actores/roles y pruebas antes de marcar backend aprobado.
 
 ## IAM10-B1: decisión y matriz
 
