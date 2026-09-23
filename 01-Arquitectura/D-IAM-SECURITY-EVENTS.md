@@ -22,7 +22,45 @@
 | Monitoreo de guard | La función `fn_verificar_guards_sanos()` existe, pero no se encontró job cron LIVE que la ejecute como monitor ni que emita incidentes. | `SECURITY.GUARD_HEALTH_FAILURE` no tiene productor actual; queda fuera de V1 hasta diseñar monitor fiable. |
 | Alertas | No encontramos canal que consuma señales IAM como alertas de seguridad. | Storage y alerting permanecen decisiones separadas. |
 
-**Hallazgo IAM-5 que requiere revisión independiente:** la definición LIVE de `rsuelvo.fn_es_service_role()` es `SECURITY DEFINER` y contiene rama `auth.jwt() is null AND current_user IN ('postgres','service_role')`. `fn_tiene_aal2()` hace una comprobación análoga. La regresión `fn_verificar_guards_sanos()` devuelve `ok:true` al invocarse desde SQL Editor (donde `auth.jwt()` es NULL y `fn_es_service_role()` resulta TRUE). No se probó un bypass desde PostgREST/anon; esta auditoría no demuestra ese bypass. Aun así, la rama usa `current_user` dentro de SECURITY DEFINER y contradice el principio IAM indicado para este proyecto. **No se modificó el código**; requiere evaluación correctiva separada antes de cualquier implementación IAM-10.
+**IAM10-H1 / IAM5-CERT (resultado de certificación abajo):** la definición LIVE de `rsuelvo.fn_es_service_role()` es `SECURITY DEFINER` y tiene fallback `auth.jwt() IS NULL AND current_user IN ('postgres','service_role')`; `fn_tiene_aal2()` tiene fallback equivalente. La migración 87 explica el propósito: JWT presente manda; el fallback aplica solo a conexión directa sin JWT para backend/n8n. El incidente P0 histórico fue un `current_user` OR independiente aun con JWT, patrón distinto. SQL Editor confirma el contexto directo (JWT NULL y helper TRUE), pero eso no prueba una petición PostgREST. Se encontró consumidor PostgreSQL directo real en n8n y la llamada anon HTTP probó que PostgREST no cae en fallback. No se modificaron guards.
+
+## 1.1 IAM10-H1 / IAM5-CERT — frontera PostgREST vs PostgreSQL directo
+
+**Migración 87 canónica:** inspeccionada junto con la función LIVE. Lógica desplegada:
+
+- `fn_es_service_role()`: JWT `role=service_role` concede; si `auth.jwt()` es NULL, permite solo `current_user IN ('postgres','service_role')`.
+- `fn_tiene_aal2()`: sin JWT permite solo los roles PostgreSQL anteriores; JWT service_role pasa por identidad backend; cualquier otro JWT recibe AAL2 únicamente si claim `aal='aal2'`.
+- No-JWT en SQL Editor es `DIRECT_PG_TRUSTED_CONTEXT`, un contexto backend privilegiado esperado bajo el diseño actual. El helper se probó allí como TRUE; esto por sí solo no indica bypass HTTP.
+
+### Inventario real de consumidores PostgreSQL directos
+
+El n8n conectado muestra 16 workflows activos. Inspeccioné las versiones activas completas y la metadata de credenciales (sin secretos): **8 workflows tienen 25 nodos `n8n-nodes-base.postgres`** con una credencial `postgres` compartida llamada `Postgres account`:
+
+- WF-10 (3 nodos), WF-12 (1), WF-13 (3), WF-14 (5), WF-20 (4), WF-21 (1), WF-25-C (1), WF-80 (7).
+- Entre las operaciones llamadas están `fn_upsert_cliente`, `fn_solicitar_reserva`, `fn_agregar_lista_espera_v2`, `fn_crear_pedido_desde_reserva`, `fn_generar_cobro` y consultas/logs de WF-80.
+- Bitácora canónica de n8n registra `Postgres account` apuntando al proyecto `iwfaktlxebxtocmswdvv` con rol `bypassrls`; entradas de 2026-09-19 describen que n8n usa usuario `postgres` por conexión PG sin JWT y que quitar esa identidad rompió RPCs PG-node. No se ejecutaron workflows de negocio durante esta certificación.
+- **Respuesta A6:** sí existe consumidor real PostgreSQL directo que justifica el contexto sin JWT. La lista MCP protege secretos; no se leyó la contraseña ni se hizo conexión de prueba bajo esa credencial, así que el usuario SQL actual de ese secreto no se revalidó en este turno. La evidencia de productor activo + credencial type `postgres` + bitácora de rol/uso se considera evidencia LIVE de inventario, no una ejecución de RPC.
+
+### Matriz de certificación A1–A6
+
+| Caso | Resultado | Evidencia / límite |
+|---|---|---|
+| **A1 anon real vía PostgREST** | **LIVE PASS** | POST `/rest/v1/rpc/fn_es_service_role`, API key pública anon, sin header `Authorization`, perfil `rsuelvo`: HTTP 200, cuerpo `false`. La metadata de DB confirma `anon` tiene EXECUTE en helper service role; no tiene EXECUTE en `fn_tiene_aal2()` ni en RPC crítica `fn_solicitar_habilitacion_v1`. No se abrió ningún grant. |
+| **A2 JWT authenticated AAL1** | **PENDIENTE EXTERNO** (código inspeccionado) | No había sesión/JWT QA autenticada AAL1 disponible sin credenciales interactivas del titular. La lógica JWT branch espera service_role false, AAL2 false y acción crítica `mfa_requerido`; no se atribuye resultado LIVE. |
+| **A3 JWT authenticated AAL2** | **PENDIENTE EXTERNO** (código inspeccionado) | Requiere sesión real MFA AAL2. No se tenía token/sesión interactiva ni se solicitaron contraseñas. Lógica espera service_role false y AAL2 true; no se atribuye resultado LIVE. |
+| **A4 JWT service_role por HTTP** | **PENDIENTE EXTERNO** (código inspeccionado) | No se dispuso de la service_role key para request HTTP y no se buscó/exhibió un secreto local. Lógica JWT branch concede `fn_es_service_role=true` y comportamiento técnico de AAL2. Certificar con credencial de servicio en contexto controlado. |
+| **A5 SQL Editor / PG directo sin JWT** | **LIVE PASS · DIRECT_PG_TRUSTED_CONTEXT** | Query de solo lectura: `auth.jwt()` NULL, `fn_es_service_role()` TRUE, `fn_verificar_guards_sanos()` `{"ok":true}`. Resultado esperado para contexto PostgreSQL privilegiado; no representa PostgREST. |
+| **A6 consumidor PostgreSQL directo** | **LIVE inventario + CÓDIGO/bitácora** | 16 workflows activos; 8 workflows/25 nodos Postgres directos. Bitácora registra la credencial como rol bypassrls y fallo histórico al perder la identidad PG sin JWT. No se ejecutaron workflows productivos. **Existe consumidor real; JWT-only cambiaría el contrato actual de n8n.** |
+
+**Resultado de frontera:** en la petición anon real observada el helper devolvió `false` por HTTP; ese resultado es consistente con el camino JWT/rol no privilegiado. No se expuso el GUC JWT de esa petición. No se observó bypass anon ni se confirma P0. A2/A3/A4 permanecen sin certificación LIVE, por falta de tokens/clave legítimos disponibles. Por evidencia actual la conclusión es **SAFE AS DESIGNED para la frontera A1 y el contexto A5, con certificación JWT de usuario/service_role aún parcial**, no certificación total de la matriz.
+
+### `fn_verificar_guards_sanos()` — evaluación, sin cambios
+
+Su comprobación estática actual es insuficiente como análisis estructural: busca `current_user` y la subcadena `auth.jwt() is null`, y la presencia de texto JWT/service_role; no demuestra que el fallback esté ligado exclusivamente a la rama NULL ni que no exista un OR independiente cuando el JWT está presente. Para AAL2 tampoco prueba que la rama de usuario compare únicamente `aal='aal2'`. Además su check conductual ejecutado desde SQL Editor solo certifica A5, contexto privilegiado.
+
+Mejora propuesta **no implementada**: el guard estático debería contrastar una forma canónica normalizada/parseable (o inspección estructural robusta del cuerpo) de ambas funciones, rechazar cualquier rama JWT que pueda OR-conceder por `current_user`, validar que el rol service_role se compare con `auth.jwt()->>'role'`, y que usuarios ordinarios solo pasen por claim AAL2 exacto. Mantener una prueba SQL directa etiquetada A5; complementar con harness HTTP externo A1–A4 que reporte contexto/status/helper y no abra grants temporales. Esta revisión no debe hacer que SQL Editor TRUE se marque como vulnerabilidad.
+
+**Clasificación actual:** `IAM10-H1 / IAM5-CERT — fallback direct-PG en helpers críticos requiere certificación de frontera PostgREST/direct-DB`. No es P0 confirmado. No modificar guards hasta completar A2/A3/A4 y revisión del contrato de la credencial PG n8n.
 
 ## 2. Inventario de fuentes y productores
 
@@ -163,7 +201,7 @@ No usar `REVOKED` como outcome: revocar es la acción/event type, cuyo outcome s
 ## 7. Modelo de actor
 
 - `USER`: el servidor deriva `id_usuario` desde `auth.uid() → tbl_usuarios`; no recibe `actor_user_id`, rol, owner ni tenant desde JSON del cliente.
-- `SERVICE_ROLE`: solo productor backend confiable que valida JWT claims o identidad de servicio autenticada. No guardar key/token. No usar `current_user` dentro de SECURITY DEFINER para inferir service role.
+- `SERVICE_ROLE`: solo productor backend confiable que valida JWT claims o identidad de servicio autenticada. No guardar key/token. No inferir actor humano desde `current_user`; solo el helper de identidad backend puede usar el fallback no-JWT aprobado para la conexión PostgreSQL directa.
 - `SYSTEM`: job/trigger identificado explícitamente por nombre de productor confiable y ejecución real; no usarlo como fallback genérico.
 - `UNKNOWN`: intento no autenticado o sujeto no mapeable; actor_user_id NULL. Si el proveedor aporta Auth user UUID, no guardar automáticamente; requerir justificación, limitación de acceso y mapa seguro.
 - SuperAdmin no es actor_type: es un usuario RSUELVO cuyo rol/capability se deriva en backend. Guardar `actor_scope=GLOBAL_STAFF` o rol canónico calculado solo si hace falta investigar, no `owner=true` ni declaración del cliente.
@@ -205,7 +243,7 @@ Propuesta:
 
 **Permitidos:** RPC SECURITY DEFINER con `search_path` seguro y checks canónicos; trigger solo para transición concreta si no duplica el AuditLog; Edge Function server-side después de validar contexto; sistema/job con identidad operacional fija. La escritura del SecurityEvent de transición IAM crítica debe ocurrir en la misma transacción PostgreSQL de la mutación cuando sea técnicamente viable.
 
-**Prohibidos:** insert desde Flutter/Web; que el cliente suministre tipo, actor, rol, comercio autorizado, severity u outcome; copiar `auth.uid()` como actor técnico sin revisar source; tratar `service_role` como actor humano; inferir desde `current_user` dentro de SECURITY DEFINER.
+**Prohibidos:** insert desde Flutter/Web; que el cliente suministre tipo, actor, rol, comercio autorizado, severity u outcome; copiar `auth.uid()` como actor técnico sin revisar source; tratar `service_role` como actor humano; inferir actor humano desde `current_user` dentro de SECURITY DEFINER (el fallback técnico no-JWT queda acotado al helper aprobado y a conexiones directas confiables).
 
 **Correlation ID:** UUID aleatorio creado por primera frontera confiable (EF o gateway) y propagado a RPC/AuditLog/Event por parámetro/contexto interno. No usar ID elegido por usuario como prueba de identidad; nunca incluir tokens ni datos personales. RPC sin frontera HTTP puede generar UUID local para evento, pero eso solo correlaciona ese registro. Formato/propagación en PostgREST y n8n queda pendiente de decisión; hoy no se encontró contrato transversal de request ID.
 
@@ -250,7 +288,7 @@ V1 registra. No envía email/push ni bloquea cuentas. En fase posterior se puede
 6. No se encontró request/correlation ID transversal EF→RPC→AuditLog.
 7. No existe monitor/job LIVE para `fn_verificar_guards_sanos()`.
 8. No se observó lock global de cuenta en capa RSUELVO.
-9. Hallazgo IAM-5 `current_user` bajo SECURITY DEFINER documentado arriba; requiere revisión correctiva independiente.
+9. IAM10-H1 / IAM5-CERT está clasificado como fallback intencional direct-PG; A1/A5 LIVE PASS, A2/A3/A4 PENDIENTE EXTERNO, A6 confirma consumidor directo. Sin P0 confirmado; no cambiar guards hasta certificar JWTs y credencial n8n.
 10. Estado Auth Hook/log retention configurado desde Dashboard no pudo inspeccionarse con los repos/catálogos consultados; no concluir que “no está habilitado” solo por falta de source.
 
 ## 15. Decisiones que requieren aprobación antes de implementación
@@ -260,7 +298,7 @@ V1 registra. No envía email/push ni bloquea cuentas. En fase posterior se puede
 3. Retención propuesta 30/90/365 días: ¿aprobada tras revisión legal y backups?
 4. Acceso staff-only global con lectura auditada: confirmar roles, ticket/caso requerido y si algún subconjunto se expondrá a tenant más adelante.
 5. ¿`tbl_registro_intentos` es deuda y mantiene contador separado con política propia, o se planifica migración futura? No combinar tablas sin diseño de concurrencia y privacidad.
-6. Resolver la discrepancia IAM-5 sobre current_user con su dueño antes de invocar el guard como base de IAM-10.
+6. Completar A2/A3/A4 con sesiones/clave de QA controladas; confirmar usuario DB de la credencial Postgres n8n sin revelar su secreto. Mejorar contractualmente el regression guard antes de cambios IAM-10.
 7. Confirmar si triggers y RPC duales producen AuditLogs duplicados para acciones IAM críticas; SecurityEvent emitirá máximo un evento semántico por transición efectiva.
 
 ## 16. E2E futuro requerido (no ejecutado en esta fase)
