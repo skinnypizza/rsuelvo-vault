@@ -10,7 +10,7 @@ Estado: **IMPLEMENTADO / APROBADO A NIVEL DE CÓDIGO — certificación operativ
 
 ## Alcance
 
-Implementación aditiva del event store privado IAM-10 V1 y sus ocho transiciones aprobadas. No se modificaron Flutter, Web, Edge Functions, IAM-5 helpers, workflows n8n ni contratos operativos comerciales. IAM-1..9 permanecen fuera del alcance, salvo instrumentar sus transiciones aprobadas.
+Implementación aditiva del event store privado IAM-10 V1 y sus ocho transiciones aprobadas. No se modificaron Flutter, Web, Edge Functions, IAM-5 helpers, workflows n8n comerciales ni contratos operativos comerciales. Se creó por solicitud un workflow temporal de QA direct-PG, inactivo y sin endpoint externo; IAM-1..9 permanecen fuera del alcance, salvo instrumentar sus transiciones aprobadas.
 
 ## Implementación
 
@@ -55,9 +55,12 @@ Implementación aditiva del event store privado IAM-10 V1 y sus ocho transicione
 | Cron y acceso direct-PG luego de migración 102 | LIVE | PASS; cron siguió ejecutando hasta purge `succeeded` a 16:05 UTC / watchdog a 16:00 UTC; firma de `fn_gestionar_vinculo` y EXECUTE para `service_role` preservados |
 | Presencia de RPCs IAM-1..9 en catálogo LIVE | LIVE | PASS de integridad estructural únicamente: invitaciones, auto-alta, ownership, membership, verificación y guards siguen presentes; no equivale a E2E funcional con identidades |
 | Inspección runtime n8n posterior a 102 | LIVE | PASS de inventario read-only; ningún workflow tuvo ejecución registrada desde 2026-09-23T00:00Z. Se inspeccionaron los 16 activos y grafos completos de los workflows PostgreSQL directos |
+| Smoke workflow `QA-IAM10-DIRECT-PG-SMOKE` | LIVE | Creado en n8n Cloud, ID `6XoIAD3JIOt1KlaN`, proyecto personal, inactivo; Manual Trigger → un Postgres executeQuery. Referencia la misma credencial existente `Postgres account` usada por WF-80 (solo referencia, secreto no leído). Grafo revisado: sin schedule/webhook/HTTP/subworkflow/nodos de negocio |
+| Ejecución smoke direct-PG | PENDIENTE EXTERNO | Un intento manual fue rechazado por n8n antes de iniciar: “Your trial has ended”; respuesta `status:error`, `executionId:null`. Búsqueda posterior devolvió 0 ejecuciones para el workflow. S1–S4 estaban configuradas en una sola sentencia SELECT read-only, pero no llegaron a ejecutarse; por tanto no se declara conexión/IAM5 PASS desde n8n |
+| Side effects del smoke | LIVE | CERO SQL ejecutado y cero side effects de datos/comercio. Workflow permanece inactivo, sin trigger programado ni endpoint público. Solo se creó la definición QA solicitada en n8n |
 | IAM10-H1 A2 AAL1 / A3 AAL2 / A4 service_role HTTP | PENDIENTE EXTERNO | No se dispuso de sesiones/token controlados para estos contextos |
 | A5 direct-PG sin JWT | LIVE | PASS; `DIRECT_PG_TRUSTED_CONTEXT`, fallback histórico esperado |
-| A6 consumers direct-PG n8n | PENDIENTE EXTERNO | Inventario LIVE: 16 workflows activos, 8 con 25 nodos PostgreSQL directos. No hubo ejecuciones posteriores a 102. Los workflows inspeccionados con PG ejecutan mutaciones de reserva/lista/pago, INSERT de deduplicación/auditoría o envían WhatsApp; los triggers de subworkflows no son ejecutables directamente por MCP. No hay workflow read-only aislable con el runner disponible. Ejecutarlo podría afectar actividad comercial; se requiere fixture/ventana QA aislada o workflow de smoke read-only aprobado. Ningún workflow fue cambiado |
+| A6 consumers direct-PG n8n | PENDIENTE EXTERNO | Inventario LIVE: 16 workflows activos, 8 con 25 nodos PostgreSQL directos. El smoke aislado está creado, pero n8n Cloud terminó su trial y rechazó la ejecución antes de abrir una ejecución. Se requiere restaurar capacidad de ejecución de la cuenta para obtener LIVE PASS. No se ejecutaron ni cambiaron workflows comerciales |
 | IAM-1..9: regresión funcional LIVE completa | PENDIENTE EXTERNO | No hay identidades/tokens y fixtures controlados para ejecutar invitaciones, auto-alta, ownership, membership y V0/V1 sin mutar comercios reales. Solo se hizo inspección estructural LIVE y regresión de código/local documentada abajo |
 | IAM-1..9: código y pruebas existentes | CÓDIGO | PASS según suites QA previas y regresiones locales de las funciones IAM-10 instrumentadas; no se atribuye como ejecución LIVE de IAM-1..9 |
 | Restore de backup / recuperación completa | PENDIENTE EXTERNO | Existe PostgreSQL local, pero `rsuelvo_iam10_qa` es un mock de 8.8 MB con 11 tablas, ya contiene 101/102 y carece del baseline completo/runbook necesario para simular la restauración solicitada. No se encontró dump o staging restaurable. No se intentó restore en producción |
@@ -74,7 +77,7 @@ No se insertaron fixtures ni eventos de prueba en LIVE. Las pruebas previas de t
 ## Deudas y revisión pendiente
 
 1. Obtener JWT de pruebas controladas para A2/A3 y service_role HTTP A4; repetir lectura con staff/Support de prueba en LIVE si se habilitan credenciales seguras.
-2. Para A6, disponer de fixture/entorno QA aislado o workflow smoke direct-PG read-only que no envíe mensajes ni cambie datos; entonces ejecutarlo después de 102 y comparar su respuesta funcional.
+2. Para A6, recuperar capacidad de ejecución de n8n Cloud y ejecutar una vez el workflow inactivo `QA-IAM10-DIRECT-PG-SMOKE` (ID `6XoIAD3JIOt1KlaN`); consultar su execution ID y validar `all_checks_pass=true`. La cuenta respondió “Your trial has ended”; no se intentó modificar el plan ni ejecutar alternativa comercial.
 3. Proveer identidades QA y entorno de restore para E2E IAM-1..9 y recuperación completa. No usar producción para restauración destructiva.
 
 ## IAM10-B1: decisión y matriz
@@ -94,4 +97,4 @@ Los 25 pares efectivos producen 14 `MIXED`, 3 `ELEVATED`, 8 `REDUCED` y cero par
 
 Nota de procedencia: el expediente REV3.1 rastreado contenía un texto ampliado de cuatro direcciones y los IDs `membership_id`/`target_membership_id`; esto no coincide con el freeze de dos valores comunicado al revisar IAM10-B1. REV3.2 registra la insuficiencia y la resolución con evidencia de matriz/código; la autoridad de esta corrección es la enmienda documental y la migración 102.
 
-La certificación IAM10-H1 se mantiene: A1 LIVE PASS; A2/A3/A4 PENDIENTE EXTERNO; A5 LIVE PASS `DIRECT_PG_TRUSTED_CONTEXT`; A6 inventario LIVE y regresión runtime PENDIENTE EXTERNO por riesgo de efectos comerciales. No P0 confirmado; helpers IAM-5 sin cambios. IAM10-B1 está corregido y aprobado independientemente por el usuario. Estado: **IAM-10 BACKEND = APROBADO A NIVEL DE CÓDIGO / PENDIENTE CERTIFICACIÓN OPERATIVA; no cerrado mientras A6 no sea LIVE PASS**.
+La certificación IAM10-H1 se mantiene: A1 LIVE PASS; A2/A3/A4 PENDIENTE EXTERNO; A5 LIVE PASS `DIRECT_PG_TRUSTED_CONTEXT`; A6 PENDIENTE EXTERNO porque n8n Cloud rechazó la ejecución al haber terminado el trial. No P0 confirmado; helpers IAM-5 sin cambios. IAM10-B1 está corregido y aprobado independientemente por el usuario. Estado: **IAM-10 BACKEND = APROBADO A NIVEL DE CÓDIGO / PENDIENTE CERTIFICACIÓN OPERATIVA; no cerrado mientras A6 no sea LIVE PASS**.
