@@ -1,6 +1,6 @@
-# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3 contractual)
+# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3.1 contractual)
 
-**Estado:** CONTRATO REV3 · LISTO PARA GO BACKEND · NO IMPLEMENTADO
+**Estado:** CONTRATO REV3.1 · APROBADO · GO BACKEND · NO IMPLEMENTADO
 **Auditoría:** 2026-09-23 · Vault `728d06f`; Flutter `b3ebaa95c8e4c950a98637835094bea573c0b2bf`; Web `2c4eb51bf440072dafc276488156559ddb975e1a`.
 **Entorno LIVE inspeccionado en solo lectura:** Supabase `iwfaktlxebxtocmswdvv` (RSUELVO, ACTIVE_HEALTHY, PostgreSQL 17.6.1.155, plan Free). `pg_cron` 1.6.4 habilitado en DB `postgres`; 2 jobs activos completaron 1.440/1.440 ejecuciones cada uno en las últimas 24 h.
 
@@ -120,9 +120,9 @@ RLS activa, no FORCE. Políticas LIVE:
 | Mutabilidad | RLS evita update/delete ordinarios, pero grants/owner/servicio permiten más; no hay append-only fuerte. | Append-only para productores; sin UPDATE; DELETE solo proceso de retención auditado. |
 | Ejemplos | Cambió precio/pedido; membership cambió; evidencia V1 creada/revocada. | Transferencia ownership, cambio sensible de membership, V1 revocada. |
 
-## 4. Contrato REV3 — canónico y listo para backend
+## 4. Contrato REV3.1 — ajuste operativo de purge; resto de REV3 congelado
 
-REV3 sustituye la normativa §§4–17 de REV1/REV2. Se mantiene exactamente el catálogo de ocho event types listado en 4.1. SecurityEvent no replica AuditLog. No hay tabla, RPC, cron de purge ni emisión actualmente; todo lo siguiente es contrato para implementar después de este GO.
+REV3 sustituyó la normativa §§4–17 de REV1/REV2. REV3.1 solo corrige la relación entre purge y disponibilidad IAM; las demás decisiones REV3, incluido el catálogo congelado de ocho event types, permanecen intactas. SecurityEvent no replica AuditLog. No hay tabla, RPC, cron de purge IAM-10 ni emisión actualmente; lo siguiente sigue siendo contrato, no implementación.
 
 ### 4.1 Catálogo V1 congelado
 
@@ -177,7 +177,7 @@ UUIDs son IDs internos RSUELVO (`tbl_usuarios.id_usuario`, `tbl_usuario_comercio
 
 Enforcement contractual: `rsuelvo_private.fn_security_event_metadata_valid(text,jsonb) IMMUTABLE` pura y allowlisted por event type; rechaza claves extra/faltantes, tipo incorrecto, UUID/string inválidos, direction/role codes no válidos y objeto no JSON. CHECK llama al validator. Límite `octet_length(metadata::text) <= 2048` y `jsonb_typeof(metadata)='object'`. El helper de escritura también valida antes del INSERT. Sin SQL JSON arbitrario en endpoints de lectura.
 
-### 4.4 Schema físico mínimo propuesto (sin DDL en REV3)
+### 4.4 Schema físico mínimo propuesto (sin DDL en REV3.1)
 
 Tabla: `rsuelvo_private.tbl_security_events`, schema privado no expuesto a PostgREST/Data API. La configuración de schemas expuestos se verifica en backend; nunca añadir `rsuelvo_private`. Revocar `USAGE` del schema y todos los grants de tabla a `PUBLIC`, `anon`, `authenticated` y `service_role`.
 
@@ -204,7 +204,7 @@ Constraints cruzados `event_type→severity,outcome,producer`, actor_id/actor_ty
 
 Usar helper central `rsuelvo_private.fn_emit_security_event(...)`, `SECURITY DEFINER`, `SET search_path = pg_catalog, rsuelvo_private, rsuelvo`, propiedad de `postgres` (igual a los RPC producers LIVE). Sin grants a `PUBLIC`, `anon`, `authenticated` ni `service_role`; sus propietarios `postgres` lo invocan internamente. Los RPC producers siguen siendo únicos puntos de entrada autorizados.
 
-Firma conceptual: `(event_type text, actor_type text, actor_user_id uuid, id_comercio uuid, producer text, correlation_id uuid, metadata jsonb) RETURNS uuid`. No recibe severity, outcome, retention_days ni source; los deriva del catálogo cerrado. Valida pairing event/producer, actor/scope y metadata, asigna timestamps, inserta una fila y devuelve `id_evento`. Actor y comercio vienen ya autorizados desde producer bajo JWT/membership/AAL/estado aplicables. Antes del INSERT comprueba que el job `rsuelvo-security-events-purge` tuvo éxito en las últimas 24 h y que no queda ningún evento vencido; si cualquiera falla, lanza excepción y revierte la transición IAM asociada. En instalación no se habilitan producers hasta la primera purga exitosa.
+Firma conceptual: `(event_type text, actor_type text, actor_user_id uuid, id_comercio uuid, producer text, correlation_id uuid, metadata jsonb) RETURNS uuid`. No recibe severity, outcome, retention_days ni source; los deriva del catálogo cerrado. Valida pairing event/producer, actor/scope y metadata, asigna timestamps, inserta una fila y devuelve `id_evento`. Actor y comercio vienen ya autorizados desde producer bajo JWT/membership/AAL/estado aplicables. El writer no consulta salud del scheduler ni existencia de eventos expirados. Si la tabla está disponible, constraints válidos y el INSERT tiene éxito, transición IAM + SecurityEvent se confirman atómicamente. Si el INSERT contractual falla, la transición asociada revierte. Una caída de `pg_cron`, backlog o demora de purge nunca causa por sí misma un error del writer ni bloquea la operación IAM.
 
 Actor: transfer/verification RPCs actuales derivan el usuario por `auth.uid()/sub → tbl_usuarios`; son `USER` no nulo. `fn_gestionar_vinculo` LIVE actual no separa/deriva actor humano de forma canónica (sus params identifican target); backend debe derivar actor USER desde JWT y no reutilizar `p_id_usuario` como actor. Para invocación direct-PG/service_role validada por el helper IAM5 existente, actor=`SERVICE_ROLE`, actor_user_id=NULL; no inferir humano desde `current_user`. Esto conserva IAM10-H1 sin cambiar guards. Si actor/scope no son válidos, producer no llama al writer.
 
@@ -241,7 +241,9 @@ Contrato de jobs: `cron.schedule('rsuelvo-security-events-purge','*/5 * * * *','
 
 `fn_security_events_purge(p_batch_size integer)` SECURITY DEFINER propiedad `postgres`, valida 1..500, calcula corte internamente, borra solo expirados, es idempotente y escribe **un AuditLog por ejecución con deleted_count>0** (`accion='security_events_purge'`, tabla `tbl_security_events`, scope/actor NULL, metadata administrativa numérica y versión de política; sin contenido personal). DELETE + AuditLog son atómicos: error → rollback total y run `failed` en `cron.job_run_details`; el siguiente tick de 5 min reintenta.
 
-Job watchdog cada 15 min (`fn_security_events_purge_watchdog`, también solo `postgres`) inspecciona `cron.job_run_details`: si hay 2 fallas consecutivas o no hay ejecución exitosa de purge en 20 min, escribe una sola fila AuditLog `security_events_purge_failure` por incidente; al recuperarse registra `security_events_purge_recovered`. El owner de seguridad/DB revisa estas entradas y `cron.job_run_details`; fallo sostenido es incidente operativo, los eventos expirados no se purgan hasta recuperación. Al reanudar, los batches drenan backlog; el writer permanece fail-closed mientras una consulta encuentre cualquier fila vencida y solo se reactiva tras una corrida exitosa que deje cero expirados. Si scheduler deja de operar, no se permite acumulación indefinida: producers pasan a fail-closed después de 24 h sin purge exitoso (su transacción IAM crítica también revierte) hasta recuperación y purge ejecutado. Así una falla no transforma retención finita en una promesa silenciosa de almacenamiento perpetuo.
+Job watchdog cada 15 min (`fn_security_events_purge_watchdog`, también solo `postgres`) inspecciona `cron.job_run_details`: si hay 2 fallas consecutivas o no hay ejecución exitosa de purge en 20 min, escribe **una sola fila AuditLog `security_events_purge_failure` por incidente** con `incident_started_at`; no repite filas cada tick. Al recuperarse registra una sola fila `security_events_purge_recovered`, cuando el backlog realmente vencido quedó drenado. El nivel operativo se deriva de la duración del incidente no resuelto: `DEGRADED` tras >20 min, `HIGH` tras >24 h y `CRITICAL` tras >72 h. Esos niveles describen monitoreo/prioridad operativa, no severity de SecurityEvent ni autorización para bloquear IAM. El owner de seguridad/DB revisa AuditLog y `cron.job_run_details`.
+
+Si purge falla: eventos nuevos siguen ingresando normalmente; IAM sigue funcionando; backlog expirado permanece hasta recuperación; no se usa otra ruta de borrado ni se acortan retenciones. Cada tick de 5 min reintenta. Al volver, los batches procesan todas las filas expiradas según su cutoff real; los no expirados permanecen. La demora se registra como `retention SLA breach / operational debt`. Una falla del watchdog también queda en el historial `cron.job_run_details` y requiere revisión operativa. **Purge/backlog nunca participa en el control transaccional del writer.**
 
 ### 4.9 Índices mínimos
 
@@ -270,11 +272,12 @@ Conclusión: **SAFE AS DESIGNED para A1/A5 observados; certificación incompleta
 
 ### 4.11 E2E/DoD backend para este contrato
 
-Antes de producción: migración aplica/restore limpio; schema privado no expuesto; tabla append-only ACL/RLS verificados por PostgREST y roles; 8 transiciones emiten una fila exacta; retries, carreras, `ya_v0`, no-op, rollback y cambio de owner/membership no duplican; transferencia start misma pareja devuelve ID existente; cada actor/target/scope y metadata corresponde; validator/check rechaza campos extra/tipo/tamaño/event enums incorrectos; búsqueda solo SuperAdmin/SysAdmin, filtros/cursores/rango/paginación correctos y auditados; `service_role` no accede a tabla directa; purge por severity llega a cero vencidos, batch/retry/failure/watchdog/recovery y AuditLog probados; pg_cron job activo bajo `postgres` y últimas corridas exitosas; fail-closed tras 24 h comprobado en entorno QA; regresión IAM-1..9, `fn_verificar_guards_sanos()` y 8 workflows n8n direct-PG; restore operativo verificado.
+Antes de producción: migración aplica/restore limpio; schema privado no expuesto; tabla append-only ACL/RLS verificados por PostgREST y roles; 8 transiciones emiten una fila exacta; retries, carreras, `ya_v0`, no-op, rollback y cambio de owner/membership no duplican; transferencia start misma pareja devuelve ID existente; cada actor/target/scope y metadata corresponde; validator/check rechaza campos extra/tipo/tamaño/event enums incorrectos; búsqueda solo SuperAdmin/SysAdmin, filtros/cursores/rango/paginación correctos y auditados; `service_role` no accede a tabla directa; purge por severity llega a cero vencidos, batch/retry/failure/watchdog/recovery y AuditLog probados; pg_cron job activo bajo `postgres` y últimas corridas exitosas; falla de scheduler simulada mientras IAM crítico sigue operando y emitiendo SecurityEvent; watchdog detecta/escalamiento; backlog drena tras recuperación; AuditLog `recovered`; cero pérdida de eventos no vencidos; regresión IAM-1..9, `fn_verificar_guards_sanos()` y 8 workflows n8n direct-PG; restore operativo verificado.
 
-**Resultado contractual:** REV3 fija catalog, schema, retención y purge, lectores, escritura, grants/RLS, índices e idempotencia. Los cambios identificados a `fn_iniciar_transferencia` y `fn_gestionar_vinculo` forman parte del alcance backend IAM-10 antes de habilitar SecurityEvent. La retención se apoya en `pg_cron` LIVE probado; el release sigue condicionado a smoke/QA del nuevo job y del purge.
+**Resultado contractual:** REV3 fija catálogo, schema, retención y purge, lectores, escritura, grants/RLS, índices e idempotencia. REV3.1 aclara que purge es operacional y no bloquea IAM; si falla, el backlog se drena al recuperar el scheduler. Los cambios identificados a `fn_iniciar_transferencia` y `fn_gestionar_vinculo` forman parte del alcance backend IAM-10 antes de instrumentar SecurityEvent. GO backend aprobado; release productivo sigue condicionado a smoke/QA del nuevo job, purge y DoD E2E.
 
 ---
 
-**Veredicto de esta fase:** REV3 contractual documental terminada; sin implementación.
-**IAM-10 = CONTRATO REV3 / LISTO PARA GO BACKEND (NO IMPLEMENTADO).**
+**Veredicto de esta fase:** REV3.1 contractual aprobada; sin implementación.
+**IAM-10 CONTRATO = APROBADO · GO BACKEND.**
+**IAM-10 = CONTRATO REV3.1 / NO IMPLEMENTADO.**
