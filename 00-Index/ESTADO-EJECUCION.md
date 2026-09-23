@@ -532,4 +532,6 @@
 
 - **2026-09-22 (IAM-9 mig 100)** — Sin saga: solicitar transiciona directo (staging canonico), finalizar DROP, habilitar-v1 undeployed. E2E 1-16 (cero objetos publicos, entrega privada, retry, restore). Deuda IAM9-D1/D2. Pendiente superadmin: revocar live.
 
-- **2026-09-22 (IAM-9 CERRADO)** — Implementación COMPLETA/APROBADA/CERRADA. Backend (mig 92-100), Flutter (b3ebaa9), Web (2c4eb51), E2E 37 puntos (25 LIVE/12 CÓDIGO/5 PENDIENTE). Deudas IAM9-D1/D2 + SuperAdmin live pendientes. Vault: f8d355d (contrato) / b3ebaa9 (Flutter) / 2c4eb51 (Web) / e78a3b4 (prompts).
+- **2026-09-22 (IAM-9 CERRADO)** — Implementación COMPLETA/APROBADA/CERRADA. Backend (mig 96-100 sobre baseline IAM-1..8), Flutter (b3ebaa9), Web (2c4eb51), E2E 37 puntos: 25 LIVE, 10 CÓDIGO y 2 PENDIENTE EXTERNO (certificación SuperAdmin). IAM-7 consta por separado como regresión. IAM-9 backend = migraciones 96–100 sobre baseline IAM-1..8. Flutter 375/375 + analyze 0; Web 95 unit + 9 browser, build OK y deploy HTTP 200. Deudas IAM9-D1/D2 + SuperAdmin live pendientes. Vault: f8d355d (contrato) / b3ebaa9 (Flutter) / 2c4eb51 (Web) / e78a3b4 (prompts).
+
+- **2026-09-23 (parche documental IAM-9)** — Se corrigió el expediente: E2E 37 = 25 LIVE / 10 CÓDIGO / 2 PENDIENTE EXTERNO; regresión IAM-7 separada; migraciones IAM-9 96–100 sobre baseline IAM-1..8; `tbl_verificaciones_comercio` sin unicidad usuario+doc; Flutter 375/375; Web 95 unit + 9 browser, build OK, deploy HTTP 200. Pendiente externo SuperAdmin y deudas IAM9-D1/D2 preservados. Sin cambios de código.

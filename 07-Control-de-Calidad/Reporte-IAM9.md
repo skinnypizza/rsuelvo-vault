@@ -16,21 +16,17 @@
 - `fn_es_owner` + AAL2 como guard backend
 - Transiciones cerradas: V0→V1→(revocación→V0)
 
-## 2. Backend (mig 96–100, 11 migraciones)
+## 2. Backend (migraciones IAM-9: 96–100 sobre baseline IAM-1..8)
 
 | Migración | Propósito |
 |---|---|
-| 92 | `tbl_invitaciones` (idempotente, v8, honeypot) |
-| 93 | `fn_mis_invitaciones_pendientes` / `fn_aceptar_invitacion` / `fn_revocar_invitacion` |
-| 94 | `fn_comercio_habilitado` + `fn_aceptar_invitacion` (N-4 por comercio) + `fn_editar_usuario` (SUSPENDED) + trigger `fn_uc_sincronizar_activo` |
-| 95 | `fn_gestionar_vinculo` con `CAMBIAR` atómico; `fn_aceptar_invitacion` busca tupla exacta primero |
-| 96 | `tbl_verificaciones_comercio` + `fn_checks_verificacion_v1` (7 checks exactos) + `fn_estado_verificacion_comercio` + `fn_solicitar_habilitacion_v1` (owner+AAL2, lock, `ya_activo`) + `fn_finalizar_habilitacion_v1` (EF) + `fn_revocar_verificacion_v1` (solo superadmin, lock, `ya_v0`, motivo obligatorio) |
-| 97 | Staging QR privado + check dual (setup/operativo); `fn_iniciar_transferencia` + `fn_aceptar_invitacion` + `fn_revocar_invitacion` con N-4 por comercio; trigger `trg_validar_asignacion_usuario_comercio` (N-4) |
-| 98 | Ciclo staging→operativo: `fn_finalizar_habilitacion_v1` (solo service_role), `fn_finalizar_habilitacion_v1` DROP; `habilitar-v1` EF undeployed |
-| 98 | `fn_es_service_role`/`fn_tiene_aal2` → JWT-only; `fn_tiene_acceso_comercio`/`fn_es_service_role` → JWT-only; overload `fn_gestionar_vinculo` drop |
-| 99 | `fn_finalizar_habilitacion_v1` revocado; `habilitar-v1` undeploy; `qr-entrega` state-driven (bucket privado canónico, DENY V0, signed URL V1) |
-| 99 | `fn_finalizar_habilitacion_v1` DROP; `habilitar-v1` DROP |
-| 100 | Sin saga: `fn_solicitar_habilitacion_v1` transiciona directo; `fn_finalizar` DROP; `qr-pagos-setup` canonico; E2E 1–16 |
+| 96 | Evidencia IAM-9, checks V1, lectura/solicitud/revocación y guards owner+AAL2/SuperAdmin |
+| 97 | QR privado de setup y ajustes de autorización/transición |
+| 98 | Ajustes de autorización y flujo de habilitación |
+| 99 | Retiro del flujo de publicación anterior y entrega QR state-driven |
+| 100 | Solicitud owner+AAL2 transaccional V0→ACTIVO, bucket canónico privado y retiro de finalize/EF |
+
+**Atribución:** IAM-9 backend = migraciones 96–100 sobre baseline IAM-1..8. Las migraciones 92–95 son baseline/dependencias anteriores, no migraciones IAM-9.
 
 ### 2.1 Checks V1 exactos (fuente→condición→modo)
 | Check | Fuente | Condición | Modo |
@@ -57,27 +53,22 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 - `fn_es_superadmin` / `fn_es_service_role` → JWT-only
 
 ### 2.3 Tablas nuevas
-- `tbl_verificaciones_comercio` (append-only, UNIQUE usuario+doc, campos: id, comercio, nivel='V1', estado, origen, verificador, checks_snapshot, motivo, timestamps, revocación)
+- `tbl_verificaciones_comercio` (append-only; campos: id, comercio, nivel='V1', estado, origen, verificador, checks_snapshot, motivo, timestamps y revocación). No contiene unicidad `usuario+doc`; esa semántica pertenece a aceptación legal IAM-7.
 - `tbl_auto_alta_requests` (idempotencia por request_id, rate-limit 1/24h)
 - Trigger `trg_doc_inmutable` (inmutable si aceptaciones > 0)
 - Trigger `trg_uc_auto_owner` (auto-owner en primera membresía TENANT_ADMIN)
 
-## 2.4 E2E Backend (37 puntos) — Clasificación
-| # | Punto | Resultado | Tipo |
-|---|---|---|---|
-| 1 | 3 obligatorios → bloqueado | PASS | LIVE |
-| 2 | aceptar 1 → 2 quedan | PASS | LIVE |
-| 3 | retry → `ya_aceptado` (1 evidencia + 1 AuditLog) | PASS | LIVE |
-| 4 | aceptar todos → 0 pendientes | PASS | LIVE |
-| 5 | nueva versión → gate reaparece | PASS | LIVE |
-| 6 | id viejo → `version_obsoleta` | PASS | LIVE |
-| 7 | opcional no bloquea | CÓDIGO | CÓDIGO |
-| 8 | fallo RPC → `legalStatusUnavailable` fail-closed | CÓDIGO | CÓDIGO |
-| 9 | retry recupera | CÓDIGO | CÓDIGO |
-| 10 | logout accesible | CÓDIGO | CÓDIGO |
-| 11 | MFA accesible | CÓDIGO | CÓDIGO |
-| 12 | recovery accesible | CÓDIGO | CÓDIGO |
-| 13-27 | (detalles LIVE/CÓDIGO en reporte anterior) | | |
+## 2.4 E2E IAM-9 — 37 puntos y clasificación
+
+Clasificación de cierre: **25 LIVE + 10 CÓDIGO + 2 PENDIENTE EXTERNO = 37**. No se cuenta ninguna prueba unitaria como LIVE. El reporte fuente de cierre no conservó la descripción individual de los puntos 13–27; por eso no se atribuyen resultados caso por caso que no tengan evidencia documentada aquí. Los grupos verificables del expediente son:
+
+| Grupo | Cantidad | Clasificación | Evidencia resumida |
+|---|---:|---|---|
+| Checks V1, guards, autorización, transición, evidencia, QR privado/entrega y restore | 25 | LIVE | E2E backend documentado en bitácora; incluye casos de migraciones 96–100 y restore. |
+| Casos cubiertos por implementación/tests y verificaciones estáticas sin ejecución LIVE | 10 | CÓDIGO | No son pruebas LIVE. El expediente no conserva desglose individual de los 10 casos. |
+| Certificación SuperAdmin: revocación LIVE y denegación a no-owner/cajero con AAL2 LIVE | 2 | PENDIENTE EXTERNO | No consta ejecución real; no se declaran aprobados. |
+
+**Regresión IAM-7 (fuera de los 37 puntos IAM-9):** aceptación de documentos obligatorios, retry/idempotencia, versionado/obsolescencia, documentos opcionales y estados de acceso/recovery. Su reporte fuente es [Reporte-IAM7.md](Reporte-IAM7.md). Esas pruebas no son núcleo E2E de IAM-9.
 
 ### 2.1 Deuda IAM-9
 | ID | Descripción |
@@ -87,7 +78,7 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 
 **Certificación SuperAdmin pendiente:** revocar live + no-owner/cashier AAL2 live.
 
-## 3. Flutter (`b3ebaa9`, 340/340, analyze 0)
+## 3. Flutter (`b3ebaa9`, 375/375, analyze 0)
 
 ### 3.1 Flujo
 - V0 checklist: NIT, razón, teléfono, correo, sucursal, QR (sube a `qr-pagos-setup/<id>/...`), config
@@ -101,7 +92,7 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 - Selector IAM-3 intacto: nunca `selected.first` silencioso
 - `mfaEnrollmentRequired` + `mfaChallengeRequired` + `legalAcceptanceRequired` → gates en orden correcto
 
-### 3.1 Tests Flutter (340/340, analyze 0)
+### 3.1 Tests Flutter (375/375, analyze 0)
 - 7 tests IAM-9 (`mfa_policy_test.dart`) + 23 tests específicos (`verification_screens_test.dart`, etc.)
 - Cobertura: owner/no-owner, AAL1/2, obsoleta, retry, V0/V1, opcional no bloquea, selector no loop, gateway fail-closed, recovery/MFA accesible, lenguaje honesto (grep 0 prohibidos)
 
@@ -116,7 +107,7 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 - `lib/features/qr_comercio/qr_comercio_repository.dart` (staging bucket)
 - `lib/core/capabilities.dart` (catálogo + `can()`)
 
-## 4. Web (`2c4eb51` / `532770d`, build OK, 95 unit + 9 browser tests, deploy `dea41b3d` 200)
+## 4. Web (`2c4eb51`, build OK, 95 unit + 9 browser; deploy 200)
 
 ### 4.1 Alcance
 **IAM-9 onboarding tenant = N/A** (D-IAM-WEB-SCOPE: `/app` = backoffice global staff; onboarding tenant solo-Flutter)
@@ -134,29 +125,12 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 - `qr-entrega` → signed URL bucket privado; no persiste URL
 
 ### 4.1 Pruebas
-- 95 unit tests + 9 browser = 82/82
-- Build OK (`dea41b3d` deploy `ad7a8522` 200)
+- 95 unit tests; 9 browser tests.
+- Build OK; deploy HTTP 200.
 
-## 5. Verificación E2E (Clasificación final)
+## 5. Regresión IAM-7 (fuera del E2E IAM-9)
 
-| # | Punto | Resultado | Tipo |
-|---|---|---|---|
-| 1 | 3 obligatorios → bloqueado | PASS | LIVE |
-| 2 | aceptar 1 → quedan 2 | PASS | LIVE |
-| 3 | retry → `ya_aceptado` (1 evid + 1 audit) | PASS | LIVE |
-| 4 | aceptar todos → 0 pendientes | PASS | LIVE |
-| 5 | nueva versión → gate reaparece | PASS | LIVE |
-| 6 | id viejo → `version_obsoleta` | PASS | LIVE |
-| 7 | opcional no bloquea | CÓDIGO | CÓDIGO |
-| 8 | fallo RPC → `legalStatusUnavailable` | CÓDIGO | CÓDIGO |
-| 9 | retry recupera | CÓDIGO | CÓDIGO |
-| 10 | logout accesible | CÓDIGO | CÓDIGO |
-| 11 | MFA accesible | CÓDIGO | CÓDIGO |
-| 12 | recovery accesible | CÓDIGO | CÓDIGO |
-| 13-27 | (detalles) | | |
-| 28 | promo ACTIVO + QR canónico | PASS | LIVE |
-| 29 | demote/revocar → DENY sin mover archivo | PASS | LIVE |
-| 30-37 | restore limpio | PASS | LIVE |
+Las pruebas de aceptación de documentos, idempotencia (`ya_aceptado`), versionado/obsolescencia, opcionales y gates legales corresponden a IAM-7. Se conservan como regresión y su evidencia está en [Reporte-IAM7.md](Reporte-IAM7.md); no se incluyen entre los 37 puntos E2E IAM-9.
 
 ### 5.1 Deuda pendiente (preexistente)
 | ID | Descripción |
@@ -177,10 +151,10 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 ### Estado por componente
 | Componente | Estado |
 |---|---|
-| Backend (mig 92–100) | ✅ APROBADO |
+| Backend (mig 96–100 sobre baseline IAM-1..8) | ✅ APROBADO |
 | Flutter | ✅ APROBADO |
 | Web | ✅ APROBADO |
-| E2E Live | ✅ (25 LIVE / 12 CÓDIGO / 15 CLIENT/UX / 5 N/A / 2 PENDIENTE EXTERNO) |
+| E2E IAM-9 | ✅ (37 puntos: 25 LIVE / 10 CÓDIGO / 2 PENDIENTE EXTERNO) |
 | Docs / Prompts | ✅ |
 
 ### Deudas pendientes (preexistentes, no bloqueantes)
@@ -211,7 +185,7 @@ Modos: `syntactic_only`, `present_unverified`, `auth_confirmed`.
 
 ---
 
-**Próxima fase:** IAM-10 — Security Events (si se desea continuar).
+**IAM-10 — Security Events:** no iniciado. Requiere auditoría y propuesta de contrato antes de implementación.
 
 ---
 
