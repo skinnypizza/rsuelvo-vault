@@ -1,4 +1,4 @@
-# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3.1 contractual)
+# D-IAM-SECURITY-EVENTS — IAM-10 Security Events (REV3.2 contractual amendment)
 
 **Estado:** CONTRATO REV3.1 · APROBADO · GO BACKEND · NO IMPLEMENTADO
 **Auditoría:** 2026-09-23 · Vault `728d06f`; Flutter `b3ebaa95c8e4c950a98637835094bea573c0b2bf`; Web `2c4eb51bf440072dafc276488156559ddb975e1a`.
@@ -158,7 +158,7 @@ Regla común: writer se llama solo después de la transición efectiva y dentro 
 
 Verificación LIVE: `transf_pendiente_unica` ya existe; las RPC owner/membership/verificación usan locks de fila en la lógica inspeccionada. La función actual de inicio owner no hace lock/lookup idempotente para mismo owner+destino; su contrato actual de carrera devuelve `transferencia_pendiente` sin reutilizar el ID. REV3 requiere modificar ese RPC antes de insertar el evento. `fn_gestionar_vinculo` permite `CAMBIAR` también sobre una membership SUSPENDED; la implementación debe añadir la detección de replay definida arriba. Ninguno de estos cambios se implementa con REV3.
 
-Para `MEMBERSHIP.PRIVILEGE_CHANGED`, `direction` se deriva de la diferencia de capabilities del catálogo IAM: `ELEVATED` si el conjunto destino es superconjunto estricto; `REDUCED` si es subconjunto estricto; `MIXED` si pierde y gana capabilities; `RECLASSIFIED` si cambia el rol pero conserva el mismo conjunto. Los role codes validados corresponden al catálogo LIVE: `ROLE_SUPERADMIN`, `ROLE_SYSADMIN`, `ROLE_SUPPORT`, `ROLE_TENANT_ADMIN`, `ROLE_TENANT_CASHIER`, `ROLE_LOGISTICS_AGENT`; `fn_gestionar_vinculo` mantiene su guard de no asignar SUPERADMIN. Estos cuatro valores son cerrados; no cambian severidad/outcome. Se emite ante cambio efectivo de role code o capability; si el code cambia pero sus capabilities son iguales, la dirección es `RECLASSIFIED`. Para una transferencia de rol, el evento representa el resultado final y no los pasos de implementación.
+Histórico REV3.1: el texto previo de este expediente amplió la dirección a cuatro valores; IAM10-B1 confirmó que esa expansión no estaba aprobada. La norma vigente es REV3.2 §5, que permite solo `ELEVATED`, `REDUCED` y `MIXED`, y falla cerrado si dos códigos distintos llegan a tener capacidades iguales.
 
 ### 4.3 Metadata cerrada y enforcement
 
@@ -170,7 +170,7 @@ El producer no acepta `metadata` del cliente. Cada RPC construye internamente lo
 | `OWNER.TRANSFER_COMPLETED` | `transfer_id`, `previous_owner_user_id`, `target_user_id` |
 | `OWNER.TRANSFER_CANCELLED` | `transfer_id` |
 | `MEMBERSHIP.SUSPENDED` / `MEMBERSHIP.REACTIVATED` / `MEMBERSHIP.REVOKED` | `membership_id`, `target_user_id` |
-| `MEMBERSHIP.PRIVILEGE_CHANGED` | `membership_id` (fila anterior), `target_membership_id` (fila resultante), `target_user_id`, `from_role`, `to_role`, `direction` |
+| `MEMBERSHIP.PRIVILEGE_CHANGED` | Según enmienda REV3.2 §5.2: `previous_membership_id`, `new_membership_id`, `target_user_id`, `from_role`, `to_role`, `direction` |
 | `VERIFICATION.V1_REVOKED` | `verification_id` |
 
 UUIDs son IDs internos RSUELVO (`tbl_usuarios.id_usuario`, `tbl_usuario_comercio.id`, `tbl_transferencias_propiedad.id`, `tbl_verificaciones_comercio.id_verificacion`), nunca `auth.users.id`. Metadata no incluye correo, motivo libre, SQL/error, snapshots, tokens, headers, signed URLs, QR ni documentos.
@@ -281,3 +281,55 @@ Antes de producción: migración aplica/restore limpio; schema privado no expues
 **Veredicto de esta fase:** REV3.1 contractual aprobada; sin implementación.
 **IAM-10 CONTRATO = APROBADO · GO BACKEND.**
 **IAM-10 = CONTRATO REV3.1 / NO IMPLEMENTADO.**
+
+## 5. REV3.2 — enmienda contractual IAM10-B1
+
+Esta enmienda corrige el contrato de dirección de privilegio y la identidad de las filas involucradas en `CAMBIAR`. El catálogo de ocho eventos, severidades, resultados, retención, acceso, escritura, purge y demás cláusulas REV3.1 se conservan. No añade eventos ni roles.
+
+### 5.1 Matriz de cambios de rol permitidos
+
+`fn_gestionar_vinculo(..., p_accion='CAMBIAR')` bloquea como destino `ROLE_SUPERADMIN`, pero no restringe el rol de origen. Para los demás destinos exige rol existente, protege al owner de cambio de rol, valida sucursal y conserva N-4 para cajero. Por tanto, para sujetos no-owner que satisfacen esas condiciones, los pares distintos de rol admitidos son las 25 celdas siguientes. La dirección compara los conjuntos efectivos IAM-6 del origen y destino: el destino contiene estrictamente al origen = `ELEVATED`; el origen contiene estrictamente al destino = `REDUCED`; ninguno contiene al otro = `MIXED`.
+
+Conjuntos cerrados usados por la comparación (role scopes y capabilities IAM-6; abreviaciones no aplican):
+
+| role code | Capabilities |
+|---|---|
+| `ROLE_SUPERADMIN` | `authorization.resolve`, `business.close`, `business.configure`, `business.create`, `business.read`, `business.state`, `business.transferOwnership`, `credits.deposit.read`, `credits.packages.manage`, `credits.read`, `credits.resolve`, `customers.export`, `inventory.manage`, `inventory.read`, `logistics.manage`, `logistics.own`, `members.invite`, `members.lifecycle`, `members.mutate`, `members.read`, `orders.manage`, `payments.verify`, `reports.operational`, `reports.sensitive`, `solicitudes.read`, `solicitudes.resolve` |
+| `ROLE_SYSADMIN` | `business.create`, `business.read`, `credits.read`, `reports.operational`, `solicitudes.read`, `solicitudes.resolve` |
+| `ROLE_SUPPORT` | `business.read`, `credits.read`, `reports.operational` |
+| `ROLE_TENANT_ADMIN` | `business.configure`, `business.read`, `credits.read`, `customers.export`, `inventory.manage`, `inventory.read`, `logistics.manage`, `members.invite`, `members.read`, `orders.manage`, `payments.verify`, `reports.operational` |
+| `ROLE_TENANT_CASHIER` | `business.read`, `inventory.read`, `orders.manage`, `payments.verify` |
+| `ROLE_LOGISTICS_AGENT` | `business.read`, `logistics.own` |
+
+| from \ to | SYSADMIN | SUPPORT | TENANT_ADMIN | TENANT_CASHIER | LOGISTICS_AGENT |
+|---|---|---|---|---|---|
+| SUPERADMIN | REDUCED | REDUCED | REDUCED | REDUCED | REDUCED |
+| SYSADMIN | — | REDUCED | MIXED | MIXED | MIXED |
+| SUPPORT | ELEVATED | — | ELEVATED | MIXED | MIXED |
+| TENANT_ADMIN | MIXED | REDUCED | — | REDUCED | MIXED |
+| TENANT_CASHIER | MIXED | MIXED | ELEVATED | — | MIXED |
+| LOGISTICS_AGENT | MIXED | MIXED | MIXED | MIXED | — |
+
+La matriz usa la clasificación backend cerrada de capabilities por role code, alineada a `02-Base-de-Datos/Matriz de permisos.md`; no usa `tbl_roles.nivel`. Hay pares permitidos incomparables, entre ellos SYSADMIN→TENANT_ADMIN y TENANT_ADMIN→LOGISTICS_AGENT. Clasificarlos como `ELEVATED` o `REDUCED` falsearía la diferencia, por lo que `MIXED` sí es necesario. No existe actualmente ningún par permitido entre códigos de rol distintos con conjuntos iguales; `RECLASSIFIED` se elimina, no tiene productor/caso real. Si una futura matriz IAM-6 introduce roles distintos equivalentes, primero requiere nueva revisión contractual; el helper falla cerrado mientras tanto. El mismo rol no genera `PRIVILEGE_CHANGED`.
+
+### 5.2 Semántica de membership y metadata
+
+Un cambio efectivo de role code suspende la fila source y reactiva una fila destino SUSPENDED o crea una nueva fila ACTIVE, todo dentro de una transacción. Es el patrón de IAM-2 `CAMBIAR`, no una mutación del role code sobre una única fila. Se conserva un identificador para cada extremo con nombres no ambiguos:
+
+| Clave | Valor |
+|---|---|
+| `previous_membership_id` | `tbl_usuario_comercio.id` de la fila cuyo rol previo queda SUSPENDED |
+| `new_membership_id` | `tbl_usuario_comercio.id` de la fila de rol destino que queda ACTIVE, reactivada o recién creada |
+| `target_user_id` | `tbl_usuarios.id_usuario` afectado |
+| `from_role` / `to_role` | role codes canónicos antes/después |
+| `direction` | exactamente `ELEVATED`, `REDUCED` o `MIXED` según §5.1 |
+
+Metadata allowlist exacta de `MEMBERSHIP.PRIVILEGE_CHANGED`: `previous_membership_id`, `new_membership_id`, `target_user_id`, `from_role`, `to_role`, `direction`. No acepta `membership_id` ni `target_membership_id` en este evento. Los restantes event types conservan sus allowlists REV3.1.
+
+### 5.3 Prueba contractual `CAMBIAR`
+
+Para ACTIVE role A→role B, la operación efectiva emite exactamente un `MEMBERSHIP.PRIVILEGE_CHANGED` con IDs anterior/nuevo. No emite `MEMBERSHIP.SUSPENDED` ni `MEMBERSHIP.REACTIVATED` por sus pasos internos. Retry luego del commit devuelve resultado idempotente y agrega cero eventos. Llamadas concurrentes sobre el mismo origen se serializan con el lock de membership; una sola gana la transición y emite una fila. Migración 102 verificada en QA PostgreSQL desechable: transition 1, retry 0 adicional, dos sesiones concurrentes 1 transición/1 evento; ver matriz y resultados en el reporte QA.
+
+**Estado de contrato:** REV3.2 resuelve la insuficiencia de REV3.1 para pares de roles incomparables. **Estado de backend al redactar la enmienda:** migración 101 no conforme hasta que una migración posterior alinee validator, helper y metadata; no reinterpretar ni editar 101.
+
+**Actualización de implementación:** la migración aditiva `102_iam10_privilege_direction_contract.sql` alinea LIVE con esta enmienda; `101_security_events.sql` permanece inalterada. QA de matriz, retry y concurrencia figura en `07-Control-de-Calidad/Reporte-IAM10-Backend.md`. El backend continúa **NO APROBADO** hasta revisión independiente.
