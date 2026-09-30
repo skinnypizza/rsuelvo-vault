@@ -9,7 +9,7 @@
 --      * tbl_envios estado (transición) → webhook 'webhook/entrega/estado'
 --        → n8n notifica al comprador (PREPARANDO/ASIGNADO/EN_RUTA/ENTREGADO/NO_ENTREGADO)
 --   El token lo verifican los workflows n8n contra $vars.ENTREGA_TOKEN
---   (RSU_entrega_notif_7Qk2mXwP). Requiere pg_net (migración 26).
+-- ([REDACTED]). Requiere pg_net (migración 26).
 
 -- ========== 1. Registrar entrega (wrapper para n8n) ==========
 CREATE OR REPLACE FUNCTION rsuelvo.fn_registrar_entrega(p_id_pedido uuid, p_datos jsonb)

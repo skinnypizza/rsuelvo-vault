@@ -2,9 +2,11 @@
 
 > 🔧 **Complementos posteriores (canónicos):** convención de funciones = `fn_*` (D3, alias `rpc_*` documentados) · variables Meta actualizadas §5.3 · matriz de trazabilidad completa en [Matriz-Consistencia-WF-BD-HU](Matriz-Consistencia-WF-BD-HU.md) · adaptadores Meta según [Guía Meta WhatsApp Business](../04-OpenWA/Guia%20Meta%20WhatsApp%20Business.md).
 
+> **Destino vigente desde 2026-09-26:** n8n Community local `2.40.7` + Supabase `iwfaktlxebxtocmswdvv`; OpenWA retirado, WF-80 Meta-only. Esta guía conserva partes del diseño Cloud/OpenWA como historial. Para migración, credenciales y estado actual sigue [Migracion-Cuenta-Local-Credenciales](Migracion-Cuenta-Local-Credenciales.md).
+
 > ⚠️ **Cuenta n8n activa (2026-08-29):** `rsuelvo.app.n8n.cloud` (trial, ivanluiscardenas). Tras la re-importación los workflows tienen **IDs nuevos** — tabla de IDs reales en [Matriz-Consistencia-WF-BD-HU §0](Matriz-Consistencia-WF-BD-HU.md). Los IDs históricos citados en este documento pertenecen a `rsuelvo2026.app.n8n.cloud` (agotada). Hallazgos de auditoría externa: Matriz §6.
 
-## n8n Cloud 2.36.5 + Supabase + OpenAI GPT-4o Vision + OpenWA + Meta WhatsApp Cloud API
+## Arquitectura histórica: n8n Cloud 2.36.5 + Supabase + OpenAI GPT-4o Vision + OpenWA + Meta WhatsApp Cloud API
 
 **Versión:** 1.0  
 **Fecha:** 24 de agosto de 2026  
@@ -260,7 +262,9 @@ No deben aparecer hardcodeadas en los workflows.
 
 ---
 
-## 5.4 OpenWA
+## 5.4 OpenWA — HISTÓRICO, NO APLICABLE (OpenWA retirado 2026-09-26; WF-80 Meta-only)
+
+> Esta sección se conserva solo como referencia histórica. No crear estas variables ni seguir estas instrucciones.
 
 Crear:
 
@@ -274,7 +278,7 @@ El adaptador OpenWA debe ser completamente independiente del adaptador Meta.
 
 ---
 
-# 6. Regla de compatibilidad OpenWA + Meta
+# 6. Regla de compatibilidad OpenWA + Meta — HISTÓRICA, NO APLICABLE (ver nota en §5.4)
 
 Nunca hagas esto:
 

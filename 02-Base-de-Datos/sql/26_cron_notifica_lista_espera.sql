@@ -7,7 +7,7 @@
 -- Resultado: WF-30 se desactiva y WF-13 pasa de polling 1/min a webhook event-driven
 -- (~2,880 ejecuciones n8n/día → ~5-10). Regla 3 intacta: la BD decide, n8n orquesta.
 -- El webhook lleva un token que WF-13 debe verificar contra $vars.LISTA_ESPERA_TOKEN
--- (valor actual: RSU_lst_notify_9f3Kz71XqW — rotar en producción).
+-- (valor actual: [REDACTED] rotar en producción).
 -- Requiere: pg_cron activo con job 1 (12_cron.sql) y WF-13 con Webhook trigger
 -- en path `webhooks/lista-espera/notify`.
 

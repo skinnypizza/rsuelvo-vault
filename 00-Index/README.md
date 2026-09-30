@@ -17,8 +17,8 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 | -------------- | ------------------------ | --------------------------- |
 | App Móvil      | Flutter (Dart)           | DESARROLLO INICIANDO (39 wireframes listos) |
 | Base de Datos  | Supabase (PostgreSQL 17) | ✅ Schema v2.1 listo (sql/01…12) |
-| Automatización | n8n Cloud                | Guía + matriz de consistencia listas |
-| WhatsApp       | OpenWA 0.21 / Meta Cloud | OpenWA sin sesión · Guía Meta lista |
+| Automatización | n8n Community local 2.40.7 (migración) | Cloud queda como origen histórico; guía de estado en `03-n8n/Migracion-Cuenta-Local-Credenciales.md` |
+| WhatsApp       | Meta Cloud (WF-80 Meta-only)     | OpenWA retirado 2026-09-26: filas OpenWA de este índice son históricas |
 | Autenticación  | Supabase Auth + JWT      | ✅ Activo                    |
 |                |                          |                             |
 |                |                          |                             |
@@ -28,12 +28,12 @@ Plataforma **SaaS multitenant** de gestión comercial, **cobranza por WhatsApp**
 | Recurso                             | Ruta                                                    |
 | ----------------------------------- | ------------------------------------------------------- |
 | **⭐ PROMPT MAESTRO (empezar aquí)** | `00-Index/00-PROMPT-MAESTRO-RSUELVO.md`                 |
+| Migración n8n local + credenciales (central) | `03-n8n/Migracion-Cuenta-Local-Credenciales.md` |
 | Código Flutter                      | `/home/nico/StudioProjects/rsuelvo/`                    |
 | Favicons y Recursos                 | `/home/nico/rsuelvo/logotipo rsuelvo`                   |
 | Variables de entorno                | `/home/nico/StudioProjects/rsuelvo/.env`                |
-| OpenWA                              | `/home/nico/OpenWA/`                                    |
+| OpenWA (histórico, no aplicable)    | `/home/nico/OpenWA/` (retirado 2026-09-26)     |
 | Vault                               | `/home/nico/obsidian/Rsuelvo/`                          |
 | Diseño UX / Wireframes app móvil    | `/home/nico/obsidian/Rsuelvo/05-Diseño-UX/`             |
 | Backlog HU + Auditoría consistencia | `/home/nico/obsidian/Rsuelvo/06-Backlog-HU/`            |
 | Schema SQL separado (12 archivos)   | `02-Base-de-Datos/sql/` · origen: `/home/nico/rsuelvo/` |
-
