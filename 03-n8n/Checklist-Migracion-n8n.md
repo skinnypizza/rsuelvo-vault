@@ -249,3 +249,10 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [ ] WF-14 aceptación positiva: ciclo aislado 17:36 UTC en monitoreo (vence ~17:46:27); evidencia por DB, sin declarar verde sin evidencia; cero mensajes reales.
 - [ ] Política `errorWorkflow`/`retryOnFail`: consultada al usuario, sin agregar hasta su respuesta (cobertura actual desigual).
 - [ ] Cutover: VPS DigitalOcean (CEO), repo canónico con remoto + historia reproducible, inbox/outbox + callbacks estado/replay, sin `pg_net` en transacciones, E2E cajero con Auth, almacenamiento/proveedor, paridad y alertas n8n. Python a STAGING.
+
+
+### Cierre sintéticos 2026-09-30 — WF-14 positivo, ciclo QR (NO apto cutover, sin cambios)
+
+- [x] WF-14 positivo en aislamiento: NOTIFICADO+SI → CONVERTIDO_RESERVA, reserva + QR GENERADO, WF-80 simulado, 0 real. WF-12/WF-13 cron dos tenants todo simulado. Cron 18:02 UTC venció aceptada: reservado a 0 sin tocar stock, QR EXPIRADO. Harness a 10 nodos base/inactivo/`executionOrder` v1. Intervalo: 20 simulados, 2 rechazados, 0 reales; evidencia por SQL.
+- [x] Migración `20260930180547_sync_qr_cobro_lifecycle` (41 QR GENERADO: 12 pagados/downstream, 28 vencidos, 1 cancelado → PAGADO/CANCELADO/EXPIRADO + triggers; ACL sin EXECUTE anon/authenticated/service_role; QR WF-14 a EXPIRADO). Local 1/1; backend 345 tests.
+- [ ] Cutover NO: VPS DigitalOcean (CEO), repo BACKEND sin remote + historia sin reconciliar (no db push), inbox/outbox + replay/status, sin `pg_net` en transacciones, Auth-JWT cajero pago/entrega E2E, receipt OCR/Storage/proveedor, paridad + política errores/retries (usuario), Python a STAGING.

@@ -391,3 +391,10 @@ Graph v26 read-only confirma WABA productiva suscrita a la app `Rsuelvo`, númer
 - QA abierto en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md`: WF-80 `8b6c840a` con pares sintéticos exactos (2 simulados + 2 rechazados por corrida, 0 envíos); SKU E2E no comprobado. WF-04 orden+reserva por tenant sin duplicados; cron minuto a minuto liberando vencidas; WF-12/WF-13 en simulación; RPCs de lista solo `service_role`/`n8n_runtime`.
 - WF-14 positivo pendiente: ciclo aislado 17:36 UTC en monitoreo (vence ~17:46:27); evidencia por DB; cero mensajes reales. Auditoría 16 activos sin `errorWorkflow` compartido y `retryOnFail` parcial; política pendiente de respuesta del usuario. SECURITY DEFINER verificados con guardas rol/tenant.
 - Conclusión: NO apto para cutover. Pendientes: VPS DigitalOcean (CEO), repo canónico con remoto + historia reproducible, inbox/outbox + callbacks estado/replay, sin `pg_net` en transacciones, E2E cajero con Auth, almacenamiento/proveedor, paridad y alertas n8n. Python a STAGING. Sin tocar secretos ni workflows.
+
+
+### Cierre sintéticos 2026-09-30 — WF-14 positivo, ciclo QR (NO apto cutover, sin cambios)
+
+- WF-14 positivo en aislamiento (NOTIFICADO+SI → CONVERTIDO_RESERVA, reserva + QR GENERADO, WF-80 simulado, 0 real); WF-12/WF-13 cron dos tenants todo simulado; cron 18:02 UTC venció aceptada (reservado a 0, QR EXPIRADO). Harness restaurado 10 nodos/inactivo/v1. Intervalo: 20 simulados, 2 rechazados, 0 reales; evidencia por SQL.
+- Migración `20260930180547_sync_qr_cobro_lifecycle`: 41 QR GENERADO (12 pagados/downstream, 28 vencidos, 1 cancelado) → PAGADO/CANCELADO/EXPIRADO + triggers; ACL sin EXECUTE anon/authenticated/service_role. Local 1/1; backend 345 tests.
+- Producción NO lista para cutover. Pendientes: VPS (CEO), repo BACKEND sin remote/historia sin reconciliar (no db push), inbox/outbox + replay/status, sin `pg_net` en transacciones, Auth-JWT cajero pago/entrega E2E, receipt OCR/Storage/proveedor, paridad + política errores/retries (usuario). Python a STAGING. Sin tocar secretos ni workflows activos.

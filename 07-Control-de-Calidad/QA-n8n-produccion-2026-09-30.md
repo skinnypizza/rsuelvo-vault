@@ -129,3 +129,9 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - En WF-25B probé las rutas con contexto/DB pinneados: menú después del nombre, selección de punto local, selección de transportadora y captura de ciudad. Las cuatro terminaron `success` (IDs 417, 419, 421 y 423); todas las respuestas de WF-80 fueron simuladas. Los nodos RPC/HTTP de prueba no escribieron registros de clientes ni envíos.
 - La auditoría del tenant Prueba RSUELVO en 16:29–16:32 UTC agregó 10 `whatsapp_send_simulated`; no apareció `whatsapp_send`. El arnés manual está inactivo y su configuración posterior muestra retención manual en valores `DEFAULT` (sin override).
 - Son pruebas de ramas con dependencias externas pinneadas: cubren los mensajes, condiciones y aserciones del grafo sin ejercitar triggers reales ni confirmar escritura/deduplicación de la base en esos casos. El callback positivo con fixture ligado a número QA y la captura con estado de base real siguen pendientes.
+
+### Cierre sintéticos 2026-09-30 — WF-14 positivo y ciclo de vida de QR
+
+- WF-14 positivo en aislamiento: NOTIFICADO+SI → CONVERTIDO_RESERVA, reserva + QR GENERADO, WF-80 simulado, 0 real. WF-12/WF-13 cron dos tenants todo simulado. Cron 18:02 UTC venció la aceptada: reservado a 0, QR EXPIRADO. Harness a 10 nodos base/inactivo/v1. Intervalo: 20 `whatsapp_send_simulated`, 2 rechazados, 0 reales; evidencia por SQL.
+- Migración `20260930180547_sync_qr_cobro_lifecycle` (41 QR GENERADO: 12 pagados/downstream, 28 vencidos, 1 cancelado → PAGADO/CANCELADO/EXPIRADO + triggers; ACL sin EXECUTE anon/authenticated/service_role). Local 1/1; `scripts/test_local.sh` 345 tests.
+- QA sigue abierto: Auth-JWT cajero para pago/entrega E2E, callback positivo con fixture QA y gates de cutover pendientes. Producción NO lista para cutover.
