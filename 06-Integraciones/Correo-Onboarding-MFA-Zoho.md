@@ -78,3 +78,14 @@ Validaciones:
 **Pendiente real:** CPaaS solicita “Validación del cliente” para verificar la cuenta y habilitar funcionalidad completa. El formulario tiene cuatro pasos y comienza pidiendo el sitio web; se inspeccionó, pero no se enviaron respuestas ni solicitudes de aprobación. La configuración del agente también ofrece IP permitidas para SMTP/API; debe revisarse al conectar el proveedor, sin inventar IPs ni habilitar rangos globales. No se generaron/copiaran tokens SMTP/API. Falta conectar SMTP a Supabase, revisar remitente/plantillas/redirects y probar entrega, enlace y confirmación de un correo nuevo. La verificación DNS no equivale a envío habilitado o entregado.
 
 Evidencias en `rsuelvo-web/evidence/mail/2026-09-30/`: `cloudflare-mail-dns.png`, `zoho-mail-dkim-active.png`, `cpaas-domain-verified.png`, `cpaas-validation-pending.png`, `dns-mail-records.json` (solo nombres y claves públicas DNS).
+
+## Avance alertas de errores n8n — 2026-09-30 21:02 UTC
+
+El usuario confirmó que inició sesión en n8n. La integración MCP ya permite inspeccionar credenciales y workflows, aunque la pestaña Chromium que tenemos expuesta todavía redirige a `signin?sessionExpired=true`.
+
+- No existe aún una credencial SMTP entre las 7 credenciales de n8n.
+- El workflow compartido `RSUELVO — Alertas de errores` está armado con Error Trigger → saneamiento del contexto → envío de email a `ethannic2@gmail.com`, pero permanece inactivo, sin versión publicada y sin credencial en el nodo email.
+- No se ha enviado ningún correo ni se ha conectado el handler a workflows de producción.
+- CPaaS muestra host `smtp.zeptomail.com`, usuario `emailapikey`, puerto 587 TLS o 465 SSL. La contraseña/API key se mantienen enmascaradas; KYC sigue pendiente y el agente está cerrado.
+
+**Pendiente:** titular completa KYC/habilitación del agente; guardar el SMTP en una credencial de n8n sin transcribir el secreto; hacer entrega de prueba; publicar el handler y asociarlo a los workflows; comprobar una alerta sintética recibida. Bitácora operativa: [[QA-n8n-produccion-2026-09-30]].
