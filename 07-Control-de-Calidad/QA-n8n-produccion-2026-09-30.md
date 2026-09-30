@@ -193,3 +193,9 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 
 - Tras la migración, el catálogo confirma `114/114` funciones `SECURITY DEFINER` con `pg_catalog` primero y `pg_temp` último, sin configuraciones implícitas.
 - Advisor SECURITY se actualizó a las 20:31 UTC. Conserva 49 avisos de `SECURITY DEFINER` ejecutables por `authenticated`: requieren revisión función por función de identidad, rol, tenant y consumidor, y no equivalen automáticamente a una vulnerabilidad. Mantiene 8 tablas con RLS sin políticas; ya se había confirmado que niegan acceso directo por grants y default-deny. `fn_sugerir_codigo(text)` sigue accesible a `anon` deliberadamente: el onboarding público lo consume en `rsuelvo-web/app/src/data/api.ts` y no realiza escrituras. `pg_net` en `public` aparece como warning de extensión pendiente de revisar. Advisor PERFORMANCE reporta políticas permisivas duplicadas; evaluar consolidación sin alterar semántica multirol.
+
+### Prueba de autorización con contexto JWT controlado — 2026-09-30
+
+- Una primera llamada SQL de diagnóstico omitió el JSON `request.jwt.claims`; en ese contexto la herramienta ejecuta como `postgres`, y los helpers de servicio responden como operación privilegiada. Descarté ese resultado y repetí el ensayo con `SET LOCAL ROLE authenticated` y un JWT sintético completo (`sub` sintético, `role=authenticated`).
+- Con rol efectivo confirmado `authenticated`, `auth.uid()` devolvió el subject sintético, `fn_es_service_role()` fue `false`, y `fn_puede_verificar`, `fn_es_owner` y `fn_tiene_acceso_sucursal` devolvieron `false` para IDs ajenos/inexistentes.
+- Repetí el shadowing adversarial creando tres tablas temporales con un vínculo falso `ROLE_SUPERADMIN`; con el mismo JWT y rol `authenticated`, `fn_es_superadmin()` devolvió `false`. La transacción terminó en rollback y no modificó tablas persistentes.
