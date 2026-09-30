@@ -263,3 +263,9 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [x] Arnés 18:15 UTC dos tenants (exec 547 no retenida; evidencia SQL): 2 reservas/QR simulados. Cron escaló pos1 VENCIDO → pos2 NOTIFICADO vía pg_net 200: 1 simulado, 0 reales.
 - [x] Guard `QA_SIM_PRUEBA_02` retirado; WF-80 restaurado/publicado `v81740576`. Detalle en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md`.
 - [ ] Error Trigger compartido (elección usuario): faltan email destino + credencial SMTP (n8n sin disponibles); no crear handler incompleto.
+
+
+### Cierre posterior 2026-09-30 18:38 UTC — oferta vencida, trigger en espera (sin cambios)
+
+- [x] Cron 18:38 UTC: `QA_SIM_PRUEBA_02` NOTIFICADO→VENCIDO sin siguiente → sin callback/envío. Reservas 18:15 VENCIDA, QR EXPIRADO, stock liberado. WF-80 en `81740576` sin guard temporal.
+- [ ] Error Trigger compartido por correo a ethannic2@gmail.com (elección usuario): Zoho en signin, sin credencial SMTP; esperar login manual, sin crear app password/credential aún.
