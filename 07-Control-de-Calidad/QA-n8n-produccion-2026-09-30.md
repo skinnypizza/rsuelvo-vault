@@ -121,6 +121,8 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 
 **Estado:** corregido y probado el rechazo falso de `simulated` y la aserción de WF-25A con rutas simuladas. No está cerrado el caso real de notificación perdida al aprobar el comprobante. Siguen abiertos el pago/cajero→comprador sintético de extremo a extremo, callback positivo de entrega enlazado a teléfono QA, purga/rotación de credenciales históricas, pruebas JWT del resto de funciones de seguridad y los gates de producción listados arriba.
 
+- La auditoría por teléfono del comprador no tiene ningún registro de `whatsapp_send` entre 14:10:58 y 14:11:30 UTC, justo después de la aprobación; esto concuerda con el error del workflow y confirma que no salió la confirmación por ese intento.
+
 ### Pruebas aisladas de captura de entrega — 2026-09-30 16:32 UTC
 
 - Con `test_workflow` y datos pinneados para los nodos de webhook/DB, ejecuté seis rutas de WF-25C: `PREPARANDO`, `ASIGNADO`, `EN_RUTA`, `ENTREGADO`, `NO_ENTREGADO` y `guia_registrada`. Las seis terminaron `success` (IDs 405, 407, 409, 411, 413 y 415); el nodo de deduplicación usó un resultado fijado para no insertar notificaciones reales. WF-80 recibió solo el par sintético reservado y lo simuló.
