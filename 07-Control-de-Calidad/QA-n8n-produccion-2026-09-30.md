@@ -212,3 +212,15 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - Las ocho tablas que el Advisor marca con RLS sin políticas niegan actualmente `SELECT` e `INSERT` directos a `anon` y `authenticated`; permanecen aisladas por falta de grants además del default-deny de RLS.
 - Chromium alcanzó a mostrar el dashboard n8n y el workflow `RSUELVO — Alertas de errores`, pero al consultar su recurso de workflow, n8n respondió con `sessionExpired=true` y redirigió a `/signin`. Por lo tanto, el listado visible y la indicación de estado del editor no se aceptan como prueba de que la versión actual del handler esté publicada, activa o enlazada. El usuario había iniciado sesión; el servidor volvió a expirar/rechazar esa sesión antes de poder verificar el workflow por API. MCP sigue devolviendo `-32603`.
 - El portal Zoho CPaaS sí muestra la identidad iniciada y presenta el onboarding de organización con aceptación de términos; quedó sin aceptar/crear y sin comprar un plan. No usar Zoho Mail SMTP automatizado.
+
+### Gate de build/test de app completo — 2026-09-30
+
+- Backend candidate (`scripts/test_local.sh`): 340/340 pasando en Python 3.14 + Postgres/Redis local. El servicio de test Docker volvió a pasar 340/340 con Python 3.12. Solo quedó un warning conocido de deprecación Starlette/httpx.
+- Web candidate: 95/95 unitarias, 19/19 Playwright sobre preview local, `npm run typecheck` pasó landing y app, y `npm run build` compiló ambos workspaces. Vite advierte que el bundle principal de la app pesa 1,065.95 kB sin comprimir (319.39 kB gzip); seguimiento de optimización de carga aún pendiente.
+- Flutter: 381/381 pruebas pasaron con Flutter 3.47.0; `flutter analyze` terminó sin observaciones.
+- Estos resultados verifican código local/candidato y no sustituyen pruebas de producción contra JWT real, Meta/WhatsApp, SMTP, ni un despliegue canary.
+
+### Recuento actual de migraciones — 2026-09-30
+
+- Recalculé contra el ledger de producción: Supabase lista 95 versiones; el directorio local `supabase/migrations` contiene 44. Coinciden exactamente 12 versiones; 83 de producción no están representadas localmente y 32 archivos locales no existen con esa versión en el ledger de producción. Parte de los 32 corresponde a colas/outbox backend todavía no desplegadas; otros nombres/fechas divergentes requieren reconciliación semántica.
+- Sigue prohibido ejecutar `supabase db push` desde este checkout hasta reconstruir/reconciliar una historia aplicable. Las migraciones desplegadas manualmente por MCP sí están espejadas con las dos versiones exactas `20260930201732` y `20260930202722`.
