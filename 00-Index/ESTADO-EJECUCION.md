@@ -1,6 +1,6 @@
 # ESTADO DE EJECUCIÓN RSUELVO — Bitácora viva del orquestador
 
-> **Correo 2026-09-30:** registro → SMTP CPaaS → entrega Gmail → confirmación Supabase Auth se verificó con cuenta QA. Alertas n8n siguen pendientes: sin credencial SMTP en n8n, handler no publicado y sin enlazar a 16 workflows activos. CPaaS muestra `agent_1` cerrado; no rotar la clave compartida con Auth. Véase [[Correo-Onboarding-MFA-Zoho]] y [[QA-n8n-produccion-2026-09-30]].
+> **Correo 2026-09-30:** registro → SMTP CPaaS → entrega Gmail → confirmación Supabase Auth se verificó con cuenta QA; plantillas Invite user y Confirm sign up quedaron localizadas al español y persistieron al recargar. Alertas n8n siguen pendientes: sin credencial SMTP en n8n, handler no publicado y sin enlazar a 16 workflows activos. CPaaS muestra `agent_1` cerrado; no rotar la clave compartida con Auth. Véase [[Correo-Onboarding-MFA-Zoho]] y [[QA-n8n-produccion-2026-09-30]].
 
 > **Hardening Supabase 2026-09-30:** migración `20260930213037_harden_email_mfa_search_path` aplicada a producción; 119/119 funciones SECURITY DEFINER de esquemas API verificadas con `pg_catalog` primero y `pg_temp` último. Ledger remoto 97, local 47, solo 13 coincidencias exactas: `db push` continúa bloqueado hasta reconciliar. Evidencia en [[QA-n8n-produccion-2026-09-30]].
 

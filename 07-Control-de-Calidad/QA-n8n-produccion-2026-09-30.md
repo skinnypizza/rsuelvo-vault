@@ -277,3 +277,8 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - El Advisor aún señala dos tablas RLS sin políticas en `rsuelvo_private`; inspección de ACL confirma que `anon`, `authenticated` y `service_role` no tienen SELECT. Se mantienen inaccesibles por grants; no añadí permisos ni políticas. `pg_net` sigue en `public`; moverlo requiere revisar los callbacks/cron que dependen de su schema.
 - `fn_sugerir_codigo(text)` sigue ejecutable por `anon` y `authenticated`; el cuerpo solo normaliza una base y devuelve sugerencias disponibles, sin datos de clientes. Mantenerlo público es necesario para sugerencias durante alta anónima, sujeto a validación de producto y rate limiting. Advisor también lista 52 funciones `SECURITY DEFINER` ejecutables por authenticated; requieren revisión de contrato/identidad por función, no revocación masiva.
 - Ledger Supabase: 97 versiones remotas; directorio candidato contiene 47 SQL; 13 versiones coinciden exactamente por nombre/versión (84 remotas sin archivo local y 34 archivos locales fuera del ledger). `db push` sigue bloqueado hasta reconciliar historia y comprobar replay.
+
+
+### Plantillas de correo Auth en español — 2026-09-30 21:45 UTC
+
+En el dashboard Auth de producción se guardaron las plantillas **Invite user** y **Confirm sign up** en español. Se comprobó persistencia recargando ambas rutas. Se conservaron `{{ .ConfirmationURL }}` y enlaces de acción. No se mandó un mensaje nuevo tras el cambio, así que falta validar visualmente el correo renderizado/entregado con el texto nuevo.

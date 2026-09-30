@@ -115,3 +115,13 @@ Una inspección previa mostró accidentalmente una credencial API en la salida d
 Se contrastó el estado con Chromium y n8n MCP después de la prueba Auth documentada arriba. Supabase Auth sí completó la entrega de una invitación QA por el SMTP de CPaaS; el mensaje llegó, el enlace se confirmó y la cuenta pudo iniciar sesión. Esto no certifica el canal SMTP de n8n: n8n conserva siete credenciales y ninguna SMTP, el handler de error no está publicado ni activo y ninguno de los 16 workflows activos lo tiene asignado.
 
 La consola CPaaS abierta muestra que `agent_1` sigue cerrado y que SMTP/API secrets están enmascarados. No se regeneró la contraseña porque el agente sirve al SMTP de Supabase. Para continuar sin impactar Auth, se debe provisionar una credencial adicional o recuperar de forma segura la credencial activa para n8n; después hacer envío de prueba al buzón aprobado y enlazar el handler. Bitácora detallada: [[QA-n8n-produccion-2026-09-30]].
+
+
+## Actualización MFA por correo — 2026-09-30
+
+Implementado y restaurado como obligatorio para administradores en Flutter/web, con comprobación de sesión en backend; TOTP sigue como alternativa. Envío, verificación real, rechazo de replay y revocación al cerrar sesión comprobados. No se presenta como AAL2 nativo. Ver QA-MFA-Correo-2026-09-30 (vault) / qa-email-mfa-2026-09-30.md (web). Prueba móvil pausada a petición del usuario; último APK preparado para instalar y probar al volver.
+
+
+## Plantillas de Auth localizadas — 2026-09-30 21:45 UTC
+
+Desde el dashboard de producción actualicé y recargué para confirmar persistencia las plantillas **Invite user** y **Confirm sign up**. Ambas usan asuntos y contenido en español, mantienen `{{ .ConfirmationURL }}` y el enlace CTA correspondiente. La plantilla de invitación dice “Te invitamos a unirte a RSUELVO”; la de confirmación “Confirma tu correo electrónico”. No cambié SMTP, límites ni redirecciones, y aún no envié un correo nuevo después del cambio; el E2E de entrega anterior sigue siendo la prueba del canal, con la plantilla anterior.
