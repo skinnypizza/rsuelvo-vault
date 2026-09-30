@@ -144,3 +144,11 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 - La contraseña SMTP apareció accidentalmente en una salida interna de diagnóstico: tratarla como comprometida y nunca reescribirla en Git/vault. Secundaria generada en CPaaS sin instalar/probar; `agent_1` cerrado. Supabase Auth SMTP intacto (host/usuario/puerto sin cambios; secreto no visible en UI).
 - Credencial nueva en n8n guardada pero sin validar: no conectar ni publicar; form en 465 sin SSL/TLS → corregir a 587+STARTTLS o 465+SSL. Confirmado 2026-09-30: `RSUELVO_SMTP_PASSWORD` existe en Edge Secrets (solo nombre registrado; valor no copiado). Siguiente: rotación fuerte coordinada (Auth, email-mfa, n8n) + verificación de entrega. Nada publicado ni conectado.
 - Corrección: credencial SMTP genérica guardada con host/puerto 587 y Connection tested successfully (solo conectividad/auth, no entrega). Mantiene la contraseña anterior expuesta; la secundaria no se pegó. Visible como `SMTP account` en MCP sin asignar al nodo; handler inactivo/sin publicar. Rotar antes de cualquier uso.
+
+
+### Estado de trabajo continuado — 2026-09-30 22:30 UTC
+
+- Confirmado contra las ejecuciones/credenciales: el handler `RSUELVO — Alertas de errores` sigue inactivo, no publicado, sin credencial asignada; los 16 flujos activos siguen sin `errorWorkflow`.
+- La prueba de conexión SMTP de n8n en 587 solo comprobó conexión/autenticación, no envío ni recepción. La credencial guardada todavía usa el password SMTP anterior que se considera comprometido. No conectarla ni publicar el handler.
+- `RSUELVO_SMTP_PASSWORD` está presente en Edge Function Secrets (se confirmó solo el nombre, sin leer el valor). La clave secundaria creada en CPaaS todavía no se confirmó como copiada ni instalada. El usuario confirmó que n8n mantiene sesión iniciada; queda pendiente completar la rotación sin copiar ningún secreto al chat y comprobar una entrega a `ethannic2@gmail.com`.
+- No cambiar Auth SMTP, secretos de la función `email-mfa`, ni credenciales n8n hasta tener la credencial nueva accesible de forma segura y coordinar los tres consumidores. No hay correo de prueba enviado en esta sesión.
