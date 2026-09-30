@@ -239,3 +239,8 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 ### Protección de la extracción local de esquema — 2026-09-30
 
 - Revisé `/home/nico/rsuelvo-schema-extraction`: no es un repositorio Git y no tiene remotes; `.pgpass`, escaneo/mapas y snapshot SQL eran archivos locales con permisos `0600` y no rastreados. El `.env` también era no rastreado y su directorio privado, pero tenía modo `0644`; lo ajusté a `0600`. Amplié el `.gitignore` del directorio para `.pgpass` y los artefactos de escaneo/snapshot, por defensa ante una futura inicialización Git. No imprimí ni copié credenciales.
+
+### Inspección SMTP de Zoho CPaaS — 2026-09-30
+
+- El panel de configuración de `agent_1` muestra los valores públicos de conexión SMTP: host `smtp.zeptomail.com`, TLS/SSL por puerto 587/465 y usuario `emailapikey`. Existe una contraseña SMTP previamente generada, pero el panel la muestra enmascarada; también muestra una API key enmascarada. No revelé, regeneré ni copié ninguna de ellas.
+- El agente todavía figura cerrado y el banner KYC sigue en “Completar”. La credencial del proveedor no equivale a una credencial SMTP guardada en n8n: el n8n de producción continúa en `/signin?sessionExpired=true`, su MCP devuelve `-32603`, y no hay prueba de conexión/entrega. Próximo paso de titular: terminar KYC y reautenticar n8n; después verificar estado/alcance del agente, crear o rotar credencial si procede, y guardarla en n8n sin registrarla en archivos ni chats.
