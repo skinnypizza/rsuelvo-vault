@@ -282,3 +282,11 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 ### Plantillas de correo Auth en español — 2026-09-30 21:45 UTC
 
 En el dashboard Auth de producción se guardaron las plantillas **Invite user** y **Confirm sign up** en español. Se comprobó persistencia recargando ambas rutas. Se conservaron `{{ .ConfirmationURL }}` y enlaces de acción. No se mandó un mensaje nuevo tras el cambio, así que falta validar visualmente el correo renderizado/entregado con el texto nuevo.
+
+
+### Reconciliación posterior — 2026-09-30 21:48 UTC
+
+- Se actualizó en producción la plantilla Auth `Invite user` y `Confirm sign up` al español; ambas persistieron al recargar. Aún falta recibir una nueva invitación/confirmación renderizada después del cambio.
+- Apareció la bitácora [[QA-MFA-Correo-2026-09-30]]: documenta implementación de step-up MFA por correo para roles administrativos, envío/validación real con cuenta QA, replay rechazado, revocación de sesión y controles. El E2E con inicio de sesión real de SuperAdmin queda pendiente del titular en web/móvil. Las plantillas actuales están en español.
+- Conteo actualizado contra producción: ledger remoto 99; local 48; 13 coincidencias exactas por versión, 86 versiones remotas no presentes con ese timestamp en local y 35 archivos locales fuera del ledger. Cuatro archivos locales recientes guardan timestamps distintos a los nombres de entrada remotos (`email_second_factor`, `enforce_email_mfa_rpc_and_storage`, `email_mfa_catalog_guard`); no ejecutar `db push` ni reparar ledger automáticamente.
+- Confirmé de nuevo 119 funciones SECURITY DEFINER de `public`, `rsuelvo`, `rsuelvo_private`; las 119 tienen `search_path` empezando por `pg_catalog` y terminando en `pg_temp`. La migración 30213928 y 30214210 están al final del ledger de producción y acompañan el despliegue MFA ya descrito.

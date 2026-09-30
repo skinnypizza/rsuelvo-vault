@@ -125,3 +125,10 @@ Implementado y restaurado como obligatorio para administradores en Flutter/web, 
 ## Plantillas de Auth localizadas — 2026-09-30 21:45 UTC
 
 Desde el dashboard de producción actualicé y recargué para confirmar persistencia las plantillas **Invite user** y **Confirm sign up**. Ambas usan asuntos y contenido en español, mantienen `{{ .ConfirmationURL }}` y el enlace CTA correspondiente. La plantilla de invitación dice “Te invitamos a unirte a RSUELVO”; la de confirmación “Confirma tu correo electrónico”. No cambié SMTP, límites ni redirecciones, y aún no envié un correo nuevo después del cambio; el E2E de entrega anterior sigue siendo la prueba del canal, con la plantilla anterior.
+
+
+## Estado MFA posterior — 2026-09-30 21:48 UTC
+
+La implementación de step-up por correo quedó documentada por el orquestador en [[QA-MFA-Correo-2026-09-30]]. La función y la experiencia web/móvil requieren código ligado a sesión para usuarios administrativos; conserva TOTP como alternativa y no afirma AAL2 de Supabase. QA de cuenta sintética comprobó envío real, validación, rechazo de replay y revocación. El login E2E real de SuperAdmin en sus dispositivos está pendiente de la sesión del titular.
+
+El ledger de producción alcanzó 99 versiones. La rama candidata tiene 48 archivos de migración; los timestamps de los tres archivos locales MFA difieren de las versiones registradas remotamente, además del archivo de hardening. Se mantiene congelado `db push` hasta reconciliar semánticamente nombres, SQL y ledger.
