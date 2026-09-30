@@ -347,3 +347,11 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - Antes de disparar el webhook confirmé cero grupos en espera y cero inventario con destinatarios elegibles; no se enviaron WhatsApps. El MCP no mostró la ejecución de prueba en su búsqueda posterior, por lo que el HTTP 200 confirma aceptación/autenticación, pero falta revisar el registro de ejecución en la UI n8n.
 - Pausé el job `rsuelvo_expirar_reservas` solo durante la rotación y lo reactivé con su cron `* * * * *`. Verificación posterior: `active=true`; 20/20 ejecuciones recientes de pg_cron aparecen `succeeded`, última a las 23:34 UTC.
 - La rotación de callback está cerrada a nivel Vault + credencial. La SMTP es independiente y continúa pendiente.
+
+
+### Rotación SMTP Zoho coordinada — 2026-09-30 23:56 UTC
+
+- Se generó una nueva Send Mail API key adicional en CPaaS sin revocar la anterior. No persistir el secreto en archivos ni chats.
+- n8n SMTP actualizada y conexión autenticada con éxito (prueba de conexión, no entrega). Supabase Auth SMTP actualizada; SMTP personalizado continúa habilitado. `RSUELVO_SMTP_PASSWORD` reemplazado en Edge Secrets; digest distinto y confirmación de guardado visibles.
+- Falta enviar y recibir un correo real posterior a la rotación. No revocar aún la API key anterior ni publicar/enlazar el Error Trigger compartido. `RSUELVO — Alertas de errores` permanece sin publicar, sin asignar; los 16 flujos activos siguen sin errorWorkflow.
+- MCP n8n devolvió error interno al consultar búsqueda/credenciales. La sesión Chromium sí permitió guardar la rotación. Reintentar verificación MCP/UI, correo real y luego continuar activación controlada.

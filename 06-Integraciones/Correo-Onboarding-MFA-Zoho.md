@@ -156,7 +156,17 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 
 ### Revisión Zoho posterior — 2026-09-30 23:35 UTC
 
-- En CPaaS confirmé que el Agent ofrece una contraseña SMTP secundaria más corta, marcada como menos segura por Zoho. Durante la exploración se generó/renovó esa credencial secundaria, pero no se copió ni instaló en ningún consumidor. No usarla para producción; la contraseña SMTP principal que quedó expuesta sigue pendiente de revocación/rotación coordinada.
+- En CPaaS confirmé que el Agent ofrece una contraseña SMTP secundaria más corta, marcada como menos segura por Zoho. Se abrió el diálogo para crearla, pero se canceló; no se generó ni instaló ninguna contraseña SMTP secundaria. No usarla para producción; la contraseña SMTP principal que quedó expuesta sigue pendiente de revocación/rotación coordinada.
 - La documentación oficial de Zoho indica usuario SMTP `emailapikey`, puerto 587 con TLS, y advierte que las claves más cortas son menos seguras.
 - El formulario de n8n aún tiene la contraseña SMTP anterior; `Connection tested successfully` no significa entrega. Auth SMTP conserva su configuración previa y `RSUELVO_SMTP_PASSWORD` existe en Edge Secrets. No envié correo ni publiqué/enlacé el handler.
 - La rotación de callback de lista de espera se completó en Vault+n8n y el cron volvió a `active`; no afecta al estado SMTP.
+
+
+### Rotación de clave Zoho SMTP — 2026-09-30 23:56 UTC
+
+- Para reemplazar la clave expuesta, generé en CPaaS una nueva API key `RSU-SMTP-20260930`; la clave previa se mantuvo durante la propagación. No se guardan valores secretos en esta nota.
+- Actualicé la credencial SMTP de n8n (`SMTP account`, host `smtp.zeptomail.com`, `emailapikey`, puerto 587) con la nueva Send Mail Token. La prueba de conexión de n8n terminó en `Connection tested successfully`; esto valida conexión/autenticación, no envío/entrega.
+- Reemplacé el secreto Supabase Edge `RSUELVO_SMTP_PASSWORD`. La consola confirmó `Successfully created new secret` con digest cambiado y fecha 23:56 UTC.
+- Supabase Auth SMTP mantiene SMTP personalizado activo. Se guardó la misma nueva clave; al recargar, el campo secreto apareció vacío (comportamiento esperado para el valor almacenado). Aún falta prueba de entrega Auth posterior a la rotación.
+- La clave API anterior sigue activa hasta verificar un envío de punta a punta; revocarla antes puede interrumpir usuarios restantes. El correo real de prueba y su recepción siguen pendientes.
+- El workflow `RSUELVO — Alertas de errores` sigue sin publicar ni enlazar hasta comprobar entrega real. El MCP de n8n devolvió error interno al buscar workflows/credenciales en esta sesión; Chromium sí permitió actualizar y probar la credencial SMTP.
