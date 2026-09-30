@@ -132,3 +132,8 @@ Desde el dashboard de producción actualicé y recargué para confirmar persiste
 La implementación de step-up por correo quedó documentada por el orquestador en [[QA-MFA-Correo-2026-09-30]]. La función y la experiencia web/móvil requieren código ligado a sesión para usuarios administrativos; conserva TOTP como alternativa y no afirma AAL2 de Supabase. QA de cuenta sintética comprobó envío real, validación, rechazo de replay y revocación. El login E2E real de SuperAdmin en sus dispositivos está pendiente de la sesión del titular.
 
 El ledger de producción alcanzó 99 versiones. La rama candidata tiene 48 archivos de migración; los timestamps de los tres archivos locales MFA difieren de las versiones registradas remotamente, además del archivo de hardening. Se mantiene congelado `db push` hasta reconciliar semánticamente nombres, SQL y ledger.
+
+
+## Hallazgo de Auth plan FREE — 2026-09-30 21:50 UTC
+
+El Advisor de producción marca desactivada la protección contra contraseñas filtradas. La organización aparece en FREE y el control está deshabilitado/no editable; Supabase documenta que requiere Pro o superior ([Password security](https://supabase.com/docs/guides/auth/password-security)). No se cambió el plan ni se generó gasto. Incluir la decisión de plan antes del lanzamiento.
