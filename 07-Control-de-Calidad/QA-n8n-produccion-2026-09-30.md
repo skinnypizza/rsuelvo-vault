@@ -317,3 +317,13 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - El MCP autenticado devolvió WF80 (`7V6MIPuGbdx9s0lT`) activo con `activeVersionId=81740576-968f-448b-9bd6-75d0cec21a3c`. Su único nodo HTTP de envío llama a `https://graph.facebook.com/v26.0/{phone_number_id}/messages`; no hay nodo OpenWA en el grafo activo. Esta lectura actualiza los datos históricos v21.0/OpenWA del corte 2026-09-25. No modifiqué n8n ni envié mensajes.
 - El backend Python candidato quedó alineado a Meta-only/v26.0 en configuración, Compose, fixtures y paridad. Suite local Python 3.14: 340/340; suite Docker Python 3.12: 340/340; Ruff lint/formato y `docker compose config -q` pasan. Mocks sintéticos; ningún llamado a Meta.
 - Meta publica Graph v26.0 desde 2026-07-29 con expiración TBD; su tabla marca v21.0 hasta 2027-01-21. El proyecto queda en versión activa v26.0. [Meta Graph API versions](https://developers.facebook.com/docs/graph-api/changelog/versions/).
+
+
+### Incidente SMTP 2026-09-30 — contraseña expuesta, nada publicado (solo vault)
+
+- Codex confirmó Chromium n8n autenticado (URL del workflow del handler) y MCP oficial `mcp__n8n` operativo; `codex_apps/n8n` falla -32603. Handler revisado: borrador 3 nodos, inactivo, no publicado, sin `errorWorkflow` asignado en los 16 workflows activos.
+- Error operativo: la contraseña SMTP apareció accidentalmente en una salida interna de diagnóstico — tratarla como comprometida; nunca reescribirla ni incluirla en Git/vault (esta nota no contiene ningún valor secreto).
+- Contraseña secundaria más corta generada en Zoho CPaaS pero NO copiada/instalada/probada; `agent_1` sigue cerrado.
+- n8n muestra una credencial nueva guardada pero SIN validar: no conectarla ni publicar nada todavía. El form indica puerto 465 con SSL/TLS apagado → la config aún requiere corrección a 587+STARTTLS o 465+SSL.
+- Supabase Auth conserva SMTP `smtp.zeptomail.com`, `noreply@rsuelvo.com`, usuario `emailapikey`, puerto 587 (secreto no visible en UI). Una Edge Function en versión 3 (nombre no precisado en el reporte) lee secreto; UI Secrets de Edge Functions muestra `PUSH_WEBHOOK_SECRET` como personalizado visible: confirmar si `RSUELVO_SMTP_PASSWORD` existe antes de afirmar que no está.
+- Siguiente: rotar con credencial fuerte y coordinar Auth, email-mfa, n8n; verificar entrega. Nada publicado ni conectado.

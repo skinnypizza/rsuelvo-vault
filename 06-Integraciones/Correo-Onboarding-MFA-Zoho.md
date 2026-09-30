@@ -137,3 +137,9 @@ El ledger de producción alcanzó 99 versiones. La rama candidata tiene 48 archi
 ## Hallazgo de Auth plan FREE — 2026-09-30 21:50 UTC
 
 El Advisor de producción marca desactivada la protección contra contraseñas filtradas. La organización aparece en FREE y el control está deshabilitado/no editable; Supabase documenta que requiere Pro o superior ([Password security](https://supabase.com/docs/guides/auth/password-security)). No se cambió el plan ni se generó gasto. Incluir la decisión de plan antes del lanzamiento.
+
+
+### Incidente SMTP 2026-09-30 — expuesta en diagnóstico, rotación pendiente (solo vault)
+
+- La contraseña SMTP apareció accidentalmente en una salida interna de diagnóstico: tratarla como comprometida y nunca reescribirla en Git/vault. Secundaria generada en CPaaS sin instalar/probar; `agent_1` cerrado. Supabase Auth SMTP intacto (host/usuario/puerto sin cambios; secreto no visible en UI).
+- Credencial nueva en n8n guardada pero sin validar: no conectar ni publicar; form en 465 sin SSL/TLS → corregir a 587+STARTTLS o 465+SSL. Verificar si `RSUELVO_SMTP_PASSWORD` existe en Edge Secrets antes de afirmar ausencia. Siguiente: rotación fuerte coordinada (Auth, email-mfa, n8n) + verificación de entrega. Nada publicado ni conectado.
