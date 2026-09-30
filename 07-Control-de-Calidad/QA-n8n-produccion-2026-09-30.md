@@ -74,3 +74,12 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - El Security Advisor posterior aún reporta 16 funciones `SECURITY DEFINER` accesibles por `anon`, 50 por `authenticated`, 8 tablas RLS sin políticas, `pg_net` instalado en `public` y protección de contraseñas filtradas deshabilitada. Esos hallazgos requieren inventario por consumidor y corrección gradual; no se revocaron grants en bloque para evitar romper RPC legítimas. La lista completa está en el Advisor de Supabase observado a las 15:39 UTC.
 
 **Estado:** mejora de permisos confirmada, pero no constituye cierre del security review. Pendientes E2E de pago/cajero y callback positivo aislado, identidad real de la credencial Postgres n8n, evaluación de findings restantes, rotación/purga de secretos en historial y preparación/ejecución VPS.
+
+### Cierre de helpers para rol anon — 2026-09-30 15:42 UTC
+
+- La revisión de los 16 hallazgos `anon_security_definer_function_executable` encontró que la app llama `fn_sugerir_codigo` durante el alta sin autenticación. Ese RPC se conserva por compatibilidad. `rg` en Flutter/web no encontró llamadas directas a los otros helpers; los usos restantes detectados son funciones internas y pruebas.
+- Se aplicó `20260930154610_revoke_anon_authorization_helpers`: revoca `PUBLIC`/`anon` de los 15 helpers restantes y otorga explícitamente `authenticated`/`service_role` para preservar los permisos que antes heredaban de `PUBLIC`.
+- Comprobación de catálogo posterior: los 15 helpers dan `anon_exec=false`, `authenticated_exec=true`, `service_role_exec=true`; `fn_sugerir_codigo` conserva ejecución de `anon`. El Security Advisor pasó de 16 a 1 función marcada para `anon`.
+- No se verificaron llamadas HTTP con JWT anónimo/autenticado: esta confirmación es de ACL PostgreSQL y referencias estáticas locales. La prueba funcional de alta sin sesión (`fn_sugerir_codigo`) sigue pendiente.
+
+**Pendiente de seguridad:** quedan 50 funciones `SECURITY DEFINER` expuestas a `authenticated`, que deben revisarse contra el consumidor de cada RPC, y los hallazgos de tablas RLS sin políticas, extensión `pg_net` en `public` y protección de contraseñas filtradas deshabilitada. No se ha aprobado una revocación masiva.
