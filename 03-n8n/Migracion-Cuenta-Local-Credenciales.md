@@ -383,3 +383,11 @@ Graph v26 read-only confirma WABA productiva suscrita a la app `Rsuelvo`, númer
 - Smoke QA inactivo: 2 `whatsapp_send_simulated` allowlisted + 0 `whatsapp_send`; tercer tenant no-allowlisted → `whatsapp_simulation_rejected` (`blocked_simulation_forbidden`); evidencia en logs (n8n no expone ejecución/detalle). Solo cambió el draft del harness; productivos intactos.
 - Sin ESPERANDO en lista (2 CONVERTIDO_RESERVA): sin cron notificable. 32 llamadas a WF-80 con Code validador; WF-02/03 bloquean `simulation_mode` externo: solo el QA interno lo crea.
 - Pendientes: propagar flag por rutas, simulación cron waitlist, observabilidad. No es E2E funcional.
+
+
+### Avance producción 2026-09-30 — sintéticos por tenant, NO apto cutover (sin cambios)
+
+- Supabase prod ACTIVE_HEALTHY; n8n healthz/readiness 200. Migración `20260930164650`: sin SELECT/INSERT anon/authenticated en `tbl_whatsapp_eventos`; `service_role` conserva. Repo BACKEND local sin commits/remote: prohibido db push sin reconciliar historia.
+- QA abierto en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md`: WF-80 `8b6c840a` con pares sintéticos exactos (2 simulados + 2 rechazados por corrida, 0 envíos); SKU E2E no comprobado. WF-04 orden+reserva por tenant sin duplicados; cron minuto a minuto liberando vencidas; WF-12/WF-13 en simulación; RPCs de lista solo `service_role`/`n8n_runtime`.
+- WF-14 positivo pendiente: ciclo aislado 17:36 UTC en monitoreo (vence ~17:46:27); evidencia por DB; cero mensajes reales. Auditoría 16 activos sin `errorWorkflow` compartido y `retryOnFail` parcial; política pendiente de respuesta del usuario. SECURITY DEFINER verificados con guardas rol/tenant.
+- Conclusión: NO apto para cutover. Pendientes: VPS DigitalOcean (CEO), repo canónico con remoto + historia reproducible, inbox/outbox + callbacks estado/replay, sin `pg_net` en transacciones, E2E cajero con Auth, almacenamiento/proveedor, paridad y alertas n8n. Python a STAGING. Sin tocar secretos ni workflows.

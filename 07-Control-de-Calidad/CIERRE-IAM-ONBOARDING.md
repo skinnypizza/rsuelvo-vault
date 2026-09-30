@@ -1,5 +1,9 @@
 # Cierre global — Onboarding e IAM RSUELVO
 
+> **Actualización web 2026-09-30:** MFA obligatorio de login web retirado por autorización explícita. Publicado `c003e540`; SuperAdmin AAL1 consulta Q9A V1 con siete checks completos y recarga HTTP 200. 95 unit / 19 browser. Véase [[QA-ONBOARDING-WEB-2026-09-30]]. El cierre anterior se conserva como histórico.
+
+> **Actualización 2026-09-30:** el usuario solicitó retirar MFA obligatorio del login Flutter y de habilitación de comercios. Cambio implementado y recorrido ADB V0→V1 probado en producción con QA AAL1. Este documento conserva el cierre histórico y sus deudas; el alcance modificado y los límites de certificación constan en [QA Flutter ADB](QA-ONBOARDING-FLUTTER-ADB-2026-09-30.md).
+
 **Fecha:** 2026-09-23
 **Resultado:** **ONBOARDING / IAM = CERRADO HASTA MIGRACIÓN PYTHON**
 **IAM-10 BACKEND:** **CERRADO CON CERTIFICACIONES DIFERIDAS DOCUMENTADAS**

@@ -239,3 +239,13 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [x] Smoke QA manual (harness inactivo): 2 `whatsapp_send_simulated` allowlisted + 0 `whatsapp_send`; con tercer tenant Relojes no-allowlisted: 2 simulados + 1 `whatsapp_simulation_rejected` (`blocked_simulation_forbidden`); evidencia en logs prod (n8n no expone la ejecución).
 - [x] `tbl_lista_espera` sin ESPERANDO (2 CONVERTIDO_RESERVA): sin cron notificable; tests con ROLLBACK vigentes. 32 llamadas a WF-80 todas con Code validador; WF-02/03 no admiten `simulation_mode` externo (solo QA interno).
 - [ ] Propagar flag interno por rutas SKU/comprobante/entrega, simulación cron waitlist y observabilidad de ejecuciones. No atribuir el smoke a E2E funcional.
+
+
+### Avance producción 2026-09-30 — sintéticos por tenant, NO apto cutover (sin cambios)
+
+- [x] Supabase prod ACTIVE_HEALTHY; n8n healthz/readiness 200. Migración `20260930164650` quita SELECT/INSERT anon/authenticated en `tbl_whatsapp_eventos` (`service_role` conserva). Repo BACKEND local sin remote: prohibido db push.
+- [x] WF-80 activo `8b6c840a`: pares sintéticos exactos, 2 simulados + 2 rechazados por corrida, 0 `whatsapp_send`; SKU E2E no comprobado. Detalle en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md` (QA abierto).
+- [x] WF-04 una orden+reserva por tenant sin duplicados; cron por minuto con succeeded liberando vencidas sin bajar stock; WF-12/WF-13 sim por tenant; RPCs lista solo `service_role`/`n8n_runtime`.
+- [ ] WF-14 aceptación positiva: ciclo aislado 17:36 UTC en monitoreo (vence ~17:46:27); evidencia por DB, sin declarar verde sin evidencia; cero mensajes reales.
+- [ ] Política `errorWorkflow`/`retryOnFail`: consultada al usuario, sin agregar hasta su respuesta (cobertura actual desigual).
+- [ ] Cutover: VPS DigitalOcean (CEO), repo canónico con remoto + historia reproducible, inbox/outbox + callbacks estado/replay, sin `pg_net` en transacciones, E2E cajero con Auth, almacenamiento/proveedor, paridad y alertas n8n. Python a STAGING.

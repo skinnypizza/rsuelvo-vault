@@ -2,6 +2,8 @@
 
 **Fecha:** 2026-09-22 · **Estado:** REV2 (requiere aprobación; backend solo después).
 
+> **Enmienda implementada 2026-09-30:** por solicitud explícita del usuario, habilitar V0→V1 requiere sesión autenticada activa y owner, sin AAL2 obligatorio. Se conservan checks, lock, evidencia y auditoría. El requisito owner+AAL2 descrito abajo es histórico para esa operación. MFA obligatorio al login Flutter también se retiró; otras operaciones conservan sus guards. Ver [QA ADB](../07-Control-de-Calidad/QA-ONBOARDING-FLUTTER-ADB-2026-09-30.md).
+
 ## 1. V1 = PERFIL COMERCIAL DECLARATIVO COMPLETO (no "verificable")
 V1 = datos mínimos completos + email confirmado + sucursal declarada + config + QR configurado + declaración del owner. NO es: NIT-SIN, existencia jurídica, representante verificado, KYC, cumplimiento tributario. UI/AuditLog jamás "empresa verificada por RSUELVO". V2/V3 futuro.
 
