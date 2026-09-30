@@ -89,3 +89,11 @@ El usuario confirmó que inició sesión en n8n. La integración MCP ya permite 
 - CPaaS muestra host `smtp.zeptomail.com`, usuario `emailapikey`, puerto 587 TLS o 465 SSL. La contraseña/API key se mantienen enmascaradas; KYC sigue pendiente y el agente está cerrado.
 
 **Pendiente:** titular completa KYC/habilitación del agente; guardar el SMTP en una credencial de n8n sin transcribir el secreto; hacer entrega de prueba; publicar el handler y asociarlo a los workflows; comprobar una alerta sintética recibida. Bitácora operativa: [[QA-n8n-produccion-2026-09-30]].
+
+## Alertas compartidas de workflows — avance 2026-09-30 21:10 UTC
+
+La auditoría actual de n8n encontró 16 workflows de negocio activos y ninguno enlazado al handler por `settings.errorWorkflow`. El MCP n8n responde; Chromium UI disponible todavía conserva una sesión expirada. La cuenta CPaaS está “en revisión” y `agent_1` continúa cerrado.
+
+El borrador `RSUELVO — Alertas de errores` se preparó para enviar desde `noreply@rsuelvo.com` (remitente autorizado en CPaaS) a `ethannic2@gmail.com`. El nodo de contexto elimina Bearer/JWT/credenciales/valores sensibles de URL y emails/teléfonos del texto del error. Validé su configuración y casos sintéticos de sanitización. El workflow sigue inactivo, sin versión publicada y sin credencial SMTP; no hubo envío de correo.
+
+Próximo paso después de la habilitación CPaaS: crear/guardar credencial SMTP solo en n8n, hacer entrega de prueba, publicar el handler, asignarlo a los 16 workflows y confirmar llegada de una alerta sintética. Detalles: [[QA-n8n-produccion-2026-09-30]].
