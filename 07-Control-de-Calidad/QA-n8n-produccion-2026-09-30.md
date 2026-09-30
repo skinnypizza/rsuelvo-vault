@@ -310,3 +310,10 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - API levantada solo en Docker local con las funciones de ingreso/envío deshabilitadas por default; `/health/live` y `/health/ready` contestaron 200 y el healthcheck llegó a healthy. El API se detuvo al terminar la verificación. `.env` está 0600 y el script apunta solo a `127.0.0.1:54329`; sin llamada a staging/producción ni envío de proveedor.
 - Una advertencia queda en ambas suites: Starlette depreca `fastapi.testclient` basado en `httpx`. Es del cliente de test, no del servidor de producción.
 - Esto no cierra paridad ni cutover: faltan RPC/Auth JWT real, Meta/OCR/Storage, migraciones reconciliadas y VPS. Los workers permanecen apagados; esta suite sintética no prueba flujos reales de WhatsApp ni proveedores.
+
+
+### Refresh autenticado de WF80 / versión Meta — 2026-09-30 22:05 UTC
+
+- El MCP autenticado devolvió WF80 (`7V6MIPuGbdx9s0lT`) activo con `activeVersionId=81740576-968f-448b-9bd6-75d0cec21a3c`. Su único nodo HTTP de envío llama a `https://graph.facebook.com/v26.0/{phone_number_id}/messages`; no hay nodo OpenWA en el grafo activo. Esta lectura actualiza los datos históricos v21.0/OpenWA del corte 2026-09-25. No modifiqué n8n ni envié mensajes.
+- El backend Python candidato quedó alineado a Meta-only/v26.0 en configuración, Compose, fixtures y paridad. Suite local Python 3.14: 340/340; suite Docker Python 3.12: 340/340; Ruff lint/formato y `docker compose config -q` pasan. Mocks sintéticos; ningún llamado a Meta.
+- Meta publica Graph v26.0 desde 2026-07-29 con expiración TBD; su tabla marca v21.0 hasta 2027-01-21. El proyecto queda en versión activa v26.0. [Meta Graph API versions](https://developers.facebook.com/docs/graph-api/changelog/versions/).
