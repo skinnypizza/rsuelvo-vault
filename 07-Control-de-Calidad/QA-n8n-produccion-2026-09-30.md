@@ -302,3 +302,11 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - El harness sintético QA-IAM10 creó una orden/reserva/QR por tenant (Prueba RSUELVO y Celulares); envíos WhatsApp solo simulados: ocho `whatsapp_send_simulated`, cero `whatsapp_send` real. El cron venció ambas reservas, liberó stock reservado (ambos en 0) y cambió ambos QR a EXPIRADO. Sin siguiente cliente en lista para callback. Workflows de prueba conservados inactivos; sin cambios de producción.
 - Revisión `fn_confirmar_pago` y helpers: `authenticated` solo confirma si `auth.uid()` tiene membresía activa del mismo comercio con rol admin o cashier; `anon` sin EXECUTE; `service_role` para backend.
 - SMTP de alertas bloqueado: app-password Zoho falló con RA102; handler n8n `hnhQW0AM6ana1vO7` inactivo/no publicado/no enlazado. Pendiente: credencial SMTP válida sin romper SMTP Supabase/Edge, publicar handler, enlazar 16 activos y confirmar evento sintético.
+
+
+### Python/VPS candidato — verificación local — 2026-09-30 21:58 UTC
+
+- Checkout candidato `BACKEND RSUELVO`: suite completa existente pasó **340/340** en Python 3.14 con `scripts/test_local.sh` y **340/340** en Docker Python 3.12. `ruff check .`, `ruff format --check .` (112 archivos), y `docker compose config -q` pasan. El formato de dos pruebas antiguas se corrigió antes de la segunda corrida Docker.
+- API levantada solo en Docker local con las funciones de ingreso/envío deshabilitadas por default; `/health/live` y `/health/ready` contestaron 200 y el healthcheck llegó a healthy. El API se detuvo al terminar la verificación. `.env` está 0600 y el script apunta solo a `127.0.0.1:54329`; sin llamada a staging/producción ni envío de proveedor.
+- Una advertencia queda en ambas suites: Starlette depreca `fastapi.testclient` basado en `httpx`. Es del cliente de test, no del servidor de producción.
+- Esto no cierra paridad ni cutover: faltan RPC/Auth JWT real, Meta/OCR/Storage, migraciones reconciliadas y VPS. Los workers permanecen apagados; esta suite sintética no prueba flujos reales de WhatsApp ni proveedores.

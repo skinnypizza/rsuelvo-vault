@@ -4,6 +4,8 @@
 
 > **Hardening Supabase 2026-09-30:** migración `20260930213037_harden_email_mfa_search_path` aplicada a producción; 119/119 funciones SECURITY DEFINER de esquemas API verificadas con `pg_catalog` primero y `pg_temp` último. Supabase Auth sigue en plan FREE, por lo que la protección de passwords filtrados está deshabilitada; Supabase exige plan Pro+. Ledger remoto 99, local 48, solo 13 coincidencias exactas (86 remotas faltantes y 35 locales fuera del ledger): `db push` continúa bloqueado hasta reconciliar versiones e historia. Evidencia en [[QA-n8n-produccion-2026-09-30]].
 
+> **Python/VPS candidato 2026-09-30:** suite sintética local 340/340 en Python 3.14 y Docker 3.12; Ruff/Compose y healthchecks locales pasan. No aplicado a Supabase; sin Meta/OCR/Storage ni VPS. Mantener workers deshabilitados. Ver [[QA-n8n-produccion-2026-09-30]].
+
 > **Actualización web 2026-09-30:** MFA obligatorio de login web retirado por autorización explícita. Publicado `c003e540`; SuperAdmin AAL1 consulta Q9A V1 con siete checks completos y recarga HTTP 200. 95 unit / 19 browser. Véase [[QA-ONBOARDING-WEB-2026-09-30]]. El cierre anterior se conserva como histórico.
 
 > **Versión:** 0.3 · **Creado:** 2026-08-26 · **Tabla de fases sincronizada:** 2026-09-09 · **Mantiene:** agente `rsuelvo` (orquestador opencode)
