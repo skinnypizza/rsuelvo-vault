@@ -256,3 +256,10 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [x] WF-14 positivo en aislamiento: NOTIFICADO+SI → CONVERTIDO_RESERVA, reserva + QR GENERADO, WF-80 simulado, 0 real. WF-12/WF-13 cron dos tenants todo simulado. Cron 18:02 UTC venció aceptada: reservado a 0 sin tocar stock, QR EXPIRADO. Harness a 10 nodos base/inactivo/`executionOrder` v1. Intervalo: 20 simulados, 2 rechazados, 0 reales; evidencia por SQL.
 - [x] Migración `20260930180547_sync_qr_cobro_lifecycle` (41 QR GENERADO: 12 pagados/downstream, 28 vencidos, 1 cancelado → PAGADO/CANCELADO/EXPIRADO + triggers; ACL sin EXECUTE anon/authenticated/service_role; QR WF-14 a EXPIRADO). Local 1/1; backend 345 tests.
 - [ ] Cutover NO: VPS DigitalOcean (CEO), repo BACKEND sin remote + historia sin reconciliar (no db push), inbox/outbox + replay/status, sin `pg_net` en transacciones, Auth-JWT cajero pago/entrega E2E, receipt OCR/Storage/proveedor, paridad + política errores/retries (usuario), Python a STAGING.
+
+
+### Cierre QA 2026-09-30 — escalamiento cron + WF-80 restaurado (NO apto cutover, sin cambios)
+
+- [x] Arnés 18:15 UTC dos tenants (exec 547 no retenida; evidencia SQL): 2 reservas/QR simulados. Cron escaló pos1 VENCIDO → pos2 NOTIFICADO vía pg_net 200: 1 simulado, 0 reales.
+- [x] Guard `QA_SIM_PRUEBA_02` retirado; WF-80 restaurado/publicado `v81740576`. Detalle en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md`.
+- [ ] Error Trigger compartido (elección usuario): faltan email destino + credencial SMTP (n8n sin disponibles); no crear handler incompleto.
