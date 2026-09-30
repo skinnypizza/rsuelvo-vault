@@ -235,3 +235,7 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 ### Limpieza de estado QA tras canaries — verificado 2026-09-30
 
 - Consulté producción en solo lectura después de los canaries previos. Para los tenants Prueba RSUELVO (`FER`) y Celulares (`FEE`), hay `0` reservas `ACTIVA`/`PAGO_VALIDANDO` y `stock_reservado=0` en ambos. Esto confirma que no quedó inventario retenido por las pruebas; no cambié pedidos ni reservas históricas.
+
+### Protección de la extracción local de esquema — 2026-09-30
+
+- Revisé `/home/nico/rsuelvo-schema-extraction`: no es un repositorio Git y no tiene remotes; `.pgpass`, escaneo/mapas y snapshot SQL eran archivos locales con permisos `0600` y no rastreados. El `.env` también era no rastreado y su directorio privado, pero tenía modo `0644`; lo ajusté a `0600`. Amplié el `.gitignore` del directorio para `.pgpass` y los artefactos de escaneo/snapshot, por defensa ante una futura inicialización Git. No imprimí ni copié credenciales.
