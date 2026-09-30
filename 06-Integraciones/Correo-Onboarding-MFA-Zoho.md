@@ -152,3 +152,11 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 - La prueba de conexión SMTP de n8n en 587 solo comprobó conexión/autenticación, no envío ni recepción. La credencial guardada todavía usa el password SMTP anterior que se considera comprometido. No conectarla ni publicar el handler.
 - `RSUELVO_SMTP_PASSWORD` está presente en Edge Function Secrets (se confirmó solo el nombre, sin leer el valor). La clave secundaria creada en CPaaS todavía no se confirmó como copiada ni instalada. El usuario confirmó que n8n mantiene sesión iniciada; queda pendiente completar la rotación sin copiar ningún secreto al chat y comprobar una entrega a `ethannic2@gmail.com`.
 - No cambiar Auth SMTP, secretos de la función `email-mfa`, ni credenciales n8n hasta tener la credencial nueva accesible de forma segura y coordinar los tres consumidores. No hay correo de prueba enviado en esta sesión.
+
+
+### Revisión Zoho posterior — 2026-09-30 23:35 UTC
+
+- En CPaaS confirmé que el Agent ofrece una contraseña SMTP secundaria más corta, marcada como menos segura por Zoho. Durante la exploración se generó/renovó esa credencial secundaria, pero no se copió ni instaló en ningún consumidor. No usarla para producción; la contraseña SMTP principal que quedó expuesta sigue pendiente de revocación/rotación coordinada.
+- La documentación oficial de Zoho indica usuario SMTP `emailapikey`, puerto 587 con TLS, y advierte que las claves más cortas son menos seguras.
+- El formulario de n8n aún tiene la contraseña SMTP anterior; `Connection tested successfully` no significa entrega. Auth SMTP conserva su configuración previa y `RSUELVO_SMTP_PASSWORD` existe en Edge Secrets. No envié correo ni publiqué/enlacé el handler.
+- La rotación de callback de lista de espera se completó en Vault+n8n y el cron volvió a `active`; no afecta al estado SMTP.

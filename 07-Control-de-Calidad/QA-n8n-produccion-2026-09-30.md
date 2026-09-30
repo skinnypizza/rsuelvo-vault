@@ -338,3 +338,12 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - Error #471 pertenece al workflow inactivo `QA-IAM10-DIRECT-PG-SMOKE`: su assertion `Assert Waitlist Acceptance` exige que la salida final de WF14 incluya datos de pedido y cobro, pero WF14 termina propagando el resultado simulado del gateway WF80. Es un desacuerdo entre contrato del harness y salida final del flujo, no evidencia de rechazo de WF14. Corregir el harness para comprobar el registro de pedido/cobro con consultas read-only separadas de la rama de envío; no repetirlo antes de revisar/limpiar cualquier registro sintético que haya dejado.
 - Errores #219-224 de `Log Guard` ocurrieron en ejecuciones integradas de prueba. La FK verificada apunta a `rsuelvo.tbl_comercios(id_comercio) ON DELETE SET NULL`; la causa concreta aún no está aislada. No se modificó la escritura de auditoría.
 - El canal SMTP aún está pendiente de rotación segura y entrega real; handler sin publicar/sin enlaces y workflows activos no alterados por esta sesión.
+
+
+### Rotación callback waitlist verificada — 2026-09-30 23:35 UTC
+
+- Roté los dos valores expuestos: `rsuelvo_n8n_waitlist_callback_token` y `rsuelvo_n8n_legacy_waitlist_body_token`. La comparación SHA-256 en SQL confirmó igualdad con los valores nuevos sin devolverlos. La función `fn_cron_expirar_y_notificar` lee ambos valores de Vault en runtime y ya no conserva el token legado inline.
+- Actualicé la credencial n8n `RSUELVO n8n Waitlist Callback`; el valor de Header Auth debe incluir el prefijo literal `Bearer ` porque la cabecera entrante lo envía así. El primer intento sin ese prefijo obtuvo 403; guardé el valor con el formato exacto y el POST controlado al webhook devolvió 200 `Workflow was started`.
+- Antes de disparar el webhook confirmé cero grupos en espera y cero inventario con destinatarios elegibles; no se enviaron WhatsApps. El MCP no mostró la ejecución de prueba en su búsqueda posterior, por lo que el HTTP 200 confirma aceptación/autenticación, pero falta revisar el registro de ejecución en la UI n8n.
+- Pausé el job `rsuelvo_expirar_reservas` solo durante la rotación y lo reactivé con su cron `* * * * *`. Verificación posterior: `active=true`; 20/20 ejecuciones recientes de pg_cron aparecen `succeeded`, última a las 23:34 UTC.
+- La rotación de callback está cerrada a nivel Vault + credencial. La SMTP es independiente y continúa pendiente.
