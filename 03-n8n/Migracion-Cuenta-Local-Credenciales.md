@@ -375,3 +375,11 @@ Graph v26 read-only confirma WABA productiva suscrita a la app `Rsuelvo`, númer
 - WF-10 (`xFcZMG8Hip0Z6aH5`) activo `v353ab8a6` con fix de identificador suelto/salida singular (`runOnceForAllItems`, `[{json:result}]`). WF-04 (`0fw2ymvAY1hHoV9M`) activo `v4eecef97`: no-SKU por `fn_contexto_por_telefono`, SKU por `fn_resolver_sku_universal`, sin atribución por `phone_number_id` compartido; contexto = cliente más reciente tras SKU (riesgo inter-tenant concurrente mismo teléfono). WF-80 (`7V6MIPuGbdx9s0lT`) activo `ve66602f4` con `simulation_mode` optativo allowlist dos tenants; rama simulada sin Meta/HTTP con log `whatsapp_send_simulated`; sin flag, envíos normales intactos.
 - Smoke QA (`6XoIAD3JIOt1KlaN`) inactivo; 2 destinatarios ficticios → 2 `whatsapp_send_simulated`, 0 `whatsapp_send`. Rollback DB verificado (reserva/waitlist por tenant, `fn_confirmar_pago` idempotente YA_PROCESADO). Paquete verificado 18/391/94/25/40 guardas + checks verdes + backend 344 tests.
 - Límite: `simulation_mode` no propagado (WF-04→WF-10/WF-20/WF-21, cron WF-13). Pendientes: E2E seguro comprobante→aprobación→confirmación/entrega y cron waitlist. Un solo número compartido: SKU selecciona tenant, envíos filtrados por `id_comercio`.
+
+
+### Avance QA 2026-09-30 — rechazo simulado y blindaje externo (incompleto, sin cambios)
+
+- Suite backend 344 passed (warning deprecado Starlette/httpx); paquete 18/391/94/25/40 guardas + `py_compile` OK. 16 RSU activos versionados (`activeVersionId=versionId`, `sameAsDraft`); WF-25-B inactivo fuera de MCP.
+- Smoke QA inactivo: 2 `whatsapp_send_simulated` allowlisted + 0 `whatsapp_send`; tercer tenant no-allowlisted → `whatsapp_simulation_rejected` (`blocked_simulation_forbidden`); evidencia en logs (n8n no expone ejecución/detalle). Solo cambió el draft del harness; productivos intactos.
+- Sin ESPERANDO en lista (2 CONVERTIDO_RESERVA): sin cron notificable. 32 llamadas a WF-80 con Code validador; WF-02/03 bloquean `simulation_mode` externo: solo el QA interno lo crea.
+- Pendientes: propagar flag por rutas, simulación cron waitlist, observabilidad. No es E2E funcional.

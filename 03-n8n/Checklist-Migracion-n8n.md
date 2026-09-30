@@ -230,3 +230,12 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [x] `verify-community-package.py` verde (18/391/94/25/40 guardas) + `node --check`/`py_compile`; backend 344 tests ronda anterior.
 - [ ] Propagar `simulation_mode` por WF-04→WF-10/WF-20/WF-21 y cron WF-13 (solo probado directo a WF-80).
 - [ ] E2E seguro comprobante→aprobación→confirmación/entrega + cron waitlist. Regla: un solo número compartido; SKU selecciona tenant; envíos filtrados por `id_comercio`.
+
+
+### Avance QA 2026-09-30 — suite verde, smoke con rechazo (QA incompleto, sin cambios)
+
+- [x] Backend local `scripts/test_local.sh`: 344 passed (solo warning deprecado Starlette/httpx). `verify-community-package.py` PASS 18/391/94/25/40 guardas + `py_compile` OK.
+- [x] 16 RSU activos con `activeVersionId=versionId` y `sameAsDraft=true` donde consultable; WF-25-B inactivo fuera de MCP.
+- [x] Smoke QA manual (harness inactivo): 2 `whatsapp_send_simulated` allowlisted + 0 `whatsapp_send`; con tercer tenant Relojes no-allowlisted: 2 simulados + 1 `whatsapp_simulation_rejected` (`blocked_simulation_forbidden`); evidencia en logs prod (n8n no expone la ejecución).
+- [x] `tbl_lista_espera` sin ESPERANDO (2 CONVERTIDO_RESERVA): sin cron notificable; tests con ROLLBACK vigentes. 32 llamadas a WF-80 todas con Code validador; WF-02/03 no admiten `simulation_mode` externo (solo QA interno).
+- [ ] Propagar flag interno por rutas SKU/comprobante/entrega, simulación cron waitlist y observabilidad de ejecuciones. No atribuir el smoke a E2E funcional.
