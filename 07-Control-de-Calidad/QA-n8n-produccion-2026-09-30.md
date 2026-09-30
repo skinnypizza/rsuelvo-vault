@@ -95,3 +95,9 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - La inspección del Advisor confirma que las ocho tablas marcadas RLS sin políticas niegan acceso directo a `anon`; siete niegan también `authenticated`. `tbl_whatsapp_eventos` conserva grants SQL de usuario, pero RLS sin políticas mantiene el default-deny. Las 50 funciones `SECURITY DEFINER` para `authenticated` incluyen varios mutadores con controles internos de identidad/rol/tenant; el Advisor por sí solo no demuestra vulnerabilidad y queda pendiente el inventario de consumidores y pruebas JWT por rol.
 
 **Estado general:** continúa abierto. No se completó comprobante válido → aprobación autenticada de cajero → confirmación al comprador, ni un callback positivo de envío desde trigger de base de datos sobre fixture enlazado a teléfono QA. También siguen pendientes la rotación/purga de secretos históricos, el seguimiento de findings de seguridad restantes, certificación de ejecución n8n/MCP, la provisión de VPS y el canary de expiración/limpieza de las reservas QA activas.
+
+### Limpieza del canary de reserva — 2026-09-30 16:10 UTC
+
+- Esperé los vencimientos normales, sin llamar manualmente a las funciones cron. `rsuelvo_expirar_reservas` y `rsuelvo_push_por_vencer` siguieron activos como `postgres` en intervalos de un minuto.
+- Las reservas QA recientes de FERA01/Prueba RSUELVO y FEE001/Celulares quedaron `VENCIDA`; la suma de `stock_reservado` volvió a `0` en ambos inventarios (stock total 5 y 3, respectivamente). No quedan reservas QA activas de ese canary.
+- Esto verifica el vencimiento/limpieza del stock para estos fixtures; el cron de aviso de lista de espera tuvo su E2E sintético previo documentado arriba.
