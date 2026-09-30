@@ -1,5 +1,7 @@
 # ESTADO DE EJECUCIÓN RSUELVO — Bitácora viva del orquestador
 
+> **Correo 2026-09-30:** Cloudflare DNS configurado para Zoho Mail + CPaaS; rsuelvo.com verificado, DKIM activo y noreply autorizado. Envío Auth aún pendiente de validación cliente Zoho y SMTP. Véase [[Correo-Onboarding-MFA-Zoho]].
+
 > **Actualización web 2026-09-30:** MFA obligatorio de login web retirado por autorización explícita. Publicado `c003e540`; SuperAdmin AAL1 consulta Q9A V1 con siete checks completos y recarga HTTP 200. 95 unit / 19 browser. Véase [[QA-ONBOARDING-WEB-2026-09-30]]. El cierre anterior se conserva como histórico.
 
 > **Versión:** 0.3 · **Creado:** 2026-08-26 · **Tabla de fases sincronizada:** 2026-09-09 · **Mantiene:** agente `rsuelvo` (orquestador opencode)
