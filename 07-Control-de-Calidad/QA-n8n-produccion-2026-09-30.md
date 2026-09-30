@@ -295,3 +295,10 @@ En el dashboard Auth de producción se guardaron las plantillas **Invite user** 
 ### Advisor Auth: contraseña filtrada — 2026-09-30 21:50 UTC
 
 El Advisor de seguridad en producción incluye `auth_leaked_password_protection`. En el dashboard, la organización/proyecto figura FREE y el ajuste Prevent use of leaked passwords aparece DISABLED sin control editable. La documentación oficial de Supabase indica que este control requiere Pro o superior: https://supabase.com/docs/guides/auth/password-security. No cambié el plan ni se generó un gasto. Registrar la habilitación tras decidir el plan de lanzamiento.
+
+
+### Harness sintético 19:22 UTC + `fn_confirmar_pago` + SMTP bloqueado — 2026-09-30
+
+- El harness sintético QA-IAM10 creó una orden/reserva/QR por tenant (Prueba RSUELVO y Celulares); envíos WhatsApp solo simulados: ocho `whatsapp_send_simulated`, cero `whatsapp_send` real. El cron venció ambas reservas, liberó stock reservado (ambos en 0) y cambió ambos QR a EXPIRADO. Sin siguiente cliente en lista para callback. Workflows de prueba conservados inactivos; sin cambios de producción.
+- Revisión `fn_confirmar_pago` y helpers: `authenticated` solo confirma si `auth.uid()` tiene membresía activa del mismo comercio con rol admin o cashier; `anon` sin EXECUTE; `service_role` para backend.
+- SMTP de alertas bloqueado: app-password Zoho falló con RA102; handler n8n `hnhQW0AM6ana1vO7` inactivo/no publicado/no enlazado. Pendiente: credencial SMTP válida sin romper SMTP Supabase/Edge, publicar handler, enlazar 16 activos y confirmar evento sintético.
