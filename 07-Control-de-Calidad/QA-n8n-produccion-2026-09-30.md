@@ -355,3 +355,11 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - n8n SMTP actualizada y conexión autenticada con éxito (prueba de conexión, no entrega). Supabase Auth SMTP actualizada; SMTP personalizado continúa habilitado. `RSUELVO_SMTP_PASSWORD` reemplazado en Edge Secrets; digest distinto y confirmación de guardado visibles.
 - Falta enviar y recibir un correo real posterior a la rotación. No revocar aún la API key anterior ni publicar/enlazar el Error Trigger compartido. `RSUELVO — Alertas de errores` permanece sin publicar, sin asignar; los 16 flujos activos siguen sin errorWorkflow.
 - MCP n8n devolvió error interno al consultar búsqueda/credenciales. La sesión Chromium sí permitió guardar la rotación. Reintentar verificación MCP/UI, correo real y luego continuar activación controlada.
+
+
+### Reanudación de alertas — sesión n8n no autenticada — 2026-10-01 00:02 UTC
+
+- Tras completar la rotación SMTP coordinada, la pestaña Chromium de n8n redirigió a `/signin`. El formulario aparece sin usuario ni contraseña guardados; al enfocar y pulsar “Sign in” con campos vacíos no se autenticó. Las llamadas REST responden 401 y el MCP n8n devuelve `Internal error` en búsqueda y lista de credenciales.
+- La credencial SMTP nueva sí fue guardada antes de expirar la sesión y pasó “Connection tested successfully”. Auth SMTP y Edge secret también quedaron actualizados. No se ha probado todavía un correo real con la clave nueva.
+- Por seguridad operativa, el workflow `RSUELVO — Alertas de errores` permanece sin publicar y los 16 flujos no se enlazaron. La clave CPaaS anterior sigue activa hasta entregar y verificar un correo con la nueva.
+- Se intentó informar al orquestador OpenCode en la sesión previa desde el backend, pero el servidor respondió `Unexpected server error` (ref `err_b6e1a047`). El detalle está versionado en el vault, commit `ee70e3f`; repetir aviso al orquestador cuando su sesión responda.
