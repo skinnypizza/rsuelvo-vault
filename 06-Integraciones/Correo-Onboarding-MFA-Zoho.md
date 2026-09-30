@@ -97,3 +97,21 @@ La auditoría actual de n8n encontró 16 workflows de negocio activos y ninguno 
 El borrador `RSUELVO — Alertas de errores` se preparó para enviar desde `noreply@rsuelvo.com` (remitente autorizado en CPaaS) a `ethannic2@gmail.com`. El nodo de contexto elimina Bearer/JWT/credenciales/valores sensibles de URL y emails/teléfonos del texto del error. Validé su configuración y casos sintéticos de sanitización. El workflow sigue inactivo, sin versión publicada y sin credencial SMTP; no hubo envío de correo.
 
 Próximo paso después de la habilitación CPaaS: crear/guardar credencial SMTP solo en n8n, hacer entrega de prueba, publicar el handler, asignarlo a los 16 workflows y confirmar llegada de una alerta sintética. Detalles: [[QA-n8n-produccion-2026-09-30]].
+
+
+## Prueba SMTP y confirmación real — 2026-09-30 21:11 UTC
+
+El usuario completó el formulario de validación de Zoho y la configuración inicial en Supabase. Se corrigió el usuario SMTP guardado (contenía una credencial de API) a `emailapikey` y se copió directamente la contraseña SMTP del agente, sin guardar secretos en el repositorio. Se comprobó tras recargar que la configuración persistía. Host `smtp.zeptomail.com`, puerto 587, remitente `noreply@rsuelvo.com`, nombre RSUELVO, SMTP personalizado activo.
+
+El correo indicado ya tenía cuenta; se utilizó el alias del mismo buzón `ethannic2+qa20260930smtp@gmail.com`. Registro público en producción HTTP 200; Auth creó la cuenta QA `4ba435a8-d9c8-411a-897a-07bd0d9e9924`. Supabase registró envío de invitación a las 21:10:49 UTC. El registro de Zoho muestra remitente noreply, destinatario QA, asunto `You've been invited` y estado **Entregado**. El usuario confirmó recepción y apertura del enlace. Auth registra `email_confirmed_at=2026-09-30 21:11:20.017825+00` y primer inicio de sesión inmediatamente después.
+
+Resultado: registro web → envío SMTP → entrega Gmail → enlace → confirmación Auth comprobados. La cuenta original no se modificó. Zoho aún muestra revisión pendiente: esta entrega no acredita aprobación completa ni capacidad de producción a escala. La plantilla real de invitación todavía usa asunto en inglés; adaptar la plantilla Invite user también, además de Confirm signup. MFA/2FA por correo continúa sin implementar y esta prueba no acredita AAL2.
+
+Una inspección previa mostró accidentalmente una credencial API en la salida de una herramienta; no se reproduce ni se guarda aquí. La corrección SMTP no equivale a rotación de esa credencial API.
+
+
+## Reconciliación posterior de correo — 2026-09-30 21:37 UTC
+
+Se contrastó el estado con Chromium y n8n MCP después de la prueba Auth documentada arriba. Supabase Auth sí completó la entrega de una invitación QA por el SMTP de CPaaS; el mensaje llegó, el enlace se confirmó y la cuenta pudo iniciar sesión. Esto no certifica el canal SMTP de n8n: n8n conserva siete credenciales y ninguna SMTP, el handler de error no está publicado ni activo y ninguno de los 16 workflows activos lo tiene asignado.
+
+La consola CPaaS abierta muestra que `agent_1` sigue cerrado y que SMTP/API secrets están enmascarados. No se regeneró la contraseña porque el agente sirve al SMTP de Supabase. Para continuar sin impactar Auth, se debe provisionar una credencial adicional o recuperar de forma segura la credencial activa para n8n; después hacer envío de prueba al buzón aprobado y enlazar el handler. Bitácora detallada: [[QA-n8n-produccion-2026-09-30]].
