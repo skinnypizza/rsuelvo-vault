@@ -120,3 +120,10 @@ El orquestador OpenCode fue contactado en su sesión guardada tres veces; respon
 - En la repetición validada se contó una fila de pedido y un cobro generado por cada reserva (idempotencia); la salida simulada puede volver a enviar la imagen de pago QA. La retención temporal y la consulta IAM del arnés quedaron restauradas.
 
 **Estado:** corregido y probado el rechazo falso de `simulated` y la aserción de WF-25A con rutas simuladas. No está cerrado el caso real de notificación perdida al aprobar el comprobante. Siguen abiertos el pago/cajero→comprador sintético de extremo a extremo, callback positivo de entrega enlazado a teléfono QA, purga/rotación de credenciales históricas, pruebas JWT del resto de funciones de seguridad y los gates de producción listados arriba.
+
+### Pruebas aisladas de captura de entrega — 2026-09-30 16:32 UTC
+
+- Con `test_workflow` y datos pinneados para los nodos de webhook/DB, ejecuté seis rutas de WF-25C: `PREPARANDO`, `ASIGNADO`, `EN_RUTA`, `ENTREGADO`, `NO_ENTREGADO` y `guia_registrada`. Las seis terminaron `success` (IDs 405, 407, 409, 411, 413 y 415); el nodo de deduplicación usó un resultado fijado para no insertar notificaciones reales. WF-80 recibió solo el par sintético reservado y lo simuló.
+- En WF-25B probé las rutas con contexto/DB pinneados: menú después del nombre, selección de punto local, selección de transportadora y captura de ciudad. Las cuatro terminaron `success` (IDs 417, 419, 421 y 423); todas las respuestas de WF-80 fueron simuladas. Los nodos RPC/HTTP de prueba no escribieron registros de clientes ni envíos.
+- La auditoría del tenant Prueba RSUELVO en 16:29–16:32 UTC agregó 10 `whatsapp_send_simulated`; no apareció `whatsapp_send`. El arnés manual está inactivo y su configuración posterior muestra retención manual en valores `DEFAULT` (sin override).
+- Son pruebas de ramas con dependencias externas pinneadas: cubren los mensajes, condiciones y aserciones del grafo sin ejercitar triggers reales ni confirmar escritura/deduplicación de la base en esos casos. El callback positivo con fixture ligado a número QA y la captura con estado de base real siguen pendientes.
