@@ -363,3 +363,13 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - La credencial SMTP nueva sí fue guardada antes de expirar la sesión y pasó “Connection tested successfully”. Auth SMTP y Edge secret también quedaron actualizados. No se ha probado todavía un correo real con la clave nueva.
 - Por seguridad operativa, el workflow `RSUELVO — Alertas de errores` permanece sin publicar y los 16 flujos no se enlazaron. La clave CPaaS anterior sigue activa hasta entregar y verificar un correo con la nueva.
 - Se intentó informar al orquestador OpenCode en la sesión previa desde el backend, pero el servidor respondió `Unexpected server error` (ref `err_b6e1a047`). El detalle está versionado en el vault, commit `ee70e3f`; repetir aviso al orquestador cuando su sesión responda.
+
+
+### Envío SMTP y activación del Error Trigger compartido — 2026-10-01 00:20 UTC
+
+- Prueba SMTP real, desde un endpoint QA temporal publicado solo para una llamada, ejecutada por `pg_net` en Supabase producción. `net._http_response` request 203 devolvió HTTP 200; Zoho SMTP informó `accepted=[ethannic2@gmail.com]`, `rejected=[]`, respuesta `250 Message received`, `messageId` emitido y sin timeout. Esto prueba aceptación por el servidor SMTP del correo de prueba; no acredita apertura/visualización en Gmail. El endpoint QA se despublicó inmediatamente.
+- Publicado `RSUELVO — Alertas de errores` con su nodo SMTP conectado a `SMTP account`, sanitización del error y remitente `noreply@rsuelvo.com`. Descripción actual indica el destinatario autorizado.
+- Falla sintética de producción ejecutada desde webhook temporal con `errorWorkflow` apuntando al handler publicado. Ejecución n8n #596 registra el error intencional esperado; respuesta webhook HTTP 500, sin timeout. El workflow de prueba se despublicó inmediatamente. La búsqueda MCP no mostró una ejecución separada del handler ni permite confirmar desde aquí que el correo de alerta apareció en Gmail; confirmar recepción con el titular.
+- Enlazados y publicados los 16 workflows de negocio activos con `settings.errorWorkflow = hnhQW0AM6ana1vO7`. Verificación posterior: 16/16 activos, todos con enlace al handler y `versionId == activeVersionId`. Handler también activo. QA SMTP manual y ambos endpoints temporales están despublicados.
+- Queda pendiente confirmar que el titular recibió el mensaje de prueba y el mensaje de alerta, verificar entrega SMTP de `email-mfa`/Auth tras rotación y revocar la clave API SMTP Zoho anterior solo después de validar todos los consumidores.
+- El cron Supabase `rsuelvo_expirar_reservas` sigue activo cada minuto; SQL en producción mostró `active=true`.

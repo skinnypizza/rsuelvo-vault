@@ -170,3 +170,11 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 - Supabase Auth SMTP mantiene SMTP personalizado activo. Se guardó la misma nueva clave; al recargar, el campo secreto apareció vacío (comportamiento esperado para el valor almacenado). Aún falta prueba de entrega Auth posterior a la rotación.
 - La clave API anterior sigue activa hasta verificar un envío de punta a punta; revocarla antes puede interrumpir usuarios restantes. El correo real de prueba y su recepción siguen pendientes.
 - El workflow `RSUELVO — Alertas de errores` sigue sin publicar ni enlazar hasta comprobar entrega real. El MCP de n8n devolvió error interno al buscar workflows/credenciales en esta sesión; Chromium sí permitió actualizar y probar la credencial SMTP.
+
+
+### Prueba de entrega y alertas n8n — 2026-10-01 00:20 UTC
+
+- Verificada una entrega SMTP real posterior a la rotación desde una prueba QA temporal: el nodo SMTP respondió HTTP 200 y Zoho reportó `accepted=[ethannic2@gmail.com]`, cero rechazados y `250 Message received`. Es aceptación SMTP, no prueba de lectura del buzón. El webhook QA fue retirado.
+- El Error Trigger central quedó publicado y asignado a los 16 workflows de negocio activos. Validación de configuración final: 16/16 enlaces presentes y versiones publicadas.
+- Una falla sintética de producción generó la ejecución n8n #596 con el error intencional; el webhook devolvió HTTP 500 esperado. El handler estaba publicado y configurado como `errorWorkflow`, pero n8n MCP no mostró una ejecución independiente del handler. Se requiere confirmar con el destinatario si llegó el mensaje de alerta.
+- La credencial anterior de Zoho todavía no se revocó. Mantenerla vigente hasta verificar que también Auth y `email-mfa` entregan tras la rotación y confirmar recepción del aviso del Error Trigger.
