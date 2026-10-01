@@ -420,3 +420,9 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - Inserté una entrada sintética por tenant con `fn_agregar_lista_espera_v2`; ambas devolvieron `AGREGADO`, posición 1. El cron activo `rsuelvo_expirar_reservas` corrió a las 01:12:00 UTC con estado `succeeded`; a las 01:12:04 ambas entradas ya estaban en `NOTIFICADO`, con sus TTL configurados (2 y 10 min), sin reserva generada.
 - El gateway escribió exactamente dos eventos de auditoría `whatsapp_send_simulated` (uno por tenant) a las 01:12:06. Ningún mensaje salió a Meta/WhatsApp y `stock_reservado` no fue cambiado por esta fase. Esto prueba cron → WF13 → gateway en modo simulado para dos tenants/clientes; no prueba la entrega Meta real.
 - Las dos entradas QA se conservarán para observar su vencimiento natural por cron (01:14 y 01:22 UTC). No hay usuarios reales esperando en esas variantes según la lectura previa; no ejecutar otra prueba hasta que expiren.
+
+### Expiración natural y guard MFA — 2026-10-01 01:18 UTC
+
+- El turno QA de Celulares expiró a las 01:14 y pasó a `VENCIDO`; a las 01:17 el cron seguía `succeeded`. El turno QA de Prueba RSUELVO permanece `NOTIFICADO` hasta 01:22 por su TTL de 10 minutos; aún no se cerró ese tramo.
+- Ejecuté `tests/sql/email_mfa_access.sql` contra Supabase producción. Pasó todas las aserciones (administrador AAL1 bloqueado, bootstrap permitido, RPC/escritura protegidos, challenge validado y escritura permitida tras MFA) y terminó con `ROLLBACK`. Consulté después y quedaron cero usuarios, perfiles, comercios o challenges de prueba.
+- Revisé la alerta RLS de `email_mfa_*`: esas políticas son `RESTRICTIVE`, no amplían la lectura por OR; se combinan como guardas con las políticas permisivas de acceso por tenant. No hice cambios RLS.
