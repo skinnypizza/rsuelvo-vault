@@ -270,3 +270,9 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 
 - [x] Cron 18:38 UTC: `QA_SIM_PRUEBA_02` NOTIFICADO→VENCIDO sin siguiente → sin callback/envío. Reservas 18:15 VENCIDA, QR EXPIRADO, stock liberado. WF-80 en `81740576` sin guard temporal.
 - [ ] Error Trigger compartido por correo a ethannic2@gmail.com (elección usuario): Zoho en signin, sin credencial SMTP; esperar login manual, sin crear app password/credential aún.
+
+
+### Muestra integrada 2026-10-01 19:39 UTC — Meta→runtime OK, sin Graph (sin cambios)
+
+- [x] Muestra `messages` desde Developers → `meta-ingress` 200 → WF-02 exec 852 → WF-03 integrada 853 (IDs sintéticos; WF-04 sin comercio; WF-80 `No active Meta phone number ID`; fila muestra en ERROR; 0 Graph). Verifica entrega, no mensaje real ni comprobante.
+- [ ] Correlación del reporte real + E2E comprobante pendientes (a 19:46 sin evento posterior; el error 16:01 antecede a la migración `add_scoped_pending_receipt_order_rpc`).
