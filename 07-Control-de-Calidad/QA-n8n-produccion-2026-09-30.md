@@ -901,7 +901,7 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Puerta previa a cutover: probar localmente la transacción de reconciliación y confirmar en un envío controlado con Meta que `biz_opaque_callback_data` se acepta y regresa en webhooks para texto, plantilla y medios. Hasta entonces, mantener deshabilitados los workers candidatos. El runtime no hizo ninguna llamada a Meta ni a Supabase para este cambio.
 - Intenté evitar la limitación de Docker con un Postgres temporal bajo `/tmp`; el sandbox rechazó tanto el bind TCP como el socket Unix (`Operation not permitted`). El servidor nunca arrancó, no corrí migraciones y eliminé el directorio temporal. La prueba de integración permanece pendiente de un runtime local que permita sockets/Postgres.
 
-### Continuidad: reintento de callback y suite completa — 2026-10-01 09:30 UTC
+### Continuidad: reintento de callback y suite completa — 2026-10-01 09:20 UTC
 
 - El status worker trata la reconciliación como idempotente y ahora reintenta si Postgres falla, en vez de diferir inmediatamente el callback a revisión manual. Se añadieron casos para transiciones monotónicas y para impedir el POST Meta si falla el CAS de armado del intento.
 - La corrida amplia de pytest se había quedado esperando el portal entre hilos de Starlette TestClient. Reemplacé TestClient por `httpx.ASGITransport` async en las pruebas API y Meta ingress; la app entra por su lifespan real sin abrir sockets. El cambio elimina también la advertencia deprecada del TestClient.
