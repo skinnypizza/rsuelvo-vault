@@ -1367,3 +1367,11 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - No pude completar un canario con la conexión real de n8n: aislé temporalmente el nodo Postgres de solo lectura en `QA-IAM10-DIRECT-PG-SMOKE`; `execute_workflow` devolvió el ID 860, pero la consulta de esa ejecución informó que no existe. El segundo endpoint MCP falló internamente. No se obtuvo resultado SQL y no afirmo que se haya ejecutado la función bajo `n8n_runtime`.
 - Restauré la versión base del arnés y comparé nodos y conexiones: idénticos a la versión previa, sigue inactivo y con sus cuatro ramas QA originales. No hubo escrituras de negocio. Chromium abrió n8n en Sign in, sin campos autofill; cerré esa pestaña sin guardar ni solicitar credenciales.
 - Revalidación a las 20:02 UTC: no hay evento Supabase ni ejecución n8n posterior a la muestra Meta de las 19:39 atribuible al último intento real. El permiso PostgreSQL queda corregido por migración y grants inspeccionados, pero el smoke test con la conexión efectiva n8n y el E2E real de comprobante siguen pendientes.
+
+### 2026-10-01 20:11 UTC — Nuevo reporte de SKU + comprobante sin telemetría correlacionable
+
+- El usuario indica que volvió a enviar el SKU y el comprobante y recibió el mismo error.
+- Consulté de nuevo `rsuelvo.tbl_whatsapp_eventos`: la fila más reciente sigue siendo la muestra sintética Meta `ABGGFlA5Fpa`, recibida 19:39:41 UTC. El último intento real registrado continúa siendo el texto SKU de 16:01:38 UTC y la imagen de 16:01:53 UTC, ambos desde `59171531944`/`1275143265687773`; no existe una fila posterior para el intento reportado.
+- La búsqueda de ejecuciones n8n desde 19:40 UTC devuelve cero. No puedo atribuir al nuevo intento el `Error en WF-03` de 16:01 ni el error de enrutamiento del fixture sintético.
+- Esto sitúa la brecha observada antes de la persistencia del evento o en el reloj/correlación: no hay señal posterior en Supabase ni n8n. El query unificado de logs dio error backend y no aportó evidencia adicional; requiere revisar la llamada real firmada de Meta `meta-ingress` y su forward cuando haya traza disponible.
+- No reenvié ningún mensaje, no cambié workflows/configuración Meta y no usé OpenWA. E2E de comprobante continúa abierto.
