@@ -1101,3 +1101,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - En el catálogo PROD, `rsuelvo.trg_pedido_pagado_notifica` está habilitado; `fn_notifica_pedido_pagado` usa `net.http_post`, lee Vault y apunta al callback `entrega/request`. La configuración existe, pero falta una ejecución E2E posterior al arreglo publicado de WF-25-A.
 - Advisors actualizados: 52 avisos SECURITY DEFINER ejecutables por `authenticated`, un aviso por `pg_net` en `public`, uno por protección contra contraseñas filtradas deshabilitada y dos hallazgos informativos de RLS sin políticas en el esquema privado. Performance: 74 solapamientos de políticas permisivas, 50 FKs sin índice y 10 índices no usados. No hice revocaciones ni reescrituras masivas; no existe herramienta MCP para cambiar la protección Auth y este runtime carece de control del navegador.
 - La prueba manual #767 sigue inconclusa: el MCP no permitió observar la ejecución y no hubo log simulado. QA de pago→entrega sigue abierto.
+
+### 2026-10-01 14:00 UTC — Regresión estática y suite backend
+
+- Regeneré el paquete Community inactivo y corrí `py_compile` + `verify-community-package.py`: PASS (18 workflows, 391 nodos, 95 Code, 25 Postgres, 40 guardas WF-80); pasan las matrices sintéticas del gateway, WF-21, WF-02 y WF-22.
+- La suite backend, con todos los DSN de bases sin configurar, dio **332 passed, 29 skipped**. Los skips son integraciones DB/Redis y no se contabilizan como PASS.
+- `scripts/test_local.sh` no pudo iniciar Docker por permiso denegado al socket. Intenté un PostgreSQL aislado en `/tmp`; la sandbox negó los sockets TCP y Unix antes de migraciones o pruebas. Eliminé los artefactos temporales. No se conectó ni modificó Supabase staging/producción.
