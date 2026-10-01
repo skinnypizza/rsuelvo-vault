@@ -1329,3 +1329,12 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - WF-90 `RSUELVO — Alertas de errores` permanece activo y publicado (`versionId == activeVersionId`). El historial tiene dos ejecuciones `mode=error`, ambas `success` (05:05:59 y 03:05:22 UTC). En la más reciente, `Sanitize alert context` y `Send production error alert` terminaron en éxito; la respuesta SMTP informó un destinatario aceptado y cero rechazados. Esto confirma aceptación por SMTP, no lectura/entrega a la bandeja Gmail.
 - WF-02, WF-03, WF-04 y WF-21 no tienen ejecuciones posteriores a la publicación de WF-04/Edge v13 en la ventana consultada. Supabase sigue sin mensaje real posterior a 16:01:53 UTC. Falta el SKU de prueba del usuario para probar `meta-ingress v13 → n8n → WF-04` y medir la respuesta real.
+
+### 2026-10-01 19:04 UTC — Revisión del nuevo reporte de error
+
+- El usuario volvió a reportar que envió SKU + comprobante y recibió el mismo error. La consulta actual de PROD todavía devuelve como eventos más recientes el SKU `PROCESADO` de 16:01:38 UTC y la imagen `ERROR` de 16:01:53 UTC (`last_error='Error en WF-03'`). No hay una fila posterior que pueda atribuirse al reporte actual.
+- La auditoría `meta_ingress` más reciente con firma válida sigue a las 16:02:00 UTC y corresponde a un callback normal `delivered`; las llamadas de 18:52 y 18:55 UTC fueron mis probes con firma inválida (`rechazado_firma`), no mensajes del usuario.
+- El registro de imagen observado tiene `media_id` de tipo string, formato permitido y `phone_number_id` presente. Esto descarta únicamente el formato ausente/malformado en esa fila; no determina la causa del fallo de procesamiento.
+- WF-02 sigue publicado con versión activa `a25420de-4633-48fc-be0a-b4586b13c41c`, captura de errores en `saveDataErrorExecution='all'` y una rama que persiste hasta 600 caracteres del error de WF-03 antes de volver a lanzar el fallo. Esta versión se publicó después del evento de las 16:01, así que ese evento antiguo solo conserva el texto genérico.
+- La consulta actual de ejecuciones no encuentra una ejecución reciente de WF-02/WF-03/WF-21 correlacionable con el nuevo reporte. No atribuir el mensaje de error a la imagen de las 16:01 sin confirmar que el horario local coincide; no pedir otro comprobante.
+- Pendiente para correlacionar el reporte sin repetir el pago: la hora local aproximada del envío (la última recepción conocida fue 12:01 p. m. Bolivia) o una captura/texto del mensaje de error, y observar una llamada Meta firmada en `meta-ingress` v13 con su resultado de forward.
