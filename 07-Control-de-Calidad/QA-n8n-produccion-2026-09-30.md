@@ -490,3 +490,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 ```
 
 - Auditoría estática del workflow n8n: 36 nodos HTTP Request en los 16 flujos de negocio; 19 son POST sin reintento ni `onError` explícito, 9 POST ya envían el error por la salida `continueErrorOutput`, y hay llamadas de método aún por clasificar. No activé reintentos en bloque: varios POST llaman RPC con efectos laterales y podrían duplicar una operación tras un timeout. Trazar cada endpoint con la idempotencia de su RPC antes de ajustar recuperación local.
+
+### Prueba RLS multi-tenant de lectura y escritura cruzada — 2026-10-01
+
+- Ejecuté en producción una prueba transaccional con dos usuarios autenticados, dos comercios/sucursales y un cliente por tenant, asignando a cada usuario el rol `ROLE_TENANT_CASHIER` de su sucursal.
+- Con claims de usuario 1, sus SELECT devolvieron exactamente su comercio y su cliente; el cliente de tenant 2 quedó invisible. El UPDATE del cliente ajeno afectó 0 filas y el INSERT a ese tenant fue rechazado por RLS. Cambiando claims al usuario 2, también vio exactamente su propio comercio y cliente.
+- La transacción terminó en `ROLLBACK`. Consulta de residuos posterior: cero usuarios Auth, perfiles, comercios, sucursales o clientes QA. Esto verifica esas tablas y operaciones para el rol probado; no sustituye pruebas RLS de todos los recursos y roles.
