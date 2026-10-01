@@ -1421,6 +1421,19 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Restauré el harness: las cuatro conexiones desde Manual Trigger coinciden con el estado previo, el SQL original volvió a su lugar, `saveManualExecutions` regresó a DEFAULT y el workflow permanece inactivo. No se ejecutaron sus ramas sintéticas ni hubo escrituras de negocio.
 - La lectura fresca PROD a las 21:26 UTC no mostró nuevos eventos Meta, auditorías ingress ni comprobantes después del fixture de las 19:39. n8n tampoco conserva ejecuciones posteriores a ese fixture en su búsqueda actual. Por tanto el reintento del usuario sigue sin correlación y el flujo no queda validado después del fix.
 
+### 2026-10-01 21:37 UTC — Reintento reportado por el usuario y sonda aislada de OCR
+
+- El usuario reportó que volvió a enviar SKU y comprobante y recibió el mismo error. La lectura inmediata de PROD sigue sin una fila nueva en `tbl_whatsapp_eventos` ni en `tbl_comprobantes_pago`: el último evento visible continúa siendo el fixture de 19:39 UTC y el último comprobante es anterior. La búsqueda n8n tampoco devuelve ejecuciones recientes del webhook. Esto no permite correlacionar el mensaje ni afirmar todavía en qué etapa se produjo la respuesta de error.
+- Para separar descarga/OCR del flujo principal, ejecuté el harness QA inactivo `QA-IAM10-DIRECT-PG-SMOKE` con una única llamada a WF-22 usando el `media_id` del comprobante ya enviado. Ejecución manual `864` terminó `success`; Meta entregó el archivo, Gemini devolvió OCR estructurado y la ruta privada esperada apareció una vez en Storage. No hubo llamada a WhatsApp ni escritura de pedido/comprobante.
+- Restauré el harness inmediatamente: código sintético, parámetros de llamada, ramas Manual Trigger, rama de aserción y configuración de guardado originales; verificación posterior confirma que sigue inactivo. El resultado valida WF-22/descarga/OCR/Storage, pero no el evento actual ni WF-21→23.
+- Próxima evidencia requerida para resolver el mismo error: una invocación real de `meta-ingress`/ejecución de WF-02 a la hora exacta o el texto literal del error recibido. No repetir pruebas ciegas con más mensajes. Sin OpenWA.
+
+### 2026-10-01 21:42 UTC — Inspección de la frontera Meta → n8n
+
+- Confirmé que `meta-ingress` está ACTIVE en versión 13. Su código exige `x-hub-signature-256`, verifica HMAC y reenvía por POST a `https://n8n.rsuelvo.com/webhook/webhooks/whatsapp/meta`, con header `X-RSUELVO-META-INGRESS`; registra auditoría tras aceptar, descartar o fallar el reenvío.
+- WF-02 está publicado y activo; su webhook usa la ruta `webhooks/whatsapp/meta` con autenticación `headerAuth`, por lo que la ruta coincide con el destino configurado. El secreto/headerAuth no se puede comparar desde MCP sin revelar credenciales.
+- La auditoría más reciente sigue siendo `reenviado` a las 19:39:42 UTC; no hay una decisión `meta_ingress` posterior ni una fila nueva de webhook en `tbl_whatsapp_eventos`. No tengo evidencia de que este reintento haya alcanzado la función y sido reenviado a n8n. Falta correlacionarlo con Meta Delivery Logs o una nueva invocación; no concluir error de WF-21 sin ejecución.
+
 ### 2026-10-01 20:53 UTC — Validación nueva de recepción y hardening de helper
 
 - Revisión del panel de Supabase Edge Functions (`meta-ingress > Invocations`, rango último hora): sin datos; Dashboard indica última invocación hace ~2 h. DB confirma que el evento más reciente sigue siendo el fixture de Meta de 19:39:41 UTC; la auditoría `meta_ingress` no tiene filas recientes. La consulta de fuentes del log unificado solo muestra `postgres_logs` y `postgrest_logs`, sin `function_edge_logs`.
