@@ -986,3 +986,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Búsqueda global posterior a las 10:06 UTC: cero ejecuciones error/crashed. No consulté payloads ni envié correo nuevo.
 - Canario #729 mediante el workflow QA inactivo y la credencial PostgreSQL n8n_runtime: fn_aceptar_lista_espera rechazó el UUID cero inexistente con el error esperado; la aserción y el workflow terminaron success, sin fila ni cambio de negocio. El workflow se restauró al SELECT current_user/current_database, quedó inactivo/sin versión activa y saveManualExecutions=false. La retención manual se habilitó temporalmente para ejecutar y luego se restauró; queda metadata de la ejecución QA #729, sin datos de clientes.
 - La colocación del email continúa sin comprobación porque este runtime no tiene navegador Chromium ni conector de Gmail. El push a GitHub sigue pendiente por fallo de resolución DNS.
+
+### Verificación sintética del saneador de correo — 2026-10-01 10:55 UTC
+
+- Ejecuté en un arnés local el código del nodo saneador leído de la versión activa c8dba68d-f12c-4cb5-9240-fa3ebcb43bd5, con datos totalmente ficticios: 8/8 aserciones pasaron para Bearer, contraseña, token, JWT, email, teléfono y token de query URL; también conserva los campos estructurales requeridos.
+- No se ejecutó el Error Trigger ni se mandó correo. La entrega sigue respaldada por el SMTP 250 de la ejecución #707; Inbox/Spam placement requiere acceso al buzón del destinatario.
