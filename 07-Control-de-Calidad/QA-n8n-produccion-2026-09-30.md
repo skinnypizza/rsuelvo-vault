@@ -1434,6 +1434,13 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - WF-02 está publicado y activo; su webhook usa la ruta `webhooks/whatsapp/meta` con autenticación `headerAuth`, por lo que la ruta coincide con el destino configurado. El secreto/headerAuth no se puede comparar desde MCP sin revelar credenciales.
 - La auditoría más reciente sigue siendo `reenviado` a las 19:39:42 UTC; no hay una decisión `meta_ingress` posterior ni una fila nueva de webhook en `tbl_whatsapp_eventos`. No tengo evidencia de que este reintento haya alcanzado la función y sido reenviado a n8n. Falta correlacionarlo con Meta Delivery Logs o una nueva invocación; no concluir error de WF-21 sin ejecución.
 
+### 2026-10-01 21:55 UTC — Prueba sintética SKU + lista de espera + cron (dos tenants)
+
+- Ejecuté el harness QA original inactivo (`QA-IAM10-DIRECT-PG-SMOKE`, manual `866`) con dos SKUs y dos clientes sintéticos en dos tenants, además de la matriz de guardas WF-80. El endpoint de ejecución dejó de exponer el registro al terminar porque la configuración original de guardado manual está en DEFAULT; corroboré los efectos solo mediante lecturas acotadas de producción.
+- WF-04→WF-10 creó dos pedidos QA `ESPERANDO_PAGO` y dos reservas activas para los clientes permitidos. Los destinos QA coinciden con la allowlist de simulación de WF-80. No apareció ninguna auditoría `whatsapp_send` real; hubo ocho registros `whatsapp_send_simulated` y dos `whatsapp_simulation_rejected` de la rama negativa de la matriz.
+- WF-12 agregó dos entradas de lista (un tenant cada una). `rsuelvo_expirar_reservas` está activo cada minuto; el job terminó `succeeded` a las 21:55:00 UTC. Ambas entradas cambiaron a `NOTIFICADO` a las 21:55:03 UTC y la auditoría de envíos simulados llegó a las 21:55:05 UTC. Esto confirma el trayecto cron → callback WF-13 → WF-80 simulado en los dos tenants.
+- Las dos reservas sintéticas vencen a las 22:04:30 y 22:04:33 UTC. Falta confirmar su expiración automática por el cron y revisar que no queden filas `ESPERANDO` creadas por esta prueba. El harness QA permanece inactivo y restaurado. Esta prueba no correlaciona el mensaje real reportado por el usuario con Meta/WF-02.
+
 ### 2026-10-01 20:53 UTC — Validación nueva de recepción y hardening de helper
 
 - Revisión del panel de Supabase Edge Functions (`meta-ingress > Invocations`, rango último hora): sin datos; Dashboard indica última invocación hace ~2 h. DB confirma que el evento más reciente sigue siendo el fixture de Meta de 19:39:41 UTC; la auditoría `meta_ingress` no tiene filas recientes. La consulta de fuentes del log unificado solo muestra `postgres_logs` y `postgrest_logs`, sin `function_edge_logs`.
