@@ -1534,3 +1534,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Postflight independiente de los 16 workflows de negocio: 16/16 activos, draft igual a publicado, `errorWorkflow=hnhQW0AM6ana1vO7`, éxito en `none` y error en `none`. El handler central continúa activo y conserva su credencial SMTP; no repetí el envío de alerta, así que esto no demuestra Inbox/Spam.
 - La retención `none` impide persistir futuras ejecuciones fallidas de estos flujos; no purga ejecuciones antiguas ya guardadas ni cierra el E2E de recibo/pago. Sin OpenWA.
 - Sincronización del vault: commit local `e023fc3`. `git push origin main` volvió a fallar con `Could not resolve host: github.com`; el intento de sincronización mediante GitHub MCP fue rechazado por aprobación automática (`approval policy is never`). No se hicieron escrituras remotas; branch local quedó ahead 21.
+
+### 2026-10-01 23:35 UTC — Revisión de seguridad del correo de alertas
+
+- El handler compartido `hnhQW0AM6ana1vO7` sigue activo y publicado (versiones de borrador/activa coinciden). La secuencia real del handler contiene primero `Error Trigger`, luego un nodo de saneamiento y un correo SMTP de texto plano al destinatario fijo.
+- El correo solo usa contexto acotado (workflow, IDs de ejecución, último nodo, mensaje de error saneado y enlace de ejecución); no incluye el payload crudo ni binarios. El saneamiento redacta Bearer/JWT, claves comunes, emails y teléfonos. La ejecución QA #707 ya confirmó SMTP `250`, pero la recepción final en Inbox/Spam sigue sin verificación y aquí no hay conector/buzón Zoho o Gmail.
+- El cambio de retención de producción no modificó el Error Workflow ni su credencial SMTP. No envié una alerta adicional para evitar correo de prueba innecesario; la ruta ya tiene aceptación SMTP histórica, no comprobación de entrega final.
