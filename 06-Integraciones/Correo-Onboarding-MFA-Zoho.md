@@ -183,3 +183,9 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 ### Diagnóstico adicional del Error Trigger — 2026-10-01 00:30 UTC
 
 - Una segunda falla de QA con el nodo oficial `Stop And Error` terminó en ejecución n8n #598 con `shouldReport=true` y respuesta webhook HTTP 500. El workflow de QA estaba publicado y enlazado al handler activo. La búsqueda del handler sigue sin mostrar ejecución hija; la recepción de la alerta aún requiere confirmación del titular y revisión de la integración Error Workflow. La prueba SMTP directa está aceptada por Zoho (`250 Message received`).
+
+### Reprueba publicada y estado para el orquestador — 2026-10-01 00:47 UTC
+
+- Corrección de estado: al inspeccionar versiones por MCP, el QA de #598 estaba sin versión publicada. Publiqué temporalmente el QA `Stop And Error`, verifiqué `active=true` y `errorWorkflow=hnhQW0AM6ana1vO7`, ejecuté una falla sintética nueva (#600, `mode=webhook`, `shouldReport=true`) y lo despubliqué inmediatamente después.
+- La búsqueda n8n sigue sin mostrar ejecución del workflow de alertas para #600. Los 16 workflows productivos permanecen activos/publicados y enlazados al handler activo. Así que Zoho SMTP directo tiene aceptación `250`, pero la ruta automatizada Error Trigger sigue sin verificación funcional. Falta confirmar recepción en Gmail y revisar las ejecuciones/logs desde la UI de n8n.
+- La documentación completa está en `07-Control-de-Calidad/QA-n8n-produccion-2026-09-30.md`, commit local `66c0c15` más esta actualización. El push a GitHub falla por DNS (`Could not resolve host: github.com`). OpenCode recibió intento de aviso en `ses_f16da631affeR20xWIHtBQBdPE`, pero el servidor contestó `Unexpected server error` (ref `err_bdff60ce`); no hay confirmación del orquestador.
