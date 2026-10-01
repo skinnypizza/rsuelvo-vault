@@ -1400,6 +1400,7 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Añadí aserciones para este ACL a `tests/integration/test_workflow_privilege_hardening.py` y registré el cambio en el log backend. `py_compile` pasó; pytest no se pudo ejecutar porque el binario no está instalado en este shell. Sin OpenWA.
 - Siguiente diagnóstico del WhatsApp: contrastar Delivery Logs de Meta para la hora exacta; si Meta reporta entrega 200 pero no existe auditoría, inspeccionar logs de `meta-ingress`/inserción best-effort. Después, enviar solo un SKU nuevo y confirmar reserva activa antes del comprobante.
 - Revisión adicional en la sesión autenticada de Meta Developers: `Configuración > Información básica` muestra estado de publicación **Publicada**, así que el modo Development no explica este intento. Nueva consulta PROD tras el reporte (últimos 10 min) sigue sin eventos en `tbl_whatsapp_eventos` ni auditorías `meta_ingress`. El límite de observabilidad ahora es Meta→callback/auditoría; requiere consultar Activity/Delivery Logs de Meta para este intervalo antes de cualquier otra repetición.
+- El Registro de actividad de Meta confirma que el **2026-09-28** el usuario cambió el modo de la app a “Activo y disponible para la audiencia”; la suscripción del campo `messages` a `whatsapp_business_account` ya constaba el **2026-09-14**. Esto resuelve la discrepancia histórica sobre modo de la app. No se encontró en ese registro detalle de entregas del webhook para el envío actual.
 
 ### 2026-10-01 20:35 UTC — Aislamiento tenant del catálogo de sucursal
 
