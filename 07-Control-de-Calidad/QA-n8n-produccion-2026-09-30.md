@@ -1428,6 +1428,13 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Restauré el harness inmediatamente: código sintético, parámetros de llamada, ramas Manual Trigger, rama de aserción y configuración de guardado originales; verificación posterior confirma que sigue inactivo. El resultado valida WF-22/descarga/OCR/Storage, pero no el evento actual ni WF-21→23.
 - Próxima evidencia requerida para resolver el mismo error: una invocación real de `meta-ingress`/ejecución de WF-02 a la hora exacta o el texto literal del error recibido. No repetir pruebas ciegas con más mensajes. Sin OpenWA.
 
+### 2026-10-01 22:17 UTC — reintento reportado, sin entrega nueva a Meta ingress
+
+- Tras el usuario informar que repitió SKU y comprobante con el mismo error, consulté en PROD `rsuelvo.tbl_logs_auditoria`: la última auditoría `meta_ingress` continúa en 19:39:42 UTC (`reenviado`, HTTP 200, un mensaje). No existe auditoría posterior ni fila de mensaje/comprobante nueva. n8n no muestra ejecuciones desde las 22:00 UTC.
+- Edge logs verifican una única llamada a `meta-ingress` a las 19:39:42 con user-agent `facebookexternalua`, respuesta HTTP 200. Las dos respuestas 401 de 18:52 y 18:55 son `curl/8.22.0` de pruebas HMAC; no son entrega del cliente ni prueban un secreto incorrecto de Meta.
+- Inspección del código activo v13 confirma que `meta-ingress` exige firma HMAC y reenvía al endpoint de producción `https://n8n.rsuelvo.com/webhook/webhooks/whatsapp/meta`. La configuración del webhook activo WF-02 coincide en ruta, exige el header privado y está publicado. No hay evidencia de que el reintento actual haya alcanzado Supabase o n8n; por tanto no atribuirlo a WF-21/OCR ni afirmar que WF-02 falló.
+- Diagnóstico pendiente: obtener Meta Delivery/Activity Log de la hora del reintento o el texto/captura exacta de la respuesta vista en WhatsApp. En esta sesión no hay Chromium disponible para abrir Meta; no reenviar más mensajes sin correlación. Sin OpenWA.
+
 ### 2026-10-01 21:42 UTC — Inspección de la frontera Meta → n8n
 
 - Confirmé que `meta-ingress` está ACTIVE en versión 13. Su código exige `x-hub-signature-256`, verifica HMAC y reenvía por POST a `https://n8n.rsuelvo.com/webhook/webhooks/whatsapp/meta`, con header `X-RSUELVO-META-INGRESS`; registra auditoría tras aceptar, descartar o fallar el reenvío.
