@@ -695,3 +695,4 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 ### Reconciliación del checklist de cutover — 2026-10-01
 
 - El checklist del backend contenía datos obsoletos (99 migraciones en PROD y handler SMTP inactivo). Lo reescribí contra el estado actual: ledger 109, backend local 51/16/93/35; handler y canary confirmados; el resto de gates de autoridad Python, STAGING, runtime role, VPS, recibos QA, credencial Supabase y limpieza histórica permanece abierto. No se ejecutó ninguna migración ni cambio de autoridad por esta actualización documental.
+- Afiné la reconciliación por nombre sin asumir equivalencia SQL: de 35 archivos fuera del ledger por versión, 16 comparten nombre con una entrada remota pero difieren en timestamp; los otros 19 no tienen nombre exacto remoto. Generé la tabla de pares candidatos en `RSUELVO-CODEX-REPOSITORY-RECONCILIATION.md`; los 16 aún necesitan comparar SQL/procedencia. No usar este cruce como autorización para push.
