@@ -1547,3 +1547,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - `fn_puede_verificar` deriva la identidad de `auth.uid()` vía membresía activa en el comercio con rol Admin o Cajero. La confirmación conserva las guardas de reserva vigente, idempotencia, lock de verificación/reserva y movimiento de inventario dentro de la transacción. La revisión no encontró una omisión obvia de aislamiento tenant en estas dos RPC.
 - `fn_mfa_login_permitido` exige segundo factor a SuperAdmin/SysAdmin/Admin de comercio; el rol Cajero no activa ese requisito. No cambié la política. Las ACL actuales permiten ejecución `authenticated` intencionalmente por la app cajero.
 - Límite: es inspección estática de PROD, no prueba con JWT real, no prueba negativa multi-tenant desde la app y no ejecuta una mutación autorizada. Las validaciones cruzadas documentadas en STAGING no sustituyen un E2E de caja en PROD. El mensaje reciente sigue sin llegar a la frontera Meta/n8n.
+
+### 2026-10-01 23:39 UTC — Desactivada retención de ejecuciones manuales
+
+- En la lectura productiva de 16 workflows de negocio, `saveManualExecutions` no estaba explícito. Para evitar que una prueba/depuración manual conserve datos de clientes o comprobantes, lo fijé en `false` para los 16 workflows y el handler de alertas (17 en total).
+- Postflight de los 17: activos, borrador igual a versión publicada; `saveManualExecutions=false`, `saveDataSuccessExecution=none`, `saveDataErrorExecution=none`. Los 16 workflows de negocio siguen con `errorWorkflow=hnhQW0AM6ana1vO7`; el handler no se autoenlaza.
+- La política no borra históricos ya almacenados y evita inspeccionar payloads persistidos en nuevos runs manuales. No ejecuté ningún workflow para verificar este ajuste.
