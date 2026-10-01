@@ -696,3 +696,10 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - El checklist del backend contenía datos obsoletos (99 migraciones en PROD y handler SMTP inactivo). Lo reescribí contra el estado actual: ledger 109, backend local 51/16/93/35; handler y canary confirmados; el resto de gates de autoridad Python, STAGING, runtime role, VPS, recibos QA, credencial Supabase y limpieza histórica permanece abierto. No se ejecutó ninguna migración ni cambio de autoridad por esta actualización documental.
 - Afiné la reconciliación por nombre sin asumir equivalencia SQL: de 35 archivos fuera del ledger por versión, 16 comparten nombre con una entrada remota pero difieren en timestamp; los otros 19 no tienen nombre exacto remoto. Generé la tabla de pares candidatos en `RSUELVO-CODEX-REPOSITORY-RECONCILIATION.md`; los 16 aún necesitan comparar SQL/procedencia. No usar este cruce como autorización para push.
+
+### Restauración de MFA opcional en habilitación V0→V1 — 2026-10-01 05:23 UTC
+
+- La comparación contra PROD encontró que `fn_solicitar_habilitacion_v1` había recuperado dos guards de email/native MFA en `20260930212303_email_second_factor`, después de la decisión explícita registrada en el QA de onboarding de permitir habilitación AAL1. Apliqué `20261001052304_restore_user_decision_optional_mfa_commerce_enablement` para retirar esos dos checks solamente.
+- Se mantienen owner, checks comerciales, lock, registro de verificación/auditoría, SECURITY DEFINER, ACL y search_path fijado; el MFA de otras operaciones y RLS permanece. Catálogo posterior confirma ausencia de ambos helpers y los mismos permisos/configuración.
+- Canario de solo retorno, `authenticated` sintético AAL1 del owner QA contra comercio QA ya activo → `ya_activo`, dentro de `BEGIN/ROLLBACK`. Sin cambios persistentes ni efectos externos.
+- Nuevo estado de ledger: PROD 110; backend 52; 17 versiones exactas, 93 remotas sin archivo y 35 archivos sin versión remota (16 nombres con timestamp distinto, 19 sin nombre coincidente). No hacer push/replay general.
