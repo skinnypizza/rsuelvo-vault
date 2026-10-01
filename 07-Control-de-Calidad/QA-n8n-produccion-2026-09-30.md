@@ -1,7 +1,5 @@
 # QA de flujos n8n en producción — 2026-09-30
 
-**Snapshot actualizado (2026-10-01 22:45 UTC):** QA en curso; E2E integral no certificado. Los reportes anteriores conservan su contexto histórico.
-
 ## Alcance y resultado
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
