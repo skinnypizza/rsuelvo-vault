@@ -1338,3 +1338,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - WF-02 sigue publicado con versión activa `a25420de-4633-48fc-be0a-b4586b13c41c`, captura de errores en `saveDataErrorExecution='all'` y una rama que persiste hasta 600 caracteres del error de WF-03 antes de volver a lanzar el fallo. Esta versión se publicó después del evento de las 16:01, así que ese evento antiguo solo conserva el texto genérico.
 - La consulta actual de ejecuciones no encuentra una ejecución reciente de WF-02/WF-03/WF-21 correlacionable con el nuevo reporte. No atribuir el mensaje de error a la imagen de las 16:01 sin confirmar que el horario local coincide; no pedir otro comprobante.
 - Pendiente para correlacionar el reporte sin repetir el pago: la hora local aproximada del envío (la última recepción conocida fue 12:01 p. m. Bolivia) o una captura/texto del mensaje de error, y observar una llamada Meta firmada en `meta-ingress` v13 con su resultado de forward.
+
+### 2026-10-01 19:06 UTC — Comprobación del endpoint Community
+
+- El workflow WF-02 activo usa `/webhook/webhooks/whatsapp/meta`, autenticación `headerAuth` con la credencial `RSUELVO Meta Ingress Authorization`, y responde HTTP 200 al POST antes del procesamiento. `meta-ingress` v13 reenvía a esa misma URL usando `X-RSUELVO-META-INGRESS`.
+- El health endpoint público de n8n respondió HTTP 200. Un POST vacío deliberadamente sin autenticación al webhook devolvió HTTP 403; no creó un evento. Esto confirma que Community/túnel es accesible y que el webhook rechaza llamadas directas sin la credencial.
+- Este probe no demuestra entrega válida de Meta. La última auditoría válida continúa siendo el callback de estado `delivered` de 16:02 UTC; no hay auditoría `reenviado` de un mensaje ni ejecución posterior atribuible al reporte. El siguiente paso sigue siendo correlacionar Meta por hora/captura, sin volver a enviar un comprobante.
