@@ -528,3 +528,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Confirmé en Supabase que `rsuelvo_expirar_reservas` está activo cada minuto y ejecutó 1.439 veces en las últimas 24 h sin errores SQL. Su función llama por `pg_net` al webhook de WF13; el éxito del job solo confirma que la función cron terminó, no la respuesta HTTP asíncrona de n8n.
 - En el instante de la consulta no había grupos `ESPERANDO` con stock disponible. No disparé el webhook global porque recorre todas las sucursales y podría enviar avisos reales si cambiara el inventario durante la prueba. En los dos comercios QA sí existen filas históricas, pero son `RECHAZADO`, `VENCIDO` o `CONVERTIDO_RESERVA`; no hay destinatario QA elegible en estado `ESPERANDO`.
 - El cron está habilitado y el defecto observado en su único webhook histórico ya está corregido, pero queda pendiente una prueba positiva del aviso al siguiente cliente usando un fixture aislado de QA y evidencia de respuesta HTTP de n8n. No debe afirmarse que la lista de espera quedó probada de extremo a extremo.
+
+### Revalidación de credencial y correo de alerta — 2026-10-01 02:22 UTC
+
+- El MCP de n8n confirma que `SMTP account` sigue disponible y asignada al nodo `Send production error alert`; remitente `noreply@rsuelvo.com`, destino `ethannic2@gmail.com`, handler activo en `c8dba68d-f12c-4cb5-9240-fa3ebcb43bd5`.
+- Sigue sin haber ejecuciones del handler después de los fallos `shouldReport=true`. La prueba SMTP independiente con aceptación Zoho 250 demuestra que el proveedor aceptó ese mensaje, pero no prueba la entrega causada por Error Trigger. La recepción de alertas en Gmail y el dispatch automático siguen sin verificarse.
