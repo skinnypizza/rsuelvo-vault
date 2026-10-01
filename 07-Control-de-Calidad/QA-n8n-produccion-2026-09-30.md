@@ -991,3 +991,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - Ejecuté en un arnés local el código del nodo saneador leído de la versión activa c8dba68d-f12c-4cb5-9240-fa3ebcb43bd5, con datos totalmente ficticios: 8/8 aserciones pasaron para Bearer, contraseña, token, JWT, email, teléfono y token de query URL; también conserva los campos estructurales requeridos.
 - No se ejecutó el Error Trigger ni se mandó correo. La entrega sigue respaldada por el SMTP 250 de la ejecución #707; Inbox/Spam placement requiere acceso al buzón del destinatario.
+
+### Guarda de estado de aceptación en dos tenants — 2026-10-01 10:58 UTC
+
+- Desde el workflow QA inactivo y el Postgres account real (n8n_runtime), llamé fn_aceptar_lista_espera sobre una oportunidad en estado VENCIDO de cada tenant QA. La aserción exigió el rechazo “La oportunidad ya no está disponible”; ejecución manual #730 terminó success.
+- El SQL solo seleccionó IDs internamente para la llamada y devolvió PASS; no expuso IDs ni datos de cliente. Postflight agregado mantuvo los conteos idénticos: Celulares 8 VENCIDO; Prueba RSUELVO 8 VENCIDO, 3 RECHAZADO, 3 CONVERTIDO_RESERVA; cero entradas activas.
+- El workflow QA fue restaurado a SELECT current_user/current_database, sigue inactivo/sin versión activa y saveManualExecutions=false. El barrido global de errores/crashed posterior a las 10:06 UTC sigue en cero. No se llamó Meta/WhatsApp ni se cambió negocio.
