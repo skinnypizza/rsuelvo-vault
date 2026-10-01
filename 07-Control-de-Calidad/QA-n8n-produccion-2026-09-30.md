@@ -4,13 +4,13 @@
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado vigente (2026-10-01 10:39 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+**Estado vigente (2026-10-01 10:52 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
 
 ### Snapshot operativo vigente
 
 - **Verificado en producción con tenants y destinatarios QA:** SKU válido/no válido y deduplicación entrante; reserva/QR y limpieza; cron de lista de espera en dos tenants, aceptación `SI` y rechazo de aceptación tardía; callback positivo de pedido pagado sobre fixture QA; inicio de entrega hasta registrar envío; `EN_RUTA` silencioso y `NO_ENTREGADO` notificado solo por WF25-C. Las salidas de WhatsApp de estas canaries fueron `whatsapp_send_simulated`, sin envío a Meta. La última limpieza dejó pedido cancelado, reserva vencida, QR cancelado, envío/captura eliminados e inventario FEE001 en 3 disponibles/0 reservados.
 - **Alertas:** WF25-A #639 activó Error Workflow #640; Zoho aceptó el mensaje para `ethannic2@gmail.com` (`250 Message received`). Falta verificar la llegada a la bandeja.
-- **n8n:** última lectura confirmada (10:06 UTC): 17/17 workflows activos tienen draft publicado coincidente, 16/16 workflows de negocio/gateway enlazan el handler central y 17/17 fijan ambas opciones de guardado en `none`. Desde 10:37 UTC las lecturas MCP devuelven error interno -32603; verificar de nuevo cuando se recupere. No leer entradas de Webhook almacenadas; pueden contener headers/tokens.
+- **n8n:** revalidación por MCP oficial OAuth (10:52 UTC): 25 workflows en inventario; 17 activos (16 de negocio/gateway + handler central), los 17 publicados con borrador igual a versión activa y retención de éxito/error en none. Los 16 de negocio/gateway enlazan el handler. Desde 10:06 UTC hay cero ejecuciones error/crashed.
 - **Pago/cajero:** la RPC de aprobación pasó un canario reversible con contexto de un cajero QA: comprobante vencido devolvió `RESERVA_VENCIDA`; comprobante temporal válido devolvió `PAGO_CONFIRMADO`; toda la transacción se revirtió. Esto verifica la lógica de base de datos, no la sesión real de la app ni la confirmación saliente. Sigue pendiente comprobante QA válido con `media_id` emitido por Meta → OCR/revisión → aprobación desde app → WhatsApp simulado.
 - **Pendiente de calidad y operación:** canaries de las validaciones WF-80 que siguen sin evidencia runtime individual; completar la matriz adversarial de las RPC de `n8n_runtime` (ya se endureció `fn_pendiente_lista` en PROD); política corta de retención y purga de ejecuciones antiguas; revisión individual de funciones `SECURITY DEFINER`/políticas solapadas; habilitar protección de contraseñas filtradas; confirmar alertas en inbox; cerrar continuidad VPS/DigitalOcean.
 - **Sincronización:** la bitácora y cambios están confirmados en commits locales, pero no en GitHub: `git push` falla al resolver `github.com` y OpenCode no aceptó el mensaje del orquestador por error interno. Estado y evidencia: ver última sección cronológica.
@@ -955,12 +955,12 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - **Aprobación de cajero, solo rollback:** con el contexto de autorización del cajero QA se comprobó en una transacción reversible que el comprobante histórico con reserva vencida devuelve `RESERVA_VENCIDA`, y que una reserva/pedido/QR y verificación temporales con el comprobante de prueba devuelven `PAGO_CONFIRMADO`. Un sentinel revirtió el bloque completo; el postflight confirmó cero filas temporales nuevas y ninguna alteración del comprobante histórico. No se disparó Meta ni WhatsApp.
 - **Alcance:** el canario prueba la regla de negocio de `fn_confirmar_pago` y el contexto del rol QA dentro de SQL; no prueba login/JWT real de la app Flutter, navegación de cajero, ni el trigger/notificación de salida en un commit persistente. La aprobación en app y la respuesta al comprador siguen abiertas.
 - **Correo de errores:** se conserva la evidencia previa del workflow central activo/publicado, las 17 rutas enlazadas, retención `none`, saneamiento y SMTP `250 Message received`. No hay evidencia de colocación en Inbox/Spam. No enviar correo duplicado sin necesidad; confirmar en el buzón con la sesión Zoho/Gmail cuando una herramienta de navegador accesible esté disponible.
-- **Estado de herramientas:** a las 10:37 UTC las consultas MCP de n8n para leer workflow y ejecuciones devolvieron `Mcp error -32603: Internal error`. No se inspeccionaron payloads ni se cambiaron workflows en esta llamada. Tratar la última validación operativa n8n anterior (10:06 UTC) como la última lectura confirmada hasta que el MCP vuelva a responder.
+- **Estado de herramientas:** en las llamadas de 10:37–10:44 se usó por error el conector alternativo codex_apps/n8n, que devuelve -32603. El MCP oficial OAuth mcp__n8n__ sí está operativo; la sesión iniciada del usuario está disponible.
 
 ### Revisión de disponibilidad de herramientas — 2026-10-01 10:39 UTC
 
 - Supabase MCP respondió a una consulta de solo lectura y ambos Advisors se actualizaron: 52 funciones SECURITY DEFINER ejecutables por authenticated, 1 extensión pg_net en public, protección de passwords filtrados deshabilitada, 2 tablas privadas RLS sin políticas; rendimiento: 50 FKs sin índice de cobertura, 74 políticas permisivas solapadas y 10 índices no usados. No hice cambios de esquema.
-- n8n MCP sigue devolviendo -32603 al leer workflow y ejecuciones. No ejecuté ni actualicé workflows durante esta comprobación. La inspección local no encontró un proceso Chromium en este runtime; por eso tampoco puedo confirmar la colocación de SMTP desde el navegador del usuario.
+- El conector alternativo codex_apps/n8n devolvió -32603; aún no había probado el MCP oficial OAuth. Se corrigió el diagnóstico en la sección 10:52 UTC.
 
 ### Inspección estática de aceptación de lista — 2026-10-01 10:39 UTC
 
@@ -970,10 +970,19 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 ### Estado de fixtures de lista de espera QA — 2026-10-01 10:45 UTC
 
-- Lectura agregada de producción para Prueba RSUELVO y Celulares: no hay entradas activas en ESPERANDO, NOTIFICADO o ACEPTADO. Solo hay estados terminales: Prueba RSUELVO tiene 3 CONVERTIDO_RESERVA, 3 RECHAZADO y 8 VENCIDO; Celulares tiene 8 VENCIDO.
+- Lectura agregada de producción para Prueba RSUELVO y Celulares: no hay entradas activas en ESPERANDO, NOTIFICADO o ACEPTADO. Solo hay estados terminales: Prueba RSUELVO tiene 3 CONVERTIDO_RESERVA, 3 RECHAZADO y 8 VENCIDO; Celulares tiene 8 VENCIDO. No se creó otra fila ni se aceptó una oportunidad existente; esta revisión no ejecutó una canary de aceptación.
 - No se creó otra fila ni se aceptó una oportunidad existente. Para una canary de aceptación falta una fixture QA reproducible y el runtime n8n real; el MCP n8n sigue indisponible. La aceptación anterior/crón documentados sí cubren el camino funcional, pero la matriz de IDs/estado inválidos queda abierta.
 
 ### Revalidación estática del paquete Community — 2026-10-01 10:44 UTC
 
 - Ejecuté verify-community-package.py sobre el paquete local: PASS, 18 workflows, 391 nodos, 94 nodos Code, 25 nodos Postgres y 40 llamadas guardadas a WF-80. Las matrices sintéticas del gateway/status, limitador/circuit breaker, parser de verificación WF21, eventos agrupados WF02 y asociación de media WF02→WF21 también pasaron.
 - Es verificación estática/local y no ejecuta workflows, Supabase, Meta ni envía WhatsApp. Una nueva búsqueda de workflows n8n siguió devolviendo MCP -32603; el inventario productivo sigue teniendo como última evidencia confirmada las lecturas de las 10:06 UTC.
+
+### Recuperación de MCP oficial y canaria de aceptación — 2026-10-01 10:52 UTC
+
+- Corrección del diagnóstico: el error interno observado desde 10:37 correspondía al conector alternativo codex_apps/n8n. El MCP oficial OAuth mcp__n8n__ respondió con la sesión ya autenticada.
+- Inventario oficial: 25 workflows visibles; 17 activos (16 de negocio/gateway + RSUELVO — Alertas de errores). Los 17 tienen versión publicada coincidente con borrador, ambas retenciones en none y los 16 flujos de negocio enlazados al handler. El workflow duplicado 25-B está inactivo y no disponible en MCP; los workflows QA están inactivos.
+- Correo: el handler sigue activo/publicado en la versión c8dba68d-f12c-4cb5-9240-fa3ebcb43bd5; Error Trigger → saneador → SMTP account; remitente noreply@rsuelvo.com, destino ethannic2@gmail.com, y retención none. La ejecución #707 figura success en modo error. El proveedor había respondido 250 Message received; Inbox/Spam sigue sin verificarse.
+- Búsqueda global posterior a las 10:06 UTC: cero ejecuciones error/crashed. No consulté payloads ni envié correo nuevo.
+- Canario #729 mediante el workflow QA inactivo y la credencial PostgreSQL n8n_runtime: fn_aceptar_lista_espera rechazó el UUID cero inexistente con el error esperado; la aserción y el workflow terminaron success, sin fila ni cambio de negocio. El workflow se restauró al SELECT current_user/current_database, quedó inactivo/sin versión activa y saveManualExecutions=false. La retención manual se habilitó temporalmente para ejecutar y luego se restauró; queda metadata de la ejecución QA #729, sin datos de clientes.
+- La colocación del email continúa sin comprobación porque este runtime no tiene navegador Chromium ni conector de Gmail. El push a GitHub sigue pendiente por fallo de resolución DNS.
