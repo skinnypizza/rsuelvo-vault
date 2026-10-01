@@ -1238,3 +1238,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Confirmé por el catálogo actual que los 16 workflows de negocio están activos y apuntan al handler central. WF-02/WF-03/WF-21 ahora guardan errores; los otros 13 flujos operativos siguen con `saveDataErrorExecution=none`, así como el handler. Sus alertas centrales no requieren guardar ejecuciones completas.
 - No amplié el guardado completo de errores al resto: el payload de fallos puede contener teléfono o referencias de medios. `compose.yaml` local fija pruning a 336 horas/50.000 ejecuciones, pero el `SECURITY-REVIEW.md` del propio checkout indica que no se verificó que esa configuración sea la efectiva en el host productivo. Mantener este riesgo y el control de retención en el runbook hasta confirmar el runtime del escritorio/túnel.
 - El checkout vigente describe que n8n Community aún corre desde una computadora detrás de Cloudflare Tunnel y no hay VPS provisionada. El proveedor persistente sigue siendo un gate de producción durable aunque el endpoint y health respondan.
+
+### 2026-10-01 16:44 UTC — Reintento reportado sin evento entrante nuevo
+
+- El usuario reporta que volvió a enviar SKU y comprobante y recibió el mismo error. Consulté PROD después del reporte: `tbl_whatsapp_eventos` todavía termina con el SKU de 16:01:38 UTC (`PROCESADO`) y la imagen de 16:01:53 UTC (`ERROR`, `Error en WF-03`). No existe evento más reciente.
+- Los logs unificados de Supabase consultados desde 16:40 UTC tampoco contienen llamadas a `meta-ingress`; la búsqueda de ejecuciones por WF-21 via MCP falló con error interno. Así que no hay evidencia de que este nuevo intento haya entrado a Meta ingress/n8n y todavía no se puede contrastar el error que vio el usuario.
+- No se usó OpenWA ni se inició ningún envío. La siguiente correlación requiere identificar hora local aproximada y texto/captura del error visto, o una nueva entrada observable en Meta; no pedir otro pago.
