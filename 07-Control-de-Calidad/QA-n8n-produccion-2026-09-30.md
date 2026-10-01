@@ -465,3 +465,28 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 
 - Releí los 16 workflows activos de negocio: `active=true`, los 16 apuntan al handler `hnhQW0AM6ana1vO7` y cada uno tiene `versionId == activeVersionId`. La QA `d2WoxwUzWezsWksg` continúa despublicada (`active=false`, sin `activeVersionId`).
 - El handler central continúa activo y en su versión publicada actual, pero la búsqueda de ejecuciones asociadas sigue en cero después de #607. La configuración y el enlace están presentes; falta diagnóstico en logs de runtime y no se confirmó envío SMTP real.
+
+### SQL exacto de las migraciones aplicadas y auditoría n8n — 2026-10-01 01:44 UTC
+
+```sql
+-- 20261001013419 add_envios_sucursal_estado_index
+CREATE INDEX IF NOT EXISTS idx_envios_sucursal_estado
+  ON rsuelvo.tbl_envios (id_sucursal, estado);
+
+-- 20261001013618 set_auto_alta_requests_composite_primary_key
+ALTER TABLE rsuelvo.tbl_auto_alta_requests
+  DROP CONSTRAINT auto_alta_req_uniq,
+  ADD CONSTRAINT tbl_auto_alta_requests_pkey PRIMARY KEY (id_usuario, id_request);
+
+-- 20261001014040 index_waitlist_and_reservation_hot_paths
+CREATE INDEX IF NOT EXISTS idx_lista_espera_estado_grupo
+  ON rsuelvo.tbl_lista_espera (estado, id_comercio, id_sucursal, id_variante);
+CREATE INDEX IF NOT EXISTS idx_lista_espera_comercio_sucursal_estado
+  ON rsuelvo.tbl_lista_espera (id_comercio, id_sucursal, estado);
+CREATE INDEX IF NOT EXISTS idx_reservas_comercio_estado_created
+  ON rsuelvo.tbl_reservas (id_comercio, estado, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
+  ON rsuelvo.tbl_reservas (id_pedido);
+```
+
+- Auditoría estática del workflow n8n: 36 nodos HTTP Request en los 16 flujos de negocio; 19 son POST sin reintento ni `onError` explícito, 9 POST ya envían el error por la salida `continueErrorOutput`, y hay llamadas de método aún por clasificar. No activé reintentos en bloque: varios POST llaman RPC con efectos laterales y podrían duplicar una operación tras un timeout. Trazar cada endpoint con la idempotencia de su RPC antes de ajustar recuperación local.
