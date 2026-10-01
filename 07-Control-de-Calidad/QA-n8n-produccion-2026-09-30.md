@@ -1507,3 +1507,11 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - Búsqueda de ejecuciones por workflow encontró 55 ejecuciones QA históricas (18 + 4 + 25 + 1 + 3 + 4) distribuidas en seis de los siete arneses inactivos. No se leyó su contenido durante el conteo; al menos #864 sí conserva campos OCR sensibles y enlace firmado.
 - Las cuatro políticas de retención futuras ya están fijadas en los siete flujos. El MCP no proporciona borrado de ejecuciones y el runtime no expone una sesión de Chromium, por lo que las 55 filas históricas aún requieren limpieza administrativa; no se intentó un borrado destructivo por SQL.
+
+## Menor privilegio de roles API — 2026-10-01 23:09 UTC
+
+- La auditoría de ACL encontró GRANT directos excesivos a `anon` en `rsuelvo.tbl_solicitudes_alta` y `rsuelvo.tbl_transportadoras`; ambos estaban protegidos por RLS sin política para `anon`, pero esos grants no eran necesarios. El cliente Flutter solo usa SELECT/INSERT/UPDATE en transportadoras y no tiene ruta de borrado. Web/Flutter listan solicitudes con SELECT y resuelven por `fn_resolver_solicitud_alta`; el Edge Function desplegado `solicitar-alta-comercio` usa `service_role` para insertar.
+- Apliqué PROD `20261001230722_least_privilege_requests_and_carrier_grants`: solicitudes queda `authenticated SELECT` únicamente (anon sin grants); transportadoras queda `authenticated SELECT, INSERT, UPDATE` (anon sin grants). `service_role` conserva CRUD. RLS no se modificó.
+- Verificación posterior por catálogo: RLS sigue habilitado en ambas; `anon` sin SELECT/INSERT/UPDATE/DELETE; solicitudes authenticated SELECT=true y DML=false; transportadoras authenticated SELECT/INSERT/UPDATE=true y DELETE=false; `service_role` SELECT/INSERT/UPDATE/DELETE=true. El ledger remoto contiene la migración con ese nombre/version.
+- Registré el mismo SQL en `02-Base-de-Datos/sql/100_least_privilege_request_and_carrier_grants.sql` y en la futura ruta de migraciones del backend candidato. No se cambió información de usuario ni se ejecutó una operación de negocio; no hubo E2E de app en este cambio.
+- Referencia de grants/RLS: [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security). La alerta multiple-permissive puede seguir contando las políticas existentes; esta migración corrige privilegios efectivos y no eliminó políticas.
