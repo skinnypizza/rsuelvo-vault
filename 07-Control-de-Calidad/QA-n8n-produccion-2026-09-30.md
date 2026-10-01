@@ -1526,3 +1526,10 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La evidencia actual sitúa el corte antes de que un evento reciente llegue a n8n/Supabase event table; se necesita evidencia de Meta Delivery/Activity o una invocación correlacionada. Mantener la solicitud pendiente de texto exacto/captura del error si hace falta distinguir la respuesta que vio el usuario.
 - Sin cambios a producción en esta investigación, sin OpenWA. Resumen local para el orquestador en esta nota; no se pudo confirmar un push remoto.
 - Reconsulta 23:17 UTC: siguen vacíos los logs de ingreso desde 22:45, la tabla conserva como último registro el fixture 19:39 y n8n no muestra ejecución posterior a 23:00. No hay herramientas Meta Graph ni Chromium activo en este runtime para leer el panel de entregas de Meta; el siguiente dato concluyente debe venir de Meta Delivery/Activity Logs o del texto/captura de la respuesta recibida.
+
+### 2026-10-01 23:25 UTC — Corrección de retención de errores en workflows productivos
+
+- El censo vivo encontró una discrepancia con la lectura anterior: WF-02, WF-03 y WF-21 tenían `saveDataErrorExecution=all` aunque el resto de workflows productivos estaba en `none`. Estos flujos pueden manejar teléfono, contenido entrante y datos de comprobante.
+- Cambié solo esa opción a `none` en los tres workflows, conservando el Error Workflow compartido `hnhQW0AM6ana1vO7`, el estado activo y la versión publicada. No ejecuté ni envié eventos de prueba.
+- Postflight independiente de los 16 workflows de negocio: 16/16 activos, draft igual a publicado, `errorWorkflow=hnhQW0AM6ana1vO7`, éxito en `none` y error en `none`. El handler central continúa activo y conserva su credencial SMTP; no repetí el envío de alerta, así que esto no demuestra Inbox/Spam.
+- La retención `none` impide persistir futuras ejecuciones fallidas de estos flujos; no purga ejecuciones antiguas ya guardadas ni cierra el E2E de recibo/pago. Sin OpenWA.
