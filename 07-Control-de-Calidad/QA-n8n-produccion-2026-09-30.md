@@ -703,3 +703,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Se mantienen owner, checks comerciales, lock, registro de verificación/auditoría, SECURITY DEFINER, ACL y search_path fijado; el MFA de otras operaciones y RLS permanece. Catálogo posterior confirma ausencia de ambos helpers y los mismos permisos/configuración.
 - Canario de solo retorno, `authenticated` sintético AAL1 del owner QA contra comercio QA ya activo → `ya_activo`, dentro de `BEGIN/ROLLBACK`. Sin cambios persistentes ni efectos externos.
 - Nuevo estado de ledger: PROD 110; backend 52; 17 versiones exactas, 93 remotas sin archivo y 35 archivos sin versión remota (16 nombres con timestamp distinto, 19 sin nombre coincidente). No hacer push/replay general.
+
+### Identidad efectiva de la credencial Postgres de n8n — 2026-10-01 05:38 UTC
+
+- Ejecuté un workflow QA manual e inactivo con la credencial existente `Postgres account` y la consulta única `SELECT current_user, current_database()`. El run #709 devolvió `n8n_runtime` / `postgres`; confirma que el credential de los nodos Postgres no es el superuser. No consultó filas de negocio ni escribió datos.
+- El catálogo verifica `BYPASSRLS=false`, sin membresías, sin `CREATE` en esquemas, RLS activo en las tablas permitidas, siete lecturas globales por el orquestador del número compartido y dos tablas sink con INSERT solamente (sin UPDATE/DELETE/TRUNCATE). Mantengo la revisión de 14 funciones directamente ejecutables y ocho helpers/triggers PUBLIC como gate independiente.
+- Desactivé la retención manual del QA. El flujo continúa `active=false`, `activeVersionId=null`; los 17 workflows productivos siguen activos. Intentar archivarlo fue rechazado por el gate MCP (`requires approval`, política `never`); no busqué otra ruta. El workflow temporal permanece como borrador inerte; el resultado del run #709 contiene solo los dos campos de identidad (n8n conserva el metadata normal de ejecución).
