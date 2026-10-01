@@ -4,7 +4,16 @@
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado: en curso; E2E integral no certificado.** No marcar los flujos como perfectos ni cerrar QA hasta completar entrada SKU, comprobante, aprobación de cajero, callbacks de entrega y lista de espera con ejecución observable.
+**Estado vigente (2026-10-01 03:49 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+
+### Snapshot operativo vigente
+
+- **Verificado en producción con tenants y destinatarios QA:** SKU válido/no válido y deduplicación entrante; reserva/QR y limpieza; cron de lista de espera en dos tenants, aceptación `SI` y rechazo de aceptación tardía; callback positivo de pedido pagado sobre fixture QA; inicio de entrega hasta registrar envío; `EN_RUTA` silencioso y `NO_ENTREGADO` notificado solo por WF25-C. Las salidas de WhatsApp de estas canaries fueron `whatsapp_send_simulated`, sin envío a Meta. La última limpieza dejó pedido cancelado, reserva vencida, QR cancelado, envío/captura eliminados e inventario FEE001 en 3 disponibles/0 reservados.
+- **Alertas:** WF25-A #639 activó Error Workflow #640; Zoho aceptó el mensaje para `ethannic2@gmail.com` (`250 Message received`). Falta verificar la llegada a la bandeja.
+- **n8n:** inventario anterior verificado de 15 workflows de negocio + WF-80 + handler central, activos y publicados; validar de nuevo antes del lanzamiento. El MCP ya devuelve ejecuciones. No leer entradas de Webhook almacenadas; pueden contener headers/tokens.
+- **Pendiente E2E:** comprobante sintético válido con media/archivo QA → OCR/revisión → aprobación autenticada de cajero → confirmación al comprador. No reutilizar comprobantes de clientes reales; se requiere `media_id` QA válido o fixture de storage soportado.
+- **Pendiente de calidad y operación:** canaries de las validaciones WF-80 que siguen sin evidencia runtime individual; matriz de aislamiento JWT/rol/tenant; política corta de retención y purga de ejecuciones antiguas; revisión individual de funciones `SECURITY DEFINER`/políticas solapadas; habilitar protección de contraseñas filtradas; confirmar alertas en inbox; cerrar continuidad VPS/DigitalOcean.
+- **Sincronización:** la bitácora y cambios están confirmados en commits locales, pero no en GitHub: `git push` falla al resolver `github.com` y OpenCode no aceptó el mensaje del orquestador por error interno. Estado y evidencia: ver última sección cronológica.
 
 ## Hechos comprobados en esta continuación
 
@@ -14,16 +23,9 @@ Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenan
 - Se agregó un branch al draft QA inactivo para construir mensajes SKU y llamar al WF-04. El MCP contestó `started` (ID reportado 154), pero `search_workflow_executions` devolvió cero y `get_workflow_execution` no encontró la ejecución. Supabase no mostró clientes/reservas/pedidos creados por ese branch. No contar esta llamada como prueba del router ni atribuir un resultado a sus nodos hijos.
 - `prepare-community.sh`, `verify-community-package.py` y `py_compile` pasan en el paquete local: 18 workflows, 391 nodos, 94 Code, 25 Postgres y 40 guardas WF-80. Pasan las matrices sintéticas de WF-80, WF-21, WF-02 y WF-22. `scripts/test_local.sh` previamente terminó con 344 passed; es cobertura local de backend, no E2E n8n.
 
-## Pendientes para cerrar
+## Referencias
 
-1. Conseguir observabilidad de ejecuciones manuales/subworkflows y completar SKU → reserva → pedido/QR en Prueba RSUELVO y Celulares; comprobar estado por consultas antes/después y no dejar stock reservado.
-2. Recorrer comprobante entrante → archivo/OCR o revisión manual → aprobación por cajero → confirmación WhatsApp. No descargar media desde Meta en un test sintético salvo que el medio de prueba sea válido; usar el comprobante de prueba autorizado con el vínculo tenant/pedido correcto.
-3. Probar callbacks de entrega repetidos y cada estado relevante con pedido fixture. El riesgo de deduplicación/outbox documentado en la auditoría sigue requiriendo una ruta durable para fallos ambiguos.
-4. Crear un único registro sintético elegible de lista de espera y verificar alta idempotente, aviso al siguiente y cron/callback; confirmar que el aviso sale solo por la pareja sintética. El estado consultado antes de esta ronda no tenía filas `ESPERANDO` activas.
-5. Reconciliar auditoría de salida (simulados/rechazados/envíos reales) y registros de negocio tras cada caso; retirar fixtures temporales y verificar inventario neto sin cambios.
-6. Repetir lint, verificador de paquete y suites locales tras correcciones; después documentar versiones, evidencias y cualquier riesgo restante.
-
-La bitácora técnica detallada está en `/home/nico/rsuelvo-n8n-local/AUDIT-2026-09-29.md` (sección “Continuación de QA — 2026-09-30 13:07 UTC”).
+La bitácora técnica previa está en `/home/nico/rsuelvo-n8n-local/AUDIT-2026-09-29.md` (sección “Continuación de QA — 2026-09-30 13:07 UTC”). Las pruebas cerradas en rondas anteriores se conservan abajo como registro histórico; usa el snapshot operativo de arriba para los pendientes actuales.
 
 ## Ampliación E2E — 2026-09-30 14:18 UTC
 
@@ -624,3 +626,10 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Repetí Supabase Advisors después del cambio. Seguridad: 52 funciones `SECURITY DEFINER` ejecutables por `authenticated`, una (`fn_sugerir_codigo`) por `anon`, protección de contraseñas filtradas desactivada, `pg_net` en `public`, y dos tablas privadas RLS sin políticas (deny-by-default, informativo). Rendimiento: 74 hallazgos de políticas permisivas solapadas, 50 FKs sin índice y 11 índices no usados. Los asesores señalan áreas a auditar, no prueban por sí solos un bypass; la función `fn_sugerir_codigo` está invocada por el alta pública y se conserva intencionalmente. No revocar permisos en bloque ni mover `pg_net` sin mapear dependencias y probar permisos.
 - El historial MCP ahora devuelve ejecuciones reales; los fallos más recientes 628–639 corresponden a canaries de manejo de errores de WF25-A. La revisión de payloads de Webhook sigue excluida para no exponer encabezados/tokens guardados. La retención de errores continúa siendo un tema de producción pendiente.
 - Estado de sincronización y coordinación: los cambios de esta ronda quedaron en commits locales `a34de85` y `985b26e`, sobre 37 commits locales previos a sincronizar. `git push origin main` falla por resolución DNS de `github.com`; el commit remoto conocido continúa siendo `f36dfd820d92238d8a08c33d1880cdbbcf347bee`. Encontré la sesión OpenCode del orquestador (`ses_f16da631affeR20xWIHtBQBdPE`) e intenté enviarle el mismo resumen, pero el servidor respondió `Unexpected server error` (`err_b9b1ddf6`). No hay confirmación de recepción ni push remoto.
+
+### Verificación local del panel y landing — 2026-10-01 04:06 UTC
+
+- Revisé el estado actual de `/home/nico/StudioProjects/rsuelvo-web`, que tiene cambios de frontend aún sin commit compartidos con otros trabajos. Corrí `npm test`: 95/95 unitarias; `npm run typecheck`: landing sin errores/avisos y TypeScript del panel pasó; `npm run build`: ambos sitios compilaron.
+- El build inicial generaba un chunk de panel de 1.067 KB (320 KB gzip). Añadí un fallback `Suspense` que cubre también rutas directas lazy y agrupé MUI/Emotion en un solo chunk compartido para conservar la identidad de componentes. Build final: entry del panel 443 KB (141 KB gzip), vendor MUI/Emotion 325 KB (98 KB gzip), páginas de negocio separadas; no hay aviso de chunk >500 KB. Corrí `npm run test:browser`: 20/20 en Chromium, incluidas rutas directas MFA/legal, landing, registro simulado y fichas MUI.
+- El build estático genera `/privacidad/` localmente, pero el contenido todavía está marcado como borrador pendiente de aprobación legal y tiene datos de responsable/contacto por completar. No desplegué ni usé esa URL en Meta. El intento externo de consultar `https://rsuelvo.com/privacidad/` no fue concluyente: este entorno no pudo resolver `rsuelvo.com` por DNS. Los builds/tests locales no prueban que Cloudflare haya publicado la versión ni que el acceso real a Supabase funcione.
+- Los cambios del repositorio web (incluidos MFA/registro que ya estaban en curso) siguen sin commit y sin push; no mezclé ni confirmé esos archivos en esta ronda. Mi mejora está en el árbol de trabajo compartido, `app/src/App.tsx` y `app/vite.config.ts`.
