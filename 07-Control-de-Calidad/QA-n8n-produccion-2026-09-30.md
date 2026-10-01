@@ -426,3 +426,5 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - El turno QA de Celulares expiró a las 01:14 y pasó a `VENCIDO`; a las 01:17 el cron seguía `succeeded`. El turno QA de Prueba RSUELVO permanece `NOTIFICADO` hasta 01:22 por su TTL de 10 minutos; aún no se cerró ese tramo.
 - Ejecuté `tests/sql/email_mfa_access.sql` contra Supabase producción. Pasó todas las aserciones (administrador AAL1 bloqueado, bootstrap permitido, RPC/escritura protegidos, challenge validado y escritura permitida tras MFA) y terminó con `ROLLBACK`. Consulté después y quedaron cero usuarios, perfiles, comercios o challenges de prueba.
 - Revisé la alerta RLS de `email_mfa_*`: esas políticas son `RESTRICTIVE`, no amplían la lectura por OR; se combinan como guardas con las políticas permisivas de acceso por tenant. No hice cambios RLS.
+
+- Cierre de cron waitlist (01:23 UTC): el registro Prueba RSUELVO pasó `NOTIFICADO`→`VENCIDO` al superar su TTL de 10 min; Celulares ya estaba `VENCIDO` por su TTL de 2 min. El cron de las 01:23 terminó `succeeded`. Quedaron cero filas activas en ambas colas y `stock_reservado=0` en ambas variantes.
