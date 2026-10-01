@@ -1444,6 +1444,12 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La búsqueda n8n del día encontró 12 ejecuciones con error; las dos más recientes (`852` WF-02 y `853` WF-03, 19:39 UTC) corresponden al fixture con datos Meta sintéticos, no al reintento real del usuario. Sin nuevos cambios ni envíos reales.
 - Aclaración de las 74 alertas `multiple_permissive_policies`: consulté `pg_policies` y las 188 políticas `email_mfa_*` en `rsuelvo` son todas `RESTRICTIVE`, incluidas SELECT/INSERT/UPDATE/DELETE. En las tablas operativas comprobadas, estas reglas de MFA se AND con las policies permisivas existentes; el warning no demuestra que MFA reemplace el filtro de tenant. No encontré ni apliqué un cambio por esta hipótesis.
 
+### 2026-10-01 22:33 UTC — prueba backend local bloqueada por sandbox
+
+- Confirmé que `scripts/test_local.sh` continúa bloqueado al abrir Docker (`/var/run/docker.sock` permiso denegado); falta Redis local y el puerto PostgreSQL esperado 54329 no está escuchando.
+- Instalé un cluster PostgreSQL efímero en `/tmp` para intentar la prueba transaccional de integración. El sandbox rechazó tanto bind TCP loopback como socket Unix con `Operation not permitted`, por lo que no arrancó ni corrió pruebas. Eliminé el cluster temporal.
+- No se conectó a Supabase. El resultado previo de 332 pruebas unitarias (excluyendo integración) sigue siendo lo único verificado localmente; no demuestra integración o capacidad de producción. Detalle en `RSUELVO-CODEX-IMPLEMENTATION-LOG.md` del checkout candidato backend.
+
 ### 2026-10-01 21:42 UTC — Inspección de la frontera Meta → n8n
 
 - Confirmé que `meta-ingress` está ACTIVE en versión 13. Su código exige `x-hub-signature-256`, verifica HMAC y reenvía por POST a `https://n8n.rsuelvo.com/webhook/webhooks/whatsapp/meta`, con header `X-RSUELVO-META-INGRESS`; registra auditoría tras aceptar, descartar o fallar el reenvío.
