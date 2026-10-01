@@ -44,7 +44,7 @@ comment on function fn_iniciar_verificacion is 'Crea la verificación y consume 
 comment on function fn_actualizar_estado_envio is 'Máquina de estados logística validada + registro de seguimiento.';
 comment on function fn_generar_cobro is 'Crea el cobro QR con referencia única RS-XXXXXXXX.';
 comment on table tbl_variantes is 'SKU v2: 6 caracteres [3 tienda][3 producto] base36. id_comercio denormalizado por trigger.';
-comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y Meta (política §17).';
+comment on table tbl_canal_whatsapp is 'Canal WhatsApp Meta compartido por comercios; el tenant se resuelve por SKU/contexto. OpenWA retirado.';
 comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
 
 commit;

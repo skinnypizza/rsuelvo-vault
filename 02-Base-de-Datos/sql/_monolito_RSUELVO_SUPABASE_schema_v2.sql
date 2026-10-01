@@ -551,13 +551,13 @@ create table if not exists tbl_logs_auditoria (
 );
 
 
--- CANALES WHATSAPP (v2/A2: 1 WhatsApp = 1 tienda; soporta OpenWA y Meta)
+-- CANALES WHATSAPP: transporte Meta compartido por todos los comercios.
 create table if not exists tbl_canal_whatsapp (
   id_canal uuid primary key default gen_random_uuid(),
   id_comercio uuid not null references tbl_comercios(id_comercio) on delete cascade,
   id_sucursal uuid references tbl_sucursales(id_sucursal) on delete set null,
   numero text not null unique,
-  provider text not null default 'OPENWA' check (provider in ('OPENWA','META')),
+  provider text not null default 'META' check (provider = 'META'),
   provider_phone_number_id text unique,
   instance_id text,
   status text not null default 'DESCONECTADO',
@@ -569,7 +569,7 @@ create table if not exists tbl_canal_whatsapp (
 -- EVENTOS WHATSAPP (v2/A6/HU-143: idempotencia de webhooks)
 create table if not exists tbl_whatsapp_eventos (
   id_evento uuid primary key default gen_random_uuid(),
-  provider text not null check (provider in ('OPENWA','META')),
+  provider text not null default 'META' check (provider = 'META'),
   external_message_id text not null,
   phone_number_id text,
   customer_phone text,
@@ -2930,7 +2930,7 @@ comment on function fn_iniciar_verificacion is 'Crea la verificación y consume 
 comment on function fn_actualizar_estado_envio is 'Máquina de estados logística validada + registro de seguimiento.';
 comment on function fn_generar_cobro is 'Crea el cobro QR con referencia única RS-XXXXXXXX.';
 comment on table tbl_variantes is 'SKU v2: 6 caracteres [3 tienda][3 producto] base36. id_comercio denormalizado por trigger.';
-comment on table tbl_canal_whatsapp is '1 WhatsApp = 1 tienda. Soporta OpenWA y Meta (política §17).';
+comment on table tbl_canal_whatsapp is 'Canal WhatsApp Meta compartido por comercios; el tenant se resuelve por SKU/contexto. OpenWA retirado.';
 comment on table tbl_contact_preferences is 'Opt-out del comprador (política §16 / HU-142).';
 
 -- (D14/migración 27) Consume 1 crédito por venta confirmada — SD-1: saldo puede quedar
