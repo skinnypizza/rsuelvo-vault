@@ -583,3 +583,5 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 ### Corrección del inventario de workflows — 2026-10-01 03:23 UTC
 
 - El listado completo actual del MCP devuelve 17 workflows activos: 15 workflows de negocio (WF02/03/04, WF10/12/13/14, WF20/21/22/23/24, WF25-A/B/C), WF80 Gateway y el Error Workflow central. Las notas anteriores que dicen “16 workflows de negocio” cuentan una unidad de más; para las reauditorías y el checklist de lanzamiento usar 15 + gateway + handler. Los 17 están publicados (`versionId == activeVersionId`); los 15 flujos de negocio y WF80 apuntan al handler.
+
+- Añadí el SQL exacto verificado en producción como [104_paid_order_delivery_callback_timeout.sql](../02-Base-de-Datos/sql/104_paid_order_delivery_callback_timeout.sql), para mantener el timeout pg_net versionado en el vault.
