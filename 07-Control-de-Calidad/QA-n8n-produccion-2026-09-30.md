@@ -4,7 +4,7 @@
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado vigente (2026-10-01 22:55 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+**Estado vigente (2026-10-01 22:58 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
 
 ### Snapshot operativo vigente
 
@@ -1496,3 +1496,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La lectura de la ejecución manual #864 y su subejecución #865 del arnés inactivo `QA-IAM10-DIRECT-PG-SMOKE` mostró que se retuvo payload OCR sensible y una URL firmada en datos de ejecución. No se copiaron esos valores a esta nota ni se volvió a ejecutar el arnés.
 - En n8n establecí y releí `saveManualExecutions=false`, `saveDataSuccessExecution=none`, `saveDataErrorExecution=none` y `saveExecutionProgress=false` en el arnés. Confirmado `active=false`; no se publicó ni activó.
 - El MCP disponible no incluye eliminación de ejecuciones; #864/#865 siguen siendo registros históricos y requieren borrado desde la interfaz de n8n o una política administrativa de purga. La prevención futura quedó aplicada; la limpieza histórica no.
+
+### Auditoría de los siete arneses QA inactivos — 2026-10-01 22:58 UTC
+
+- La búsqueda de n8n encontró siete arneses QA inactivos. Apliqué a los siete `saveManualExecutions=false`, `saveDataSuccessExecution=none`, `saveDataErrorExecution=none` y `saveExecutionProgress=false`; una lectura posterior confirmó cada ajuste y que todos siguen inactivos.
+- Se conservaron las referencias al Error Workflow compartido en los dos arneses de alerta. No se publicaron ni activaron workflows y no se ejecutó ninguna prueba.
+- Esto evita retención futura en esos arneses; la ejecución histórica #864 y los datos históricos que sigan retenidos no se borran con el cambio y requieren purga administrativa.
