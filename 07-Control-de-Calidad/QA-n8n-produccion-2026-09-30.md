@@ -1,10 +1,12 @@
 # QA de flujos n8n en producción — 2026-09-30
 
+**Snapshot actualizado (2026-10-01 22:45 UTC):** QA en curso; E2E integral no certificado. Los reportes anteriores conservan su contexto histórico.
+
 ## Alcance y resultado
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado vigente (2026-10-01 12:45 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+**Estado vigente (2026-10-01 22:45 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
 
 ### Snapshot operativo vigente
 
@@ -1481,3 +1483,11 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Verificación de catálogo posterior: para `fn_variante_efectiva`, ACL anon/authenticated=false y service_role=true; para listado, anon=false, authenticated=true, service_role=true y el cuerpo contiene el guard tenant. El advisor de RPCs SECURITY DEFINER ejecutables por authenticated bajó de 52 a 51; el listado sigue en la advertencia del linter, pero ahora cuenta con guard explícito. Ledger remoto confirma la versión `20261001203205`.
 - Añadí regresión a `tests/integration/test_workflow_privilege_hardening.py` para permitir catálogo propio, denegar sucursal de otro tenant y bloquear RPC helper directo; actualicé el conteo de permisos esperado. `py_compile` pasó; pytest no se pudo ejecutar: `pytest` no está instalado y no hay `MIGRATION_DATABASE_URL` configurada. Por ello el comportamiento se verificó por definición, ACL y catálogo en PROD, pero la prueba automatizada transaccional queda pendiente.
 - Pendiente seguridad amplio: los otros 51 avisos `authenticated SECURITY DEFINER`, 74 avisos de múltiples políticas permisivas, `pg_net` en `public`, protección de contraseñas filtradas, 50 FKs sin índice y otras recomendaciones requieren revisión individual; no aplicar revocaciones masivas. Sin OpenWA.
+
+## Investigación del reintento más reciente — 2026-10-01 22:45 UTC
+
+- El usuario volvió a enviar un SKU y comprobante e informó que recibió el mismo error. Se consultó PROD con una ventana de logs Meta de 21:44–22:44 UTC: no hubo invocación de `meta-ingress` en ese período. La búsqueda de n8n tampoco mostró ejecuciones de WF-02, WF-03 ni WF-04 posteriores a las 21:36 UTC.
+- La última cadena WF-02 #852 → WF-03 #853 (19:39 UTC) es un fixture sintético de Meta Developers (`facebookexternalua`): `phone_number_id=123456123`, remitente y cuerpo de ejemplo. WF-04 falló al no resolver ese phone ID; WF-80 tampoco pudo resolver el comercio para enviar la alerta de error. No atribuir este resultado al último envío real.
+- `rsuelvo.tbl_canal_whatsapp` sí contiene un canal META `ACTIVO`, `activo=true`, con phone ID presente. Una consulta de solo lectura comprobó que `fn_identificar_comercio_por_phone_number_id` resuelve ese canal a un comercio y proveedor META. No se editó el canal ni los workflows.
+- No hay evento entrante correlacionado en Meta/Supabase/n8n durante la ventana consultada, así que la telemetría disponible no localiza por qué el usuario vio el mismo error. Se pidió el texto exacto o captura; no se pidió otro envío. No se usó OpenWA.
+- El backend Python candidato tiene una mejora **solo local**: `APP_ENV` staging/production debe coincidir con el allowlist del ref, el host de Supabase REST y el endpoint PostgreSQL directo/pooler. Unit suite registrada: 334 passed; Ruff check/format passed. Integración sigue bloqueada por el sandbox; el candidato sigue sin remote/historia y no está desplegado. No es una solución del runtime actual n8n.
