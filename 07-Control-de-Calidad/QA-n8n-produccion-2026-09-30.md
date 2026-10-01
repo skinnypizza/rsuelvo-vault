@@ -4,7 +4,7 @@
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado vigente (2026-10-01 10:52 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+**Estado vigente (2026-10-01 10:58 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
 
 ### Snapshot operativo vigente
 
@@ -984,7 +984,7 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Inventario oficial: 25 workflows visibles; 17 activos (16 de negocio/gateway + RSUELVO — Alertas de errores). Los 17 tienen versión publicada coincidente con borrador, ambas retenciones en none y los 16 flujos de negocio enlazados al handler. El workflow duplicado 25-B está inactivo y no disponible en MCP; los workflows QA están inactivos.
 - Correo: el handler sigue activo/publicado en la versión c8dba68d-f12c-4cb5-9240-fa3ebcb43bd5; Error Trigger → saneador → SMTP account; remitente noreply@rsuelvo.com, destino ethannic2@gmail.com, y retención none. La ejecución #707 figura success en modo error. El proveedor había respondido 250 Message received; Inbox/Spam sigue sin verificarse.
 - Búsqueda global posterior a las 10:06 UTC: cero ejecuciones error/crashed. No consulté payloads ni envié correo nuevo.
-- Canario #729 mediante el workflow QA inactivo y la credencial PostgreSQL n8n_runtime: fn_aceptar_lista_espera rechazó el UUID cero inexistente con el error esperado; la aserción y el workflow terminaron success, sin fila ni cambio de negocio. El workflow se restauró al SELECT current_user/current_database, quedó inactivo/sin versión activa y saveManualExecutions=false. La retención manual se habilitó temporalmente para ejecutar y luego se restauró; queda metadata de la ejecución QA #729, sin datos de clientes.
+- Canario #729 mediante el workflow QA inactivo y la credencial PostgreSQL n8n_runtime: fn_aceptar_lista_espera rechazó el UUID cero inexistente con el error esperado; la aserción y el workflow terminaron success, sin fila ni cambio de negocio. El workflow se restauró al SELECT current_user/current_database, quedó inactivo/sin versión activa y saveManualExecutions=false. La retención manual se habilitó temporalmente en dos ejecuciones y luego se restauró; quedan metadata de #729 y #730, cuyos resultados no contienen datos de clientes.
 - La colocación del email continúa sin comprobación porque este runtime no tiene navegador Chromium ni conector de Gmail. El push a GitHub sigue pendiente por fallo de resolución DNS.
 
 ### Verificación sintética del saneador de correo — 2026-10-01 10:55 UTC
