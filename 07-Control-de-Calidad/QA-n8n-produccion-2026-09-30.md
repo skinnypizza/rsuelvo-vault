@@ -1414,6 +1414,13 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - El estado no cambia para el reporte más reciente del usuario: no hay nueva fila Meta/evento ni ejecución correlacionable después del fixture de 19:39 UTC. Las dos firmas rechazadas a las 18:52/18:55 UTC fueron probes locales `curl/8.22.0` con firma inválida, no mensajes Meta ni pruebas del usuario.
 - No se reenviaron mensajes, no se escribieron pedidos/comprobantes ni se cambiaron configuraciones en esta auditoría. Sin OpenWA. Pendientes: correlacionar la nueva prueba real ya enviada por el usuario, recuperar el nodo exacto que falló, explicar por qué 852 no activó el handler compartido y completar E2E posterior a la migración de permisos.
 
+### 2026-10-01 21:30 UTC — Canario PostgreSQL real bajo la credencial n8n
+
+- Aislé temporalmente el nodo Postgres de solo lectura del harness inactivo `QA-IAM10-DIRECT-PG-SMOKE`: desconecté sus tres ramas sintéticas (WhatsApp Gateway, SKU/WF-04 y lista de espera), habilité retención manual y ejecuté solo el probe IAM. Ejecución n8n `863` terminó `success` en 1.2 s.
+- La salida del nodo demuestra que n8n usa `db_user=n8n_runtime`, tiene `EXECUTE` sobre `rsuelvo.fn_resolver_pedido_pendiente_comprobante(uuid,uuid)`, y carece de `SELECT` directo en `rsuelvo.tbl_reservas`. La llamada real a la función SECURITY DEFINER terminó sin error y devolvió 0 pedidos elegibles para el cliente QA consultado; era esperado porque su reserva de prueba ya venció. Así se valida el permiso de runtime y el aislamiento, no un pedido activo ni el E2E del comprobante.
+- Restauré el harness: las cuatro conexiones desde Manual Trigger coinciden con el estado previo, el SQL original volvió a su lugar, `saveManualExecutions` regresó a DEFAULT y el workflow permanece inactivo. No se ejecutaron sus ramas sintéticas ni hubo escrituras de negocio.
+- La lectura fresca PROD a las 21:26 UTC no mostró nuevos eventos Meta, auditorías ingress ni comprobantes después del fixture de las 19:39. n8n tampoco conserva ejecuciones posteriores a ese fixture en su búsqueda actual. Por tanto el reintento del usuario sigue sin correlación y el flujo no queda validado después del fix.
+
 ### 2026-10-01 20:53 UTC — Validación nueva de recepción y hardening de helper
 
 - Revisión del panel de Supabase Edge Functions (`meta-ingress > Invocations`, rango último hora): sin datos; Dashboard indica última invocación hace ~2 h. DB confirma que el evento más reciente sigue siendo el fixture de Meta de 19:39:41 UTC; la auditoría `meta_ingress` no tiene filas recientes. La consulta de fuentes del log unificado solo muestra `postgres_logs` y `postgrest_logs`, sin `function_edge_logs`.
