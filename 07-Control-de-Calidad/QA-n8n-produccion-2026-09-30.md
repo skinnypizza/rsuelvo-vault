@@ -4,7 +4,7 @@
 
 Se está validando el recorrido WhatsApp de RSUELVO en producción con los tenants de prueba Prueba RSUELVO y Celulares. Los mensajes de salida de las pruebas usan destinatarios sintéticos interceptados por WF-80. La auditoría no registra envíos reales para esos destinatarios.
 
-**Estado vigente (2026-10-01 22:58 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
+**Estado vigente (2026-10-01 22:59 UTC): QA en curso; E2E integral no certificado.** El histórico debajo conserva las rondas anteriores; ante contradicción prevalece este snapshot y las secciones cronológicas más recientes.
 
 ### Snapshot operativo vigente
 
@@ -1502,3 +1502,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La búsqueda de n8n encontró siete arneses QA inactivos. Apliqué a los siete `saveManualExecutions=false`, `saveDataSuccessExecution=none`, `saveDataErrorExecution=none` y `saveExecutionProgress=false`; una lectura posterior confirmó cada ajuste y que todos siguen inactivos.
 - Se conservaron las referencias al Error Workflow compartido en los dos arneses de alerta. No se publicaron ni activaron workflows y no se ejecutó ninguna prueba.
 - Esto evita retención futura en esos arneses; la ejecución histórica #864 y los datos históricos que sigan retenidos no se borran con el cambio y requieren purga administrativa.
+
+### Alcance de la purga histórica — 2026-10-01 22:59 UTC
+
+- Búsqueda de ejecuciones por workflow encontró 55 ejecuciones QA históricas (18 + 4 + 25 + 1 + 3 + 4) distribuidas en seis de los siete arneses inactivos. No se leyó su contenido durante el conteo; al menos #864 sí conserva campos OCR sensibles y enlace firmado.
+- Las cuatro políticas de retención futuras ya están fijadas en los siete flujos. El MCP no proporciona borrado de ejecuciones y el runtime no expone una sesión de Chromium, por lo que las 55 filas históricas aún requieren limpieza administrativa; no se intentó un borrado destructivo por SQL.
