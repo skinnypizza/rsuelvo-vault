@@ -1553,3 +1553,16 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - En la lectura productiva de 16 workflows de negocio, `saveManualExecutions` no estaba explícito. Para evitar que una prueba/depuración manual conserve datos de clientes o comprobantes, lo fijé en `false` para los 16 workflows y el handler de alertas (17 en total).
 - Postflight de los 17: activos, borrador igual a versión publicada; `saveManualExecutions=false`, `saveDataSuccessExecution=none`, `saveDataErrorExecution=none`. Los 16 workflows de negocio siguen con `errorWorkflow=hnhQW0AM6ana1vO7`; el handler no se autoenlaza.
 - La política no borra históricos ya almacenados y evita inspeccionar payloads persistidos en nuevos runs manuales. No ejecuté ningún workflow para verificar este ajuste.
+
+### 2026-10-01 23:43 UTC — Nuevo reporte de error sin ejecución correlacionada
+
+- El usuario reportó que volvió a enviar SKU y comprobante y recibió el mismo error. Reconsulté n8n hasta las 23:43 UTC: no hay ejecuciones nuevas desde las 23:35 UTC ni ejecuciones de WF-02, WF-03, WF-04, WF-21 o WF-22 posteriores al envío reportado. Por ahora el incidente no se puede atribuir a los flujos de SKU/comprobante.
+- La búsqueda de WF-21 devuelve solo tres errores viejos del 30-09 (14:01–14:05 UTC) causados por harness sintético con `media_id` deliberadamente inválido (`QA/INVALID_MEDIA_*`); no son el envío actual ni evidencia de un fallo del número real.
+- No se hizo otra prueba ni se cambió producción. La comprobación previa de WF-21 muestra rutas de error de RPC y almacenamiento con respuesta por WF-80; estos nodos no explican un fallo si el mensaje no llega a la ejecución de ingreso.
+- Siguiente evidencia necesaria: el texto/captura exacta del error que vio el usuario y la hora local aproximada, o la actividad de entrega de Meta a esa hora. No se solicitó reenviar SKU ni comprobante. Sin OpenWA.
+
+### 2026-10-01 23:49 UTC — Referencia durable al comprobante en WF-21
+
+- La auditoría de todos los workflows activos detectó que los dos nodos RPC de WF-21 usaban `Set Real Media URL.media_url` como fallback, aunque ese nodo no produce ese campo. En la rama sin OCR, esto dejaba `p_archivo_url` vacío; en la rama OCR también fallaba el fallback si el enlace firmado no se generaba. El cliente actual prefiere `archivo_path` y crea un enlace temporal al visualizar.
+- Corregí ambos payloads RPC para conservar el enlace firmado si existe y, si no, construir una referencia estable al objeto privado desde el `foto_path` de WF-22. Validación aislada de configuración: ambos nodos HTTP Request válidos; el update se publicó en WF-21 y postflight confirma activa, versión publicada igual al borrador, retenciones manual/error/éxito en false/none/none y Error Workflow central preservado.
+- No ejecuté el comprobante de nuevo ni hice escrituras de pago en Supabase. El último reporte del usuario sigue sin ejecución entrante correlacionada; este defecto corregido es independiente y no demuestra la recepción E2E. Sin OpenWA.
