@@ -907,3 +907,12 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La corrida amplia de pytest se había quedado esperando el portal entre hilos de Starlette TestClient. Reemplacé TestClient por `httpx.ASGITransport` async en las pruebas API y Meta ingress; la app entra por su lifespan real sin abrir sockets. El cambio elimina también la advertencia deprecada del TestClient.
 - Suite Python completa: **331 passed, 29 skipped, sin warnings**. Ruff y formato pasan en 113 archivos. Los omitidos son integraciones que requieren DB/Redis. La integración real Postgres de reconciliación sigue pendiente porque el runtime prohíbe sockets TCP/Unix y deniega Docker.
 - Sin llamadas a Meta, Supabase, n8n ni producción; no se aplicaron migraciones. `biz_opaque_callback_data` requiere aún un round-trip controlado con Meta antes del cutover. El backend candidato conserva su guard PROD desactivado.
+
+### Revisión adicional — 2026-10-01 09:27 UTC
+
+- **Correo de errores:** la evidencia sigue siendo la ejecución sintética #707 del handler central, aceptada por el servidor SMTP (`250 Message received`). Una búsqueda de ejecuciones n8n desde 07:18 UTC no encontró ejecuciones nuevas. La llegada a `ethannic2@gmail.com` y su ubicación en Inbox/Spam no se pueden afirmar sin comprobar el buzón; no envié otro correo.
+- **Sesión n8n:** el MCP oficial respondió sin necesidad de operar Chromium en esta continuación. No se cambió ningún workflow ni credencial.
+- **Backend candidato:** agregué un test ASGI sintético de callback Meta firmado que comprueba que `biz_opaque_callback_data` sobrevive la persistencia/proyección para reconciliación. Prueba dirigida: pasa. Suite completa: 332 passed, 29 skipped; Ruff check/format pasan. No hubo llamadas externas ni migraciones.
+- **Producción Supabase:** última comparación de solo lectura: 118 versiones remotas frente a 61 archivos candidatos (`supabase/migrations/`), 25 versiones exactas, 16 coincidencias de nombre con timestamp distinto, 20 nombres solo locales y 93 solo remotas. Es una comparación de nombres/versiones, no de equivalencia SQL.
+- Siguen pendientes la verificación de entrega real del email, la integración transaccional con Postgres local (bloqueada aquí por sockets/Docker), y la prueba controlada de ida y vuelta del token de callback con Meta. El backend candidato continúa sin habilitarse en producción.
+- La sincronización del vault a GitHub sigue pendiente por el fallo DNS previo (`github.com` no resuelve en el runtime); este apunte no contiene secretos.
