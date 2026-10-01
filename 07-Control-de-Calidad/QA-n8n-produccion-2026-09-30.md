@@ -597,3 +597,10 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Envié `SKU_INEXISTENTE_QA_999` por WF02 con el marcador QA del tenant `b16dfb8e-8da7-43d5-a847-adb4e8701a8e`. El flujo produjo una respuesta `whatsapp_send_simulated`; no creó pedido ni reserva.
 - Repetí exactamente el mismo mensaje con el mismo `message_id`. La tabla `tbl_whatsapp_eventos` conserva una sola fila en `PROCESADO`; el recuento de envíos simulados en el minuto de prueba quedó en uno y no apareció pedido nuevo. La deduplicación entrante pasó este caso de repetición.
 - El callback de pago (WF25-A), cron de lista de espera (WF13), SKU válido y SKU inexistente/duplicado ya tienen canaries positivos correlacionados con Supabase. Esto aún no cubre todos los estados internos ni autoriza a afirmar que todos los flujos están perfectos.
+
+### Aceptación de oportunidad de lista de espera y no repetición — 2026-10-01 03:33 UTC
+
+- Volví a poner en `ESPERANDO` solo la fila QA de `QA_SIM_CELULARES_01`. El cron real la pasó a `NOTIFICADO` a las 03:31:03; después envié `SI` por WF02. WF14 reconoció la oportunidad notificada, la convirtió en reserva y generó el pedido QA `fc2e5492-fc25-41a9-981c-bfef5934b51a` con reserva `96f44e07-4e57-4955-b40d-592e7db68453`. WF80 registró la respuesta como simulada.
+- Limpieza verificada: pedido `CANCELADO`, reserva `VENCIDA`, QR `EXPIRADO`, fila de espera restaurada a `VENCIDO` con `id_reserva_generada=NULL`/`fecha_aceptacion=NULL`, stock 3/0 y cero reservas activas en el tenant QA.
+- Después envié un `SI` nuevo cuando ya no había oportunidad activa. El evento quedó `PROCESADO` sin crear pedido ni reserva; esto verifica que una aceptación tardía no vuelve a convertir el turno consumido.
+- El cron positivo, aceptación positiva y aceptación tardía ya tienen evidencia de ejecución sintética. Ningún envío llegó a Meta.
