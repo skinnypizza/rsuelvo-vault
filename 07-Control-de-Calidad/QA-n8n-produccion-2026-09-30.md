@@ -604,3 +604,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Limpieza verificada: pedido `CANCELADO`, reserva `VENCIDA`, QR `EXPIRADO`, fila de espera restaurada a `VENCIDO` con `id_reserva_generada=NULL`/`fecha_aceptacion=NULL`, stock 3/0 y cero reservas activas en el tenant QA.
 - Después envié un `SI` nuevo cuando ya no había oportunidad activa. El evento quedó `PROCESADO` sin crear pedido ni reserva; esto verifica que una aceptación tardía no vuelve a convertir el turno consumido.
 - El cron positivo, aceptación positiva y aceptación tardía ya tienen evidencia de ejecución sintética. Ningún envío llegó a Meta.
+
+### Cron de lista de espera en segundo tenant QA — 2026-10-01 03:36 UTC
+
+- Usé `fn_agregar_lista_espera_v2` para crear una sola fila QA con `QA_SIM_PRUEBA_01` en el tenant `3cf9a53a-cf8c-4482-b752-ab64c2136875`, sucursal con stock disponible de `FERG01`; el recuento global confirmó una fila `ESPERANDO` y cero de tenants no QA.
+- El cron real la notificó a las 03:36:03. El webhook WF13 respondió HTTP 200 y a las 03:36:05 se registró `whatsapp_send_simulated` para ese segundo tenant/cliente. No hubo tráfico a Meta.
+- Marqué la fila temporal `VENCIDO` después del canary; no creó pedido/reserva y no cambió stock. Con ello el cron positivo ya está correlacionado en dos tenants QA distintos.
