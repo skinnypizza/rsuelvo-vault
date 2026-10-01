@@ -1244,3 +1244,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - El usuario reporta que volvió a enviar SKU y comprobante y recibió el mismo error. Consulté PROD después del reporte: `tbl_whatsapp_eventos` todavía termina con el SKU de 16:01:38 UTC (`PROCESADO`) y la imagen de 16:01:53 UTC (`ERROR`, `Error en WF-03`). No existe evento más reciente.
 - Los logs unificados de Supabase consultados desde 16:40 UTC tampoco contienen llamadas a `meta-ingress`; la búsqueda de ejecuciones por WF-21 via MCP falló con error interno. Así que no hay evidencia de que este nuevo intento haya entrado a Meta ingress/n8n y todavía no se puede contrastar el error que vio el usuario.
 - No se usó OpenWA ni se inició ningún envío. La siguiente correlación requiere identificar hora local aproximada y texto/captura del error visto, o una nueva entrada observable en Meta; no pedir otro pago.
+
+### 2026-10-01 16:50 UTC — Confirmación de la ruta publicada
+
+- Verifiqué que `meta-ingress` sigue `ACTIVE`, versión 12, y que WF-02 (`kXuiHOMTxgR1Lo1O`) está activo con versión publicada `a25420de-4633-48fc-be0a-b4586b13c41c`; su URL de producción es `https://n8n.rsuelvo.com/webhook/webhooks/whatsapp/meta` y requiere `X-RSUELVO-META-INGRESS` desde la Edge Function.
+- La búsqueda directa del MCP oficial de n8n devuelve cero ejecuciones de WF-02 y WF-21 desde las 16:40 UTC. Los logs de la Edge Function por ID confirman que sus últimas invocaciones POST ocurrieron a las 16:02:01 UTC; no hay invocación posterior. Por tanto, el nuevo mensaje reportado no llegó a la entrada actualmente configurada. No es evidencia de que la corrección de permisos haya fallado ni permite localizar el texto de error visto en WhatsApp.
+- Se necesita correlacionar el intento en la cuenta/app de Meta con la hora local aproximada y la captura/texto exacto de WhatsApp. No pedir otro pago ni usar OpenWA.
