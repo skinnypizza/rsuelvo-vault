@@ -1566,3 +1566,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La auditoría de todos los workflows activos detectó que los dos nodos RPC de WF-21 usaban `Set Real Media URL.media_url` como fallback, aunque ese nodo no produce ese campo. En la rama sin OCR, esto dejaba `p_archivo_url` vacío; en la rama OCR también fallaba el fallback si el enlace firmado no se generaba. El cliente actual prefiere `archivo_path` y crea un enlace temporal al visualizar.
 - Corregí ambos payloads RPC para conservar el enlace firmado si existe y, si no, construir una referencia estable al objeto privado desde el `foto_path` de WF-22. Validación aislada de configuración: ambos nodos HTTP Request válidos; el update se publicó en WF-21 y postflight confirma activa, versión publicada igual al borrador, retenciones manual/error/éxito en false/none/none y Error Workflow central preservado.
 - No ejecuté el comprobante de nuevo ni hice escrituras de pago en Supabase. El último reporte del usuario sigue sin ejecución entrante correlacionada; este defecto corregido es independiente y no demuestra la recepción E2E. Sin OpenWA.
+
+### 2026-10-01 23:53 UTC — Auditoría de resultado de envíos en WF-80
+
+- La revisión del gateway Meta encontró que `Log Send` leía `$json.sendStatus`, pero `Post-send Eval` no producía ese campo; cada auditoría de envío quedaba como `unknown`. Además, las transiciones del circuit breaker no generaban `logStatus`, aunque `Log Circuit` intentaba guardarlo.
+- Actualicé el gateway para persistir `sent`/`failed`, código HTTP cuando está disponible y estado de transición del circuit breaker. Los tres nodos pasaron validación aislada y WF-80 se publicó. Postflight: activo, borrador igual a publicado, con el handler central y retenciones success/error/manual en none/none/false.
+- No envié mensajes ni alteré datos de clientes. Falta probar el resultado con una llamada simulada/real controlada; la mejora solo fue validada a nivel de configuración.
