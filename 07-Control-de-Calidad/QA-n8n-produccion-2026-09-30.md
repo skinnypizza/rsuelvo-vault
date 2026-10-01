@@ -961,3 +961,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - Supabase MCP respondió a una consulta de solo lectura y ambos Advisors se actualizaron: 52 funciones SECURITY DEFINER ejecutables por authenticated, 1 extensión pg_net en public, protección de passwords filtrados deshabilitada, 2 tablas privadas RLS sin políticas; rendimiento: 50 FKs sin índice de cobertura, 74 políticas permisivas solapadas y 10 índices no usados. No hice cambios de esquema.
 - n8n MCP sigue devolviendo -32603 al leer workflow y ejecuciones. No ejecuté ni actualicé workflows durante esta comprobación. La inspección local no encontró un proceso Chromium en este runtime; por eso tampoco puedo confirmar la colocación de SMTP desde el navegador del usuario.
+
+### Inspección estática de aceptación de lista — 2026-10-01 10:39 UTC
+
+- La función fn_aceptar_lista_espera(uuid) solo es ejecutable por n8n_runtime y service_role; anon y authenticated están denegados. La función carga por UUID, exige estado NOTIFICADO y vigencia, y llama a fn_solicitar_reserva; no recibe un comercio como parámetro.
+- El workflow exportado de escritorio tiene una versión antigua con lookup por teléfono sin filtro de tenant. El transformador Community local sustituye ese filtro por comercio + teléfono usando Query Parameters. La lectura publicada registrada a las 10:06 UTC confirmó que el WF14 vivo filtra simultáneamente comercio y teléfono. No mezclar el export antiguo con la versión activa ni importarlo sobre producción.
+- No hice una aceptación de lista adicional: las listas QA activas están en cero y el MCP n8n está indisponible, así que no se puede preparar/inspeccionar un fixture mediante el runtime real. La prueba negativa con IDs/estado inválidos y la revisión de defensa en profundidad quedan en la matriz abierta.
