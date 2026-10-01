@@ -1324,3 +1324,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - `deno check supabase/functions/meta-ingress/index.ts` pasó. Desplegué Supabase Edge Function `meta-ingress` v13 (`ACTIVE`, `verify_jwt=false`). Un POST sintético con firma incorrecta devolvió HTTP 401 y generó solo `rechazado_firma`; el evento WhatsApp más reciente no cambió. Esto verifica el camino de rechazo, no el forward válido de Meta.
 - En la reconsulta de las 18:55 UTC seguía sin haber entrada válida posterior a las 16:02 UTC. La instrumentación permitirá distinguir en la siguiente prueba real si Meta no llama, si el forward a n8n falla (502/status) o si n8n recibió el webhook. Aún falta observar una entrada válida después de WF-04 v`9920b9cc` y `meta-ingress` v13.
 - Volví a informar al orquestador por la sesión OpenCode existente; el CLI volvió a fallar con `Unexpected server error` (ref `err_35289f28`). Documenté aquí y sincronizaré los cambios por GitHub.
+
+### 2026-10-01 18:59 UTC — Verificación del correo operativo
+
+- WF-90 `RSUELVO — Alertas de errores` permanece activo y publicado (`versionId == activeVersionId`). El historial tiene dos ejecuciones `mode=error`, ambas `success` (05:05:59 y 03:05:22 UTC). En la más reciente, `Sanitize alert context` y `Send production error alert` terminaron en éxito; la respuesta SMTP informó un destinatario aceptado y cero rechazados. Esto confirma aceptación por SMTP, no lectura/entrega a la bandeja Gmail.
+- WF-02, WF-03, WF-04 y WF-21 no tienen ejecuciones posteriores a la publicación de WF-04/Edge v13 en la ventana consultada. Supabase sigue sin mensaje real posterior a 16:01:53 UTC. Falta el SKU de prueba del usuario para probar `meta-ingress v13 → n8n → WF-04` y medir la respuesta real.
