@@ -272,7 +272,7 @@ En Compose se endureció retención: éxitos/manuales sin payload persistido, er
 - [ ] Error Trigger compartido por correo a ethannic2@gmail.com (elección usuario): Zoho en signin, sin credencial SMTP; esperar login manual, sin crear app password/credential aún.
 
 
-### Muestra integrada 2026-10-01 19:39 UTC — Meta→runtime OK, sin Graph (sin cambios)
+### Muestra integrada 2026-10-01 19:39 UTC — Meta→runtime OK, sin Graph
 
-- [x] Muestra `messages` desde Developers → `meta-ingress` 200 → WF-02 exec 852 → WF-03 integrada 853 (IDs sintéticos; WF-04 sin comercio; WF-80 `No active Meta phone number ID`; fila muestra en ERROR; 0 Graph). Verifica entrega, no mensaje real ni comprobante.
+- [x] Muestra `messages` desde Developers → `meta-ingress` 200 → WF-02 exec 852 → WF-03 integrada 853 (IDs sintéticos; WF-04 sin comercio; WF-80 `No active Meta phone number ID`; fila muestra en ERROR y logs de auditoría en PROD; 0 Graph). No alteró datos de negocio ni configuración. Verifica entrega, no mensaje real ni comprobante.
 - [ ] Correlación del reporte real + E2E comprobante pendientes (a 19:46 sin evento posterior; el error 16:01 antecede a la migración `add_scoped_pending_receipt_order_rpc`).

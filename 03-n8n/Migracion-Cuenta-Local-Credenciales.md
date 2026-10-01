@@ -413,7 +413,7 @@ Graph v26 read-only confirma WABA productiva suscrita a la app `Rsuelvo`, númer
 - Error Trigger compartido por correo a ethannic2@gmail.com (elección usuario): Zoho en signin, sin credencial SMTP; esperar login manual, sin crear app password/credential aún. Sin tocar secretos ni workflows activos.
 
 
-### Muestra integrada 2026-10-01 19:39 UTC — Meta→runtime OK, sin Graph (sin cambios)
+### Muestra integrada 2026-10-01 19:39 UTC — Meta→runtime OK, sin Graph
 
 - Muestra `messages` desde Developers → `meta-ingress` 200 → WF-02 exec 852 → WF-03 integrada 853 (IDs sintéticos; WF-04 sin comercio; WF-80 `No active Meta phone number ID`; fila muestra en ERROR; 0 Graph). Verifica entrega, no mensaje real ni comprobante.
-- Error 16:01 `permission denied` antecede a migración `add_scoped_pending_receipt_order_rpc`. A 19:46 sin evento real posterior: correlación y E2E comprobante pendientes. Sin OpenWA; sin cambios productivos.
+- Error 16:01 `permission denied` antecede a migración `add_scoped_pending_receipt_order_rpc`. A 19:46 sin evento real posterior: correlación y E2E comprobante pendientes. La prueba añadió una fila sintética de evento y logs de auditoría en PROD, sin alterar configuración; no usar OpenWA.
