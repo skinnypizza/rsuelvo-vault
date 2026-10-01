@@ -585,3 +585,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - El listado completo actual del MCP devuelve 17 workflows activos: 15 workflows de negocio (WF02/03/04, WF10/12/13/14, WF20/21/22/23/24, WF25-A/B/C), WF80 Gateway y el Error Workflow central. Las notas anteriores que dicen “16 workflows de negocio” cuentan una unidad de más; para las reauditorías y el checklist de lanzamiento usar 15 + gateway + handler. Los 17 están publicados (`versionId == activeVersionId`); los 15 flujos de negocio y WF80 apuntan al handler.
 
 - Añadí el SQL exacto verificado en producción como [104_paid_order_delivery_callback_timeout.sql](../02-Base-de-Datos/sql/104_paid_order_delivery_callback_timeout.sql), para mantener el timeout pg_net versionado en el vault.
+
+### Clasificación de fallos históricos recientes — 2026-10-01 03:24 UTC
+
+- Revisé metadata/error de ejecuciones fallidas seleccionadas sin leer nodos de entrada Webhook. WF04 #325 y WF10 #337/#343, WF20 #355/#360 y WF25-B #121/#127 fallaron en validadores WF-80 antiguos por `sendStatus=simulated` o `Invalid output format`; esos validadores ya usan el wrapper explícito publicado. WF13 #110 era el mismo defecto y tiene ahora canary positivo real por cron. WF04 #315 es la referencia histórica al nodo renombrado `Attach Commerce`, reemplazada por `Attach Comercio Universal`.
+- WF21 #179/#184 llegó a `Set Real Media URL` y rechazó un media ID sintético inválido, antes de descargar/guardar/OCR el archivo. No es evidencia de que una carga Meta real falle; tampoco permite afirmar que recibos se procesen. Se requiere un `media_id` real de una cuenta de pruebas Meta o un fixture de almacenamiento soportado para probar esa rama.
+- No aparecieron nuevas ejecuciones fallidas posteriores a las canaries positivas; el historial guarda éxitos desactivados y por eso la confirmación sigue siendo la evidencia correlacionada en Supabase/pg_net, no un historial completo de n8n.
