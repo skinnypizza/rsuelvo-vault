@@ -178,3 +178,8 @@ El Advisor de producción marca desactivada la protección contra contraseñas f
 - El Error Trigger central quedó publicado y asignado a los 16 workflows de negocio activos. Validación de configuración final: 16/16 enlaces presentes y versiones publicadas.
 - Una falla sintética de producción generó la ejecución n8n #596 con el error intencional; el webhook devolvió HTTP 500 esperado. El handler estaba publicado y configurado como `errorWorkflow`, pero n8n MCP no mostró una ejecución independiente del handler. Se requiere confirmar con el destinatario si llegó el mensaje de alerta.
 - La credencial anterior de Zoho todavía no se revocó. Mantenerla vigente hasta verificar que también Auth y `email-mfa` entregan tras la rotación y confirmar recepción del aviso del Error Trigger.
+
+
+### Diagnóstico adicional del Error Trigger — 2026-10-01 00:30 UTC
+
+- Una segunda falla de QA con el nodo oficial `Stop And Error` terminó en ejecución n8n #598 con `shouldReport=true` y respuesta webhook HTTP 500. El workflow de QA estaba publicado y enlazado al handler activo. La búsqueda del handler sigue sin mostrar ejecución hija; la recepción de la alerta aún requiere confirmación del titular y revisión de la integración Error Workflow. La prueba SMTP directa está aceptada por Zoho (`250 Message received`).

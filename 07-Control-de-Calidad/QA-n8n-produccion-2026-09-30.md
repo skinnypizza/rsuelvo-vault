@@ -373,3 +373,9 @@ El Advisor de seguridad en producción incluye `auth_leaked_password_protection`
 - Enlazados y publicados los 16 workflows de negocio activos con `settings.errorWorkflow = hnhQW0AM6ana1vO7`. Verificación posterior: 16/16 activos, todos con enlace al handler y `versionId == activeVersionId`. Handler también activo. QA SMTP manual y ambos endpoints temporales están despublicados.
 - Queda pendiente confirmar que el titular recibió el mensaje de prueba y el mensaje de alerta, verificar entrega SMTP de `email-mfa`/Auth tras rotación y revocar la clave API SMTP Zoho anterior solo después de validar todos los consumidores.
 - El cron Supabase `rsuelvo_expirar_reservas` sigue activo cada minuto; SQL en producción mostró `active=true`.
+
+
+### Verificación con Stop And Error oficial — 2026-10-01 00:30 UTC
+
+- Repetí el disparo con el nodo oficial n8n `Stop And Error`, recomendado para provocar una falla que active el Error Workflow. El webhook de QA respondió HTTP 500 y la ejecución #598 terminó `error`; el error registrado tiene `shouldReport=true`. La QA estaba publicada con `settings.errorWorkflow=hnhQW0AM6ana1vO7` y el handler central estaba activo.
+- Aun así, la búsqueda de ejecuciones no muestra una ejecución del handler `hnhQW0AM6ana1vO7`. El SMTP directo ya tuvo aceptación 250, pero el envío de alerta desde Error Trigger no está confirmado. Ambos workflows de falla QA y los endpoints aleatorios quedaron despublicados; no repetir la falla hasta resolver por qué n8n no registra/arranca el Error Workflow o confirmar en el buzón.
