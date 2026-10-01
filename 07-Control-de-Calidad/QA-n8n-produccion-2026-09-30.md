@@ -852,3 +852,10 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - WF04 publicado y revalidado: versión activa `6cce603d-1daf-4e16-8b33-2e487a654e66`, Error Trigger central conservado. Barrido de los 17 workflows activos: solo W04 registra STOP y llama la función compartida; cero referencias activas al RPC de opt-out por tenant.
 - Incidente de prueba contenido: al consultar permisos cometí el error de invocar una vez el RPC global desde un `SELECT` fuera de rollback. Creó 5 filas para un alias sintético QA; borré esas filas y las auditorías INSERT/DELETE generadas, y comprobé ambos agregados en cero. No afectó teléfonos reales; después verifiqué ACL solo con `has_function_privilege` y la prueba funcional posterior se ejecutó con rollback.
 - La ejecución dinámica de workflow sigue sin poder probarse aquí: el control de `n8n_test_workflow` exige aprobación y la política de aprobación activa es `never`. No envié un mensaje de STOP por WhatsApp ni usé Meta.
+
+### Estado de continuidad y acceso a correo/n8n — 2026-10-01
+
+- El usuario confirmó que n8n quedó con sesión iniciada y que la autenticación está guardada. En esta sesión, las llamadas MCP de `search_workflows`, `list_credentials` y `search_workflow_executions` fallaron todas con `Mcp error -32603: Internal error`; no fue un error de credencial ni una respuesta de n8n. No cambié workflows ni ejecuté nada en esa ventana.
+- No hay proceso Chromium ni puerto CDP local visible desde este runtime, y no está disponible una herramienta de navegador en la sesión. Por eso no pude abrir Gmail/Zoho para comprobar recepción real. El estado probado sigue siendo SMTP aceptado por n8n/proveedor; falta confirmar entrega y carpeta destino en `ethannic2@gmail.com`.
+- Reanudar cuando MCP vuelva a responder: confirmar estado/credencial de alertas, revisar metadata reciente de ejecuciones y verificar cobertura de Error Trigger. Solicitar al usuario el resultado de Inbox/Spam solo si no se habilita el navegador desde el runtime.
+- El documento está versionado localmente en el vault; GitHub sigue sin sincronización por el bloqueo DNS documentado previamente.
