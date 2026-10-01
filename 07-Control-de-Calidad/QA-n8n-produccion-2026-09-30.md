@@ -967,3 +967,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La función fn_aceptar_lista_espera(uuid) solo es ejecutable por n8n_runtime y service_role; anon y authenticated están denegados. La función carga por UUID, exige estado NOTIFICADO y vigencia, y llama a fn_solicitar_reserva; no recibe un comercio como parámetro.
 - El workflow exportado de escritorio tiene una versión antigua con lookup por teléfono sin filtro de tenant. El transformador Community local sustituye ese filtro por comercio + teléfono usando Query Parameters. La lectura publicada registrada a las 10:06 UTC confirmó que el WF14 vivo filtra simultáneamente comercio y teléfono. No mezclar el export antiguo con la versión activa ni importarlo sobre producción.
 - No hice una aceptación de lista adicional: las listas QA activas están en cero y el MCP n8n está indisponible, así que no se puede preparar/inspeccionar un fixture mediante el runtime real. La prueba negativa con IDs/estado inválidos y la revisión de defensa en profundidad quedan en la matriz abierta.
+
+### Estado de fixtures de lista de espera QA — 2026-10-01 10:45 UTC
+
+- Lectura agregada de producción para Prueba RSUELVO y Celulares: no hay entradas activas en ESPERANDO, NOTIFICADO o ACEPTADO. Solo hay estados terminales: Prueba RSUELVO tiene 3 CONVERTIDO_RESERVA, 3 RECHAZADO y 8 VENCIDO; Celulares tiene 8 VENCIDO.
+- No se creó otra fila ni se aceptó una oportunidad existente. Para una canary de aceptación falta una fixture QA reproducible y el runtime n8n real; el MCP n8n sigue indisponible. La aceptación anterior/crón documentados sí cubren el camino funcional, pero la matriz de IDs/estado inválidos queda abierta.
