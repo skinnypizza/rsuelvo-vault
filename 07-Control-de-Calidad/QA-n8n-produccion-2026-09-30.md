@@ -830,3 +830,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - Siguiente ruta segura: reconciliar y aprobar migraciones canónicas en STAGING, comprobar rol runtime/TLS y transacciones del outbox, desplegar worker con bandera apagada y hacer canarios solo a destinatarios sintéticos; después migrar los productores de mensaje de forma transaccional y preservar el número Meta único compartido. Mantener desactivados los reintentos de POST de WF80 hasta completar la reconciliación de resultados `UNKNOWN`.
 
 - Barrido de cobertura ejecutado otra vez tras la sesión n8n: hay 17 workflows activos; 16/16 workflows de negocio/gateway apuntan al manejador compartido `RSUELVO — Alertas de errores`. Ninguno quedó sin `settings.errorWorkflow`; el propio manejador no requiere un handler de errores recursivo.
+
+### Resultado de caja tras confirmación manual de pago — 2026-10-01
+
+- Corregí y comprometí en Flutter `ce4ffb9` solo `lib/features/verificaciones/verificacion_detail_screen.dart`: éxito verde/cierre para `PAGO_CONFIRMADO`, aviso informativo/cierre para `YA_PROCESADO`, y error sin cerrar el detalle ante `RESERVA_VENCIDA` u otro resultado no exitoso. Los demás cambios locales del repo no se incluyeron.
+- `dart analyze lib/features/verificaciones/verificacion_detail_screen.dart` pasó sin hallazgos. El runner de Flutter no pudo cargar `test/verification_v1_test.dart` porque el sandbox denegó la apertura del socket local; no se obtuvo resultado de prueba widget y no se hizo build/deploy. Queda pendiente verificar esta pantalla en una sesión de cajero/dispositivo y desplegar la app.
