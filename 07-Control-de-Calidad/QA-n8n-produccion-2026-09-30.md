@@ -972,3 +972,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 
 - Lectura agregada de producción para Prueba RSUELVO y Celulares: no hay entradas activas en ESPERANDO, NOTIFICADO o ACEPTADO. Solo hay estados terminales: Prueba RSUELVO tiene 3 CONVERTIDO_RESERVA, 3 RECHAZADO y 8 VENCIDO; Celulares tiene 8 VENCIDO.
 - No se creó otra fila ni se aceptó una oportunidad existente. Para una canary de aceptación falta una fixture QA reproducible y el runtime n8n real; el MCP n8n sigue indisponible. La aceptación anterior/crón documentados sí cubren el camino funcional, pero la matriz de IDs/estado inválidos queda abierta.
+
+### Revalidación estática del paquete Community — 2026-10-01 10:44 UTC
+
+- Ejecuté verify-community-package.py sobre el paquete local: PASS, 18 workflows, 391 nodos, 94 nodos Code, 25 nodos Postgres y 40 llamadas guardadas a WF-80. Las matrices sintéticas del gateway/status, limitador/circuit breaker, parser de verificación WF21, eventos agrupados WF02 y asociación de media WF02→WF21 también pasaron.
+- Es verificación estática/local y no ejecuta workflows, Supabase, Meta ni envía WhatsApp. Una nueva búsqueda de workflows n8n siguió devolviendo MCP -32603; el inventario productivo sigue teniendo como última evidencia confirmada las lecturas de las 10:06 UTC.
