@@ -1572,3 +1572,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La revisión del gateway Meta encontró que `Log Send` leía `$json.sendStatus`, pero `Post-send Eval` no producía ese campo; cada auditoría de envío quedaba como `unknown`. Además, las transiciones del circuit breaker no generaban `logStatus`, aunque `Log Circuit` intentaba guardarlo.
 - Actualicé el gateway para persistir `sent`/`failed`, código HTTP cuando está disponible y estado de transición del circuit breaker. Los tres nodos pasaron validación aislada y WF-80 se publicó. Postflight: activo, borrador igual a publicado, con el handler central y retenciones success/error/manual en none/none/false.
 - No envié mensajes ni alteré datos de clientes. Falta probar el resultado con una llamada simulada/real controlada; la mejora solo fue validada a nivel de configuración.
+
+### 2026-10-01 23:55 UTC — Verificación local del consumidor de `archivo_path`
+
+- En `StudioProjects/rsuelvo`, la implementación actual firma `archivo_path` por 3600 segundos al visualizar el comprobante y solo usa `archivo_url` como fallback para filas antiguas. La prueba unitaria existente cubre ambas ramas y extracción de path de URL firmada.
+- `flutter analyze` en el repositorio sobre el repositorio de verificaciones y su prueba terminó sin issues. `flutter test test/verificaciones_repository_test.dart` no pudo iniciar el tester: el sandbox denegó bind a `127.0.0.1` (`Operation not permitted`), por lo que no es un fallo de la prueba ni evidencia de éxito. No modifiqué el worktree móvil, que ya tenía cambios de usuario sin commit.
+- n8n no registra ejecuciones nuevas después de las 23:53 UTC; no hay E2E correlacionado posterior a las publicaciones de WF-21/WF-80. No usé OpenWA ni realicé mutaciones productivas adicionales.
