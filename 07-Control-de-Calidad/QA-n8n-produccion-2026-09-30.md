@@ -1592,3 +1592,9 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 - La última entrada de webhook visible (#852, 19:39 UTC) es el fixture oficial de Meta con `phone_number_id=123456123`, `message_id=ABGGFlA5Fpa` y texto de ejemplo. Falló la resolución del comercio y después la notificación WF-80 por usar ese ID inexistente en producción. No es el SKU ni comprobante del usuario. El evento real sigue sin diagnóstico; no inferir una falla de WF-21 con esta telemetría.
 - En `/home/nico/rsuelvo-n8n-local` actualicé el artefacto Community para reservar dos destinos sintéticos por cada uno de dos tenants en WF-80 y el arnés IAM10. Regeneré `community-import/`; `python3 verify-community-package.py` pasó: 19 workflows, 404 nodos, matriz de estados, rate limit/circuit breaker, parser de recibos, lote Meta, vinculación de medios y ruta de almacenamiento.
 - Los 19 workflows del paquete permanecen inactivos. Es una validación del artefacto local; no importé ni publiqué nada en n8n de producción y no envié mensajes. Sin OpenWA.
+
+### 2026-10-02 00:35 UTC — Endurecimiento de datos locales y artefacto Community
+
+- Reaudité el paquete generado de 19 workflows. El escaneo de credenciales conocidas (JWT, token Meta y API key Google) no encontró secretos; tampoco quedan referencias `$vars.*`, `$env` ni rutas OpenWA en los JSON importables. Esto es una comprobación estática del artefacto, no demuestra la validez de credenciales del destino.
+- El respaldo SQLite obsoleto de la instancia local estaba dentro de `data/` con el directorio 755 y la base/WAL/SHM en 644. Endurecí el directorio a 700 y esos archivos a 600; `.env` ya estaba en 600 y `secrets/` en 700. El token del túnel permanece 444 dentro del directorio 700 para conservar lectura por el contenedor sin acceso de otros usuarios del host.
+- No hay proceso local de n8n/Cloudflared en este runtime; la instalación durable sigue pendiente del VPS. No detuve ni cambié los workflows publicados del n8n remoto. Sin OpenWA.
