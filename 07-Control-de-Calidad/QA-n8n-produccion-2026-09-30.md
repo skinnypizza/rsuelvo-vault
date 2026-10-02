@@ -1630,3 +1630,8 @@ CREATE INDEX IF NOT EXISTS idx_reservas_id_pedido
 ### Corrección del runbook para VPS — 2026-10-02
 
 - Al revisar el Compose y `DEPLOYMENT.md`, confirmé que `compose.yaml` ya define `N8N_WEBHOOK_URL`, pero el runbook y README indicaban `WEBHOOK_URL`. La documentación oficial de n8n dice que `N8N_WEBHOOK_URL` reemplaza a `WEBHOOK_URL` desde la versión 2.35.0. Corregí ambos documentos locales; la variable efectiva del stack 2.40.7 ya era correcta. [Documentación oficial de n8n](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/configure-webhook-urls-with-reverse-proxy/).
+
+### Paridad del task runner distroless — 2026-10-02
+
+- La inspección del Docker runtime encontró `task-runners` activo con `n8nio/runners:2.40.7`, pese a que `compose.yaml` define `n8nio/runners:2.40.7-distroless`. No había ejecuciones n8n en `running`/`waiting`. Descargué la etiqueta oficial `2.40.7-distroless` y recreé solo ese servicio; n8n, PostgreSQL y Cloudflare Tunnel no se reiniciaron.
+- Postflight de Docker: `task-runners` activo con `2.40.7-distroless`. Los logs recientes de n8n registran `launcher-javascript` y `launcher-python`; el endpoint de salud de n8n se mantuvo healthy. Falta probar la ejecución funcional de un Code node tras el cambio; no repetí el smoke compuesto para no tocar rutas de negocio ni persistir otra ejecución manual.
